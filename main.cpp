@@ -45,6 +45,7 @@ using namespace bpp;
 
 int main(int argc, char* argv[]){
 	if(argc != 3){
+		cout << "PHLAWD 1.0" << endl;
 		cout << "you need more arguments." << endl;
 		cout << "usage: PHLAWD task configfile" << endl;
 		cout << "possible tasks include:" << endl;
