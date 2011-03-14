@@ -12,11 +12,14 @@ def load_seqs_into_seqlite(database,filen):
 		seq = i.seq.tostring()
 		desc = i.description
 		ncbi_id = ""
-		a = i.features[0].qualifiers['db_xref']
-		for j in a:
-			if 'taxon' in j:
-				ncbi_id = j[6:]
-		curup.execute("insert into sequence (ncbi_id,accession_id,identifier,description,seq) values (?,?,?,?,?);",(ncbi_id,acc,iden,desc,seq))
+		try:
+			a = i.features[0].qualifiers['db_xref']
+			for j in a:
+				if 'taxon' in j:
+					ncbi_id = j[6:]
+			curup.execute("insert into sequence (ncbi_id,accession_id,identifier,description,seq) values (?,?,?,?,?);",(ncbi_id,acc,iden,desc,seq))
+		except:
+			continue
 	con.commit()
 	con.close()
 	handle.close()
