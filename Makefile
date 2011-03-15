@@ -3,7 +3,6 @@ CFLAGS = -msse3 -DSSE2 -O3 -g -w -Wall
 
 CPP_SRCS += \
 DBSeq.cpp \
-SQLiteDBController.cpp \
 SQLiteConstructor.cpp \
 SQLiteProfiler.cpp \
 SQLiteTreeNameConvertor.cpp \
@@ -22,7 +21,6 @@ utils.cpp
 
 OBJS += \
 ./DBSeq.o \
-./SQLiteDBController.o \
 ./SQLiteConstructor.o \
 ./SQLiteProfiler.o \
 ./SQLiteTreeNameConvertor.o \
@@ -41,7 +39,6 @@ OBJS += \
 
 CPP_DEPS += \
 ./DBSeq.d \
-./SQLiteDBController.d \
 ./SQLiteConstructor.d \
 ./SQLiteProfiler.d \
 ./SQLiteTreeNameConvertor.d \
@@ -63,7 +60,7 @@ CPP_DEPS += \
 %.o: %.cpp
 	$(CC) $(CFLAGS)  -Ldeps/linux/ -c -fmessage-length=0 -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -o"$@" "$<"
 
-LIBS := -lbpp-popgen -lbpp-phyl -lbpp-seq -lbpp-numcalc -lbpp-utils -lm -lsqlitewrapped -lsqlite3
+LIBS := -lm -lsqlitewrapped -lsqlite3
 
 RM := rm -rf
 

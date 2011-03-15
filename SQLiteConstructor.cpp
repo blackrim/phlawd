@@ -43,13 +43,7 @@ using namespace std;
 #include "libsqlitewrapped.h"
 
 
-#include <Seq/Sequence.h>
-#include <Seq/sequences>
-#include <Seq/containers>
-#include <Seq/ioseq>
-#include <Seq/alphabets>
-
-using namespace bpp;
+#include "sequence.h"
 
 
 #include "SQLiteConstructor.h"

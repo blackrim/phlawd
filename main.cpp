@@ -28,7 +28,6 @@ using namespace std;
 #include "SQLiteConstructor.h"
 #include "SQLiteProfiler.h"
 #include "SQLiteTreeNameConvertor.h"
-#include "SQLiteDBController.h"
 #include "utils.h"
 
 #include "SmithWatermanGotoh.h"

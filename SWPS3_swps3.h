@@ -57,11 +57,7 @@ typedef struct{
 } Options;
 
 
-#include <Seq/Sequence.h>
-#include <Seq/containers>
-#include <Seq/ioseq>
-#include <Seq/alphabets>
-using namespace bpp;
+#include "sequence.h"
 
 typedef int8_t * SBMatrix;
 

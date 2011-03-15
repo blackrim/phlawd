@@ -22,12 +22,7 @@
  *  Same_seq_pthread.cpp
  */
 
-#include <Seq/Sequence.h>
-#include <Seq/containers>
-#include <Seq/ioseq>
-#include <Seq/alphabets>
-#include <Seq/sequences>
-using namespace bpp;
+#include "sequence.h"
 
 #include "DBSeq.h"
 #include "utils.h"

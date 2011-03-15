@@ -30,12 +30,7 @@
 
 using namespace std;
 
-#include <Seq/Sequence.h>
-#include <Seq/containers>
-#include <Seq/ioseq>
-#include <Seq/alphabets>
-using namespace bpp;
-
+#include "sequence.h"
 #include "DBSeq.h"
 #include "utils.h"
 
@@ -47,7 +42,7 @@ struct SWPS3_thread_data{
 	int reports;
 	double coverage;
 	double identity;
-	OrderedSequenceContainer * known_seqs;
+	vector<Sequence> * known_seqs;
 };
 
 typedef int8_t * SBMatrix;

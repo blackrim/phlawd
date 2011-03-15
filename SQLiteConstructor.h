@@ -32,13 +32,7 @@ using namespace std;
 
 #include "libsqlitewrapped.h"
 
-#include <Seq/Sequence.h>
-#include <Seq/containers>
-#include <Seq/Sequence.h>
-#include <Seq/alphabets>
-#include <Seq/SequenceExceptions.h>
-
-using namespace bpp;
+#include "sequence.h"
 
 #include "DBSeq.h"
 

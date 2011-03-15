@@ -29,11 +29,7 @@
 
 using namespace std;
 
-#include <Seq/Sequence.h>
-#include <Seq/alphabets>
-#include <Seq/SequenceExceptions.h>
-
-using namespace bpp;
+#include "sequence.h"
 
 class DBSeq:
 public Sequence {
@@ -45,8 +41,8 @@ public Sequence {
 		string gi;
 
 	public:
-		DBSeq(const string & name, const string & sequence, const Alphabet * alpha,
-			string acc, string gi, string ncbi_t_id, string t_id, string desc) throw (BadCharException);
+		DBSeq(const string & name, const string & sequence,
+			string acc, string gi, string ncbi_t_id, string t_id, string desc);
 		string get_accession();
 		string get_gi();
 		string get_ncbi_taxid();

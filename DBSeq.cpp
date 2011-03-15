@@ -28,9 +28,9 @@ using namespace std;
 
 #include "DBSeq.h"
 
-DBSeq::DBSeq(const string & name, const string & sequence, const Alphabet * alpha,
-	string acc, string gin, string ncbi_t_id, string t_id, string desc) throw (BadCharException)
-		: Sequence(name, sequence, alpha){
+DBSeq::DBSeq(const string & name, const string & sequence,
+	string acc, string gin, string ncbi_t_id, string t_id, string desc)
+		: Sequence(name, sequence){
 	accession = acc;
 	gi = gin;
 	ncbi_taxid = ncbi_t_id;

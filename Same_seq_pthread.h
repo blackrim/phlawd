@@ -30,11 +30,7 @@
 
 using namespace std;
 
-#include <Seq/Sequence.h>
-#include <Seq/containers>
-#include <Seq/ioseq>
-#include <Seq/alphabets>
-using namespace bpp;
+#include "sequence.h"
 
 #include "DBSeq.h"
 #include "utils.h"
@@ -47,7 +43,7 @@ struct thread_data{
 	int reports;
 	double coverage;
 	double identity;
-	OrderedSequenceContainer * known_seqs;
+	vector<Sequence> * known_seqs;
 };
 
 vector<double> get_blast_score_and_rc_cstyle(Sequence inseq1, DBSeq inseq2, bool * prevcomp, int thread);
