@@ -182,7 +182,7 @@ void combine_ITS(vector<DBSeq> * seqs){
 			string name2id = seqs->at(ITS2[j]).get_tax_id();
 			if(nameid == name2id){
 				//seqs->at(ITS1[i]).setContent(seqs->at(ITS1[i]).getContent()+seqs->at(ITS2[j]).getContent());
-				seqs->at(ITS1[i]).append(seqs->at(ITS2[j]).getContent());
+				seqs->at(ITS1[i]).set_sequence(seqs->at(ITS1[i]).get_sequence()+seqs->at(ITS2[j]).get_sequence());
 				seqremoves.push_back(seqs->at(ITS2[j]));
 				//one.seq = Seq.Seq(one.seq.data + two.seq.data, two.seq.alphabet);
 				//std::cout << "x" << std::endl;

@@ -25,10 +25,7 @@
 #ifndef SQLITEPROFILER_H_
 #define SQLITEPROFILER_H_
 
-#include <Phyl/trees>
-#include <Phyl/Newick.h>
-
-using namespace bpp;
+#include "tree.h"
 
 #include <string>
 #include <map>
@@ -64,9 +61,9 @@ class SQLiteProfiler{
 						vector< vector<double> > numlist);
 		void copy_final_file(string filename);
 		string get_name_from_tax_id(string taxid);
-		void calculate_for_removal(SequenceContainer * seqs,
+		void calculate_for_removal(vector<Sequence> * seqs,
 				map<string,double> & allmeans);
-		void calculate_for_removal_quicktree(SequenceContainer * seqs,
+		void calculate_for_removal_quicktree(vector<Sequence> * seqs,
 						map<string,double> & allmeans);
 		void remove_outliers();
 		void rename_final_alignment(string which);

@@ -26,6 +26,8 @@
 #ifndef SWPS3_H
 #define SWPS3_H
 
+#include <stdint.h>
+
 /* For DMA reasons this value needs to be a multiple of 16!!! */
 #define MAX_SEQ_LENGTH (1024*10)
 #define MAX_SEQ_NAME_LENGTH (255)
@@ -60,7 +62,7 @@ typedef struct{
 #include "sequence.h"
 
 typedef int8_t * SBMatrix;
-
-int swps3_maxscores ( SBMatrix matrix , const Sequence * known, const Sequence * test);
+//took out const
+int swps3_maxscores ( SBMatrix matrix , Sequence * known,  Sequence * test);
 
 #endif /* SWPS3_H */

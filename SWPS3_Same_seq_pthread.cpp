@@ -30,13 +30,15 @@
 #include <cstdio>
 #include <string>
 #include <vector>
+#include <iostream>
+#include <stdio.h>
 using namespace std;
 
 #include "SWPS3_matrix.h"
 #include "SWPS3_Same_seq_pthread.h"
 
-
-int get_swps3_score_and_rc_cstyle(SBMatrix mat, const Sequence * inseq1, const Sequence * inseq2){
+//took out const
+int get_swps3_score_and_rc_cstyle(SBMatrix mat,  Sequence * inseq1, Sequence * inseq2){
 
 	return swps3_maxscores(mat, inseq1,inseq2);
 }
@@ -50,7 +52,7 @@ void * SWPS3_Same_seq_pthread_go(void *threadarg){
 	vector<bool> keep_rc;
 	int reports;
 	double identity;
-	OrderedSequenceContainer * known_seqs;
+	vector<Sequence> * known_seqs;
 	thread_id = my_data->thread_id;
 	seqs = my_data->seqs;
 	keep_seqs = my_data->keep_seqs;
@@ -64,9 +66,9 @@ void * SWPS3_Same_seq_pthread_go(void *threadarg){
 	 */
 	vector<int> scores;
 	SBMatrix mat = swps3_readSBMatrix( "EDNAFULL" );
-	for(int i=0;i<known_seqs->getNumberOfSequences();i++){
+	for(int i=0;i<known_seqs->size();i++){
 		//TODO : there was a pointer problem here
-		scores.push_back(get_swps3_score_and_rc_cstyle(mat,&known_seqs->getSequence(i),&known_seqs->getSequence(i)));
+		scores.push_back(get_swps3_score_and_rc_cstyle(mat,&known_seqs->at(i),&known_seqs->at(i)));
 	}
 
 	for (int i=0;i<seqs.size();i++){
@@ -75,17 +77,15 @@ void * SWPS3_Same_seq_pthread_go(void *threadarg){
 		}
 		double maxide = 0;
 		bool rc = false;
-		for (int j=0;j<known_seqs->getNumberOfSequences();j++){
+		for (int j=0;j<known_seqs->size();j++){
 			bool trc = false;
 			//TODO : there was a pointer problem here
-			int ret = get_swps3_score_and_rc_cstyle(mat,&known_seqs->getSequence(j), & seqs[i]);
+			int ret = get_swps3_score_and_rc_cstyle(mat,&known_seqs->at(j), & seqs[i]);
 			double tsc = double(ret)/double(scores[j]);
-			Sequence * rev = SequenceTools::reverse(seqs[i]);
-			Sequence *comp = SequenceTools::complement(*rev);
-			delete(rev);
+			seqs[i].perm_reverse_complement();
 			//TODO : there was a pointer problem here
-			int retrc = get_swps3_score_and_rc_cstyle(mat,&known_seqs->getSequence(j), comp);
-			delete(comp);
+			int retrc = get_swps3_score_and_rc_cstyle(mat,&known_seqs->at(j), &seqs[i]);
+			seqs[i].perm_reverse_complement();
 			if(retrc > ret){
 				trc = true;
 				tsc = double(retrc)/double(scores[j]);

@@ -22,31 +22,31 @@
  *  Same_seq_pthread.cpp
  */
 
-#include <Seq/Sequence.h>
-#include <Seq/containers>
-#include <Seq/ioseq>
-#include <Seq/alphabets>
-using namespace bpp;
+#include "sequence.h"
 
 #include "DBSeq.h"
 #include "utils.h"
 
+#include <sstream>
+#include <stdio.h>
+#include <iostream>
 #include <cstdio>
 #include <string>
 #include <vector>
+#include <stdlib.h>
 using namespace std;
 
 #include "Same_seq_pthread.h"
+#include "fasta_util.h"
 
 vector<double> get_blast_score_and_rc_cstyle(Sequence inseq1, DBSeq inseq2, bool * prevcomp, int thread){
-	const NucleicAlphabet * alphabet = new DNA();
 	vector<double> retvalues;
-	Fasta seqwriter1;
-	Fasta seqwriter2;
-	VectorSequenceContainer * sc1 = new VectorSequenceContainer(alphabet);
-	sc1->addSequence(inseq1);
-	VectorSequenceContainer * sc2 = new VectorSequenceContainer(alphabet);
-	sc2->addSequence(inseq2);
+	FastaUtil seqwriter1;
+	FastaUtil seqwriter2;
+	vector<Sequence> sc1; 
+	sc1.push_back(inseq1);
+	vector<Sequence> sc2; 
+	sc2.push_back(inseq2);
 
 	std::string ts;
 	std::stringstream out;
@@ -54,11 +54,8 @@ vector<double> get_blast_score_and_rc_cstyle(Sequence inseq1, DBSeq inseq2, bool
 	ts = out.str();
 	const string fn1 = "seq1"+ts;
 	const string fn2 = "seq2"+ts;
-	seqwriter1.write(fn1,*sc1);
-	seqwriter2.write(fn2,*sc2);
-	delete sc1;
-	delete sc2;
-	delete alphabet;
+	seqwriter1.writeFileFromVector(fn1,sc1);
+	seqwriter2.writeFileFromVector(fn2,sc2);
 //	string cmd = "bl2seq -i seq1 -j seq2 -p blastn -D 1";
 	double coverage = 0;
 	double identity = 0;
@@ -85,7 +82,7 @@ vector<double> get_blast_score_and_rc_cstyle(Sequence inseq1, DBSeq inseq2, bool
 				Tokenize(line, tokens, del);
 				coverage = coverage + (strtod(tokens[3].c_str(),NULL)-strtod(tokens[4].c_str(),NULL));
 				double tid = (strtod(tokens[2].c_str(),NULL)/100.0)*
-					((strtod(tokens[3].c_str(),NULL)-strtod(tokens[4].c_str(),NULL))/(int)inseq1.toString().length());
+					((strtod(tokens[3].c_str(),NULL)-strtod(tokens[4].c_str(),NULL))/(int)inseq1.get_sequence().size());
 
 				if (tid > identity){
 					identity = tid;
@@ -116,7 +113,7 @@ vector<double> get_blast_score_and_rc_cstyle(Sequence inseq1, DBSeq inseq2, bool
 		}
 	}*/
 	retvalues.push_back(identity);
-	retvalues.push_back(coverage/(int)inseq1.toString().length());
+	retvalues.push_back(coverage/(int)inseq1.get_sequence().size());
 	return retvalues;
 	//return (float(maxident/100.0),float(coverage/len(seq1.seq.tostring())),rc)
 }
@@ -131,7 +128,7 @@ void * Same_seq_pthread_go(void *threadarg){
 	int reports;
 	double coverage;
 	double identity;
-	OrderedSequenceContainer * known_seqs;
+	vector<Sequence> * known_seqs;
 
 	thread_id = my_data->thread_id;
 	seqs = my_data->seqs;
@@ -149,10 +146,10 @@ void * Same_seq_pthread_go(void *threadarg){
 		double maxide = 0;
 		double maxcov = 0;
 		bool rc = false;
-		for (int j=0;j<known_seqs->getNumberOfSequences();j++){
+		for (int j=0;j<known_seqs->size();j++){
 			bool trc = false;
 			//TODO : there was a pointer problem here
-			vector<double> ret = get_blast_score_and_rc_cstyle(known_seqs->getSequence(j), seqs[i],&trc, thread_id); //should be pointer?
+			vector<double> ret = get_blast_score_and_rc_cstyle(known_seqs->at(j), seqs[i],&trc, thread_id); //should be pointer?
 			if (ret.size() > 1){
 				/*if (ret[0] >maxide){
 					maxide = ret[0];

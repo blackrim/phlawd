@@ -22,6 +22,8 @@
  * SQLiteConstructor.cpp
  */
 
+//TODO: need to edit the reverse complement stuff in here
+
 #include "Same_seq_pthread.h"
 #include "SWPS3_Same_seq_pthread.h"
 #include "SWPS3_matrix.h"
@@ -36,7 +38,9 @@
 #include <stdlib.h>
 #include <cstdlib>
 #include <fstream>
+#include <sstream>
 #include <time.h>
+#include <math.h>
 
 using namespace std;
 
@@ -44,7 +48,7 @@ using namespace std;
 
 
 #include "sequence.h"
-
+#include "fasta_util.h"
 
 #include "SQLiteConstructor.h"
 #include "DBSeq.h"
@@ -72,8 +76,9 @@ SQLiteConstructor::SQLiteConstructor(string cn, vector <string> searchstr, strin
 	useITS = its;
 	numthreads = numt;
 	automated = autom;
-	Fasta seqReader;
-	known_seqs = seqReader.read(known_seq_filen, &AlphabetTools::DNA_ALPHABET);
+	FastaUtil seqReader;
+	known_seqs = new vector<Sequence>();
+	seqReader.readFile(known_seq_filen, *known_seqs);
 }
 
 void SQLiteConstructor::set_only_names_from_file(string filename,bool containshi){
@@ -292,7 +297,6 @@ vector<DBSeq> SQLiteConstructor::first_get_seqs_for_name_use_left_right
 	vector <DBSeq> seqs;
 	int left_value, right_value,ncbi_id;
 	string bioentid;
-	const NucleicAlphabet * alphabet = new DNA();
 	for (int i =0 ; i < results.size(); i++){
 		string ncbi = results[i][1];
 		string taxid = "";
@@ -327,7 +331,7 @@ vector<DBSeq> SQLiteConstructor::first_get_seqs_for_name_use_left_right
 				sequ = query3.getstr();
 			}
 			query3.free_result();
-			DBSeq tseq(ncbi, sequ, alphabet, acc, gi,ncbi, taxid, descr);
+			DBSeq tseq(ncbi, sequ, acc, gi,ncbi, taxid, descr);
 			seqs.push_back(tseq);
 		}
 	}
@@ -443,9 +447,9 @@ DBSeq SQLiteConstructor::add_higher_taxa(string taxon_id,vector<DBSeq> seqs){
 		//take keep_seqs and the known_seqs and get the distances and get the best
 		vector<int> scores;
 		SBMatrix mat = swps3_readSBMatrix( "EDNAFULL" );
-		for(int i=0;i<known_seqs->getNumberOfSequences();i++){
+		for(int i=0;i<known_seqs->size();i++){
 			//TODO : there was a pointer problem here
-			scores.push_back(get_swps3_score_and_rc_cstyle(mat,&known_seqs->getSequence(i),&known_seqs->getSequence(i)));
+			scores.push_back(get_swps3_score_and_rc_cstyle(mat,&known_seqs->at(i),&known_seqs->at(i)));
 		}
 
 		int bestid = 0;
@@ -455,17 +459,15 @@ DBSeq SQLiteConstructor::add_higher_taxa(string taxon_id,vector<DBSeq> seqs){
 				DBSeq tseq = keep_seqs2->at(i);
 				double maxiden = 0;
 				bool rc = false;
-				for (int j=0;j<known_seqs->getNumberOfSequences();j++){
+				for (int j=0;j<known_seqs->size();j++){
 					bool trc = false;
 					//TODO : there was a pointer problem here
-					int ret = get_swps3_score_and_rc_cstyle(mat,&known_seqs->getSequence(j), & tseq);
+					int ret = get_swps3_score_and_rc_cstyle(mat,&known_seqs->at(j), & tseq);
 					double tsc = double(ret)/double(scores[j]);
-					Sequence * rev = SequenceTools::reverse(tseq);
-					Sequence *comp = SequenceTools::complement(*rev);
-					delete(rev);
+					tseq.perm_reverse_complement();
 					//TODO : there was a pointer problem here
-					int retrc = get_swps3_score_and_rc_cstyle(mat,&known_seqs->getSequence(j), comp);
-					delete(comp);
+					int retrc = get_swps3_score_and_rc_cstyle(mat,&known_seqs->at(j), & tseq);
+					tseq.perm_reverse_complement(); //TODO: make sure that this still works
 					if(retrc > ret){
 						trc = true;
 						tsc = double(retrc)/double(scores[j]);
@@ -482,7 +484,7 @@ DBSeq SQLiteConstructor::add_higher_taxa(string taxon_id,vector<DBSeq> seqs){
 				}
 			}
 			DBSeq bestseq = keep_seqs2->at(bestid);
-			bestseq.setName(taxon_id); //name will be the higher taxon name
+			bestseq.set_id(taxon_id); //name will be the higher taxon name
 			cout << "higher taxa change" << endl;
 			//cout << taxon_id << "=" << bestseq.get_tax_id() << endl;
 			cout << taxon_id << "=" << bestseq.get_ncbi_taxid() << endl;
@@ -573,18 +575,15 @@ vector<DBSeq> SQLiteConstructor::exclude_gis_from_file(vector<DBSeq> seqs){
 
 
 vector<double> SQLiteConstructor::get_blast_score_and_rc(Sequence inseq1, DBSeq inseq2, bool * rc){
-	const NucleicAlphabet * alphabet = new DNA();
 	vector<double> retvalues;
-	Fasta seqwriter1;
-	Fasta seqwriter2;
-	VectorSequenceContainer * sc1 = new VectorSequenceContainer(alphabet);
-	sc1->addSequence(inseq1);
-	VectorSequenceContainer * sc2 = new VectorSequenceContainer(alphabet);
-	sc2->addSequence(inseq2);
+	FastaUtil seqwriter1;
+	FastaUtil seqwriter2;
+	vector<Sequence> sc1;
+	vector<Sequence> sc2;
 	const string fn1 = "seq1";
 	const string fn2 = "seq2";
-	seqwriter1.write(fn1,*sc1);
-	seqwriter2.write(fn2,*sc2);
+	seqwriter1.writeFileFromVector(fn1,sc1);
+	seqwriter2.writeFileFromVector(fn2,sc2);
 //	string cmd = "bl2seq -i seq1 -j seq2 -p blastn -D 1";
 	double coverage = 0;
 	double identity = 0;
@@ -623,10 +622,8 @@ vector<double> SQLiteConstructor::get_blast_score_and_rc(Sequence inseq1, DBSeq 
 			*rc=false;
 		cout << *rc;
 	}
-	delete sc1;
-	delete sc2;
 	retvalues.push_back(identity/100.0);
-	retvalues.push_back(coverage/(int)inseq1.toString().length());
+	retvalues.push_back(coverage/(int)inseq1.get_sequence().size());
 	return retvalues;
 	//return (float(maxident/100.0),float(coverage/len(seq1.seq.tostring())),rc)
 }
@@ -646,10 +643,10 @@ void SQLiteConstructor::get_same_seqs(vector<DBSeq> seqs,  vector<DBSeq> * keep_
 		maxide = 0;
 		maxcov = 0;
 		rc = false;
-		for (int j=0;j<known_seqs->getNumberOfSequences();j++){
+		for (int j=0;j<known_seqs->size();j++){
 			bool trc = false;
 			//TODO : there was a pointer problem here
-			vector<double> ret = get_blast_score_and_rc(known_seqs->getSequence(j), seqs[i], &trc); //should be pointer?
+			vector<double> ret = get_blast_score_and_rc(known_seqs->at(j), seqs[i], &trc); //should be pointer?
 			if (ret.size() > 1){
 				/*if (ret[0] >maxide){
 					maxide = ret[0];
@@ -858,11 +855,11 @@ void SQLiteConstructor::remove_duplicates(vector<DBSeq> * keep_seqs, vector<bool
 				int maxiden = 0;
 				int maxcov = 0;
 				bool rc = false;
-				for (int k=0;k<known_seqs->getNumberOfSequences();k++){
+				for (int k=0;k<known_seqs->size();k++){
 					bool trc = false;
-					//vector<double> ret = get_blast_score_and_rc(*known_seqs->getSequence(k), tseq,&trc); //should be pointer?
+					//vector<double> ret = get_blast_score_and_rc(*known_seqs->at(k), tseq,&trc); //should be pointer?
 					//TODO : there was a pointer problem here
-					vector<double> ret = get_blast_score_and_rc_cstyle(known_seqs->getSequence(k), tseq, &trc, 0);
+					vector<double> ret = get_blast_score_and_rc_cstyle(known_seqs->at(k), tseq, &trc, 0);
 					if (ret.size() > 1){
 						/*if (ret[0] >maxiden){
 							maxiden = ret[0];
@@ -939,13 +936,13 @@ void SQLiteConstructor::remove_duplicates_SWPS3(vector<DBSeq> * keep_seqs, vecto
 
 	//uses database taxon ids for dups
 	for(unsigned int i =0; i<keep_seqs->size(); i++){
-		ids.push_back(keep_seqs->at(i).getName());
+		ids.push_back(keep_seqs->at(i).get_id());
 		mycount = 0;
 		if(unique_ids.size() > 0){
-			mycount = (int) count (unique_ids.begin(),unique_ids.end(), keep_seqs->at(i).getName());
+			mycount = (int) count (unique_ids.begin(),unique_ids.end(), keep_seqs->at(i).get_id());
 		}
 		if(mycount == 0){
-			unique_ids.push_back(keep_seqs->at(i).getName());
+			unique_ids.push_back(keep_seqs->at(i).get_id());
 		}
 	}
 
@@ -968,9 +965,9 @@ void SQLiteConstructor::remove_duplicates_SWPS3(vector<DBSeq> * keep_seqs, vecto
 	 */
 	vector<int> scores;
 	SBMatrix mat = swps3_readSBMatrix( "EDNAFULL" );
-	for(int i=0;i<known_seqs->getNumberOfSequences();i++){
+	for(int i=0;i<known_seqs->size();i++){
 		//TODO : there was a pointer problem here
-		scores.push_back(get_swps3_score_and_rc_cstyle(mat,&known_seqs->getSequence(i),&known_seqs->getSequence(i)));
+		scores.push_back(get_swps3_score_and_rc_cstyle(mat,&known_seqs->at(i),&known_seqs->at(i)));
 	}
 
 	vector<int> remove;
@@ -991,17 +988,15 @@ void SQLiteConstructor::remove_duplicates_SWPS3(vector<DBSeq> * keep_seqs, vecto
 				DBSeq tseq = keep_seqs->at(tremove[j]);
 				double maxiden = 0;
 				bool rc = false;
-				for (int j=0;j<known_seqs->getNumberOfSequences();j++){
+				for (int j=0;j<known_seqs->size();j++){
 					bool trc = false;
 					//TODO : there was a pointer problem here
-					int ret = get_swps3_score_and_rc_cstyle(mat,&known_seqs->getSequence(j), & tseq);
+					int ret = get_swps3_score_and_rc_cstyle(mat,&known_seqs->at(j), & tseq);
 					double tsc = double(ret)/double(scores[j]);
-					Sequence * rev = SequenceTools::reverse(tseq);
-					Sequence *comp = SequenceTools::complement(*rev);
-					delete(rev);
+					tseq.perm_reverse_complement();
 					//TODO : there was a pointer problem here
-					int retrc = get_swps3_score_and_rc_cstyle(mat,&known_seqs->getSequence(j), comp);
-					delete(comp);
+					int retrc = get_swps3_score_and_rc_cstyle(mat,&known_seqs->at(j), & tseq);
+					tseq.perm_reverse_complement();
 					if(retrc > ret){
 						trc = true;
 						tsc = double(retrc)/double(scores[j]);
@@ -1038,28 +1033,26 @@ void SQLiteConstructor::reduce_genomes(vector<DBSeq> * keep_seqs, vector<bool> *
 	 */
 	vector<int> scores;
 	SBMatrix mat = swps3_readSBMatrix( "EDNAFULL" );
-	for(int j=0;j<known_seqs->getNumberOfSequences();j++){
+	for(int j=0;j<known_seqs->size();j++){
 		//TODO : there was a pointer problem here
-		scores.push_back(get_swps3_score_and_rc_cstyle(mat,&known_seqs->getSequence(j),&known_seqs->getSequence(j)));
+		scores.push_back(get_swps3_score_and_rc_cstyle(mat,&known_seqs->at(j),&known_seqs->at(j)));
 	}
 	for(unsigned int i =0; i<keep_seqs->size(); i++){
-		if(keep_seqs->at(i).size() > 10000){
-			cout << "shrinking a genome: "<< keep_seqs->at(i).size() << endl;
+		if(keep_seqs->at(i).get_sequence().size() > 10000){
+			cout << "shrinking a genome: "<< keep_seqs->at(i).get_id() << endl;
 			DBSeq tseq = keep_seqs->at(i);
 			double maxiden = 0;
 			bool rc = false;
 			int maxknown = 0;
-			for (int j=0;j<known_seqs->getNumberOfSequences();j++){
+			for (int j=0;j<known_seqs->size();j++){
 				bool trc = false;
 				//TODO : there was a pointer problem here
-				int ret = get_swps3_score_and_rc_cstyle(mat,&known_seqs->getSequence(j), & tseq);
+				int ret = get_swps3_score_and_rc_cstyle(mat,&known_seqs->at(j), & tseq);
 				double tsc = double(ret)/double(scores[j]);
-				Sequence * rev = SequenceTools::reverse(tseq);
-				Sequence *comp = SequenceTools::complement(*rev);
-				delete(rev);
+				tseq.perm_reverse_complement();
 				//TODO : there was a pointer problem here
-				int retrc = get_swps3_score_and_rc_cstyle(mat,&known_seqs->getSequence(j), comp);
-				delete(comp);
+				int retrc = get_swps3_score_and_rc_cstyle(mat,&known_seqs->at(j), &tseq);
+				tseq.perm_reverse_complement();
 				if(retrc > ret){
 					trc = true;
 					tsc = double(retrc)/double(scores[j]);
@@ -1074,22 +1067,19 @@ void SQLiteConstructor::reduce_genomes(vector<DBSeq> * keep_seqs, vector<bool> *
 			 * shrink with phyutility
 			 */
 			const string tempfile = "TEMPFILES/genome_shrink";
-			VectorSequenceContainer * sc1 = new VectorSequenceContainer(&AlphabetTools::DNA_ALPHABET);
-			Fasta seqwriter;
+			vector<Sequence> sc1; 
+			FastaUtil seqwriter;
 			if(keep_rc->at(i) == false)
-				sc1->addSequence(keep_seqs->at(i));
+				sc1.push_back(keep_seqs->at(i));
 			else{
-				Sequence * rev = SequenceTools::reverse(keep_seqs->at(i));
-				Sequence *comp = SequenceTools::complement(*rev);
-				sc1->addSequence(* comp);
-				delete(rev);
+				keep_seqs->at(i).perm_reverse_complement();
+				sc1.push_back(keep_seqs->at(i));
 			}
-			//for (int j=0;j<known_seqs->getNumberOfSequences();j++){
+			//for (int j=0;j<known_seqs->size();j++){
 			//TODO : there was a pointer problem here
-				sc1->addSequence(known_seqs->getSequence(maxknown));
+				sc1.push_back(known_seqs->at(maxknown));
 			//}
-			seqwriter.write(tempfile,*sc1);
-			delete sc1;
+			seqwriter.writeFileFromVector(tempfile,sc1);
 			const char * cmd = "mafft --auto TEMPFILES/genome_shrink > TEMPFILES/genome_shrink_aln";
 			cout << "aligning" << endl;
 			FILE *fp = popen(cmd, "r" );
@@ -1109,17 +1099,17 @@ void SQLiteConstructor::reduce_genomes(vector<DBSeq> * keep_seqs, vector<bool> *
 			/*
 			 * reading in the sequencing and replacing
 			 */
-			Fasta seqreader;
-			OrderedSequenceContainer * sequences;
-			sequences = seqreader.read("TEMPFILES/genome_shrink_out", &AlphabetTools::DNA_ALPHABET);
-			for (int j=0;j<sequences->getNumberOfSequences();j++){
+			FastaUtil seqreader;
+			vector<Sequence> sequences;
+			seqreader.readFile("TEMPFILES/genome_shrink_out", sequences);
+			for (int j=0;j<sequences.size();j++){
 				//TODO : there was a pointer problem here
-				if (sequences->getSequence(j).getName() ==  keep_seqs->at(i).getName()){
-					keep_seqs->at(i).setContent(sequences->getSequence(j).getContent());
+				if (sequences.at(j).get_id() ==  keep_seqs->at(i).get_id()){
+					keep_seqs->at(i).set_sequence(sequences.at(j).get_sequence());
 					keep_rc->at(i) = false;
 				}
 			}
-			cout << "shrunk size: "<< keep_seqs->at(i).size() << endl;
+			cout << "shrunk size: "<< keep_seqs->at(i).get_id() << endl;
 		}
 	}
 }
@@ -1193,25 +1183,23 @@ void SQLiteConstructor::get_seqs_for_names(string inname_id, vector<DBSeq> * seq
 
 void SQLiteConstructor::make_mafft_multiple_alignment(vector<DBSeq> * inseqs,vector<bool> * rcs){
 	//make file
-	const NucleicAlphabet * alphabet = new DNA();
 	vector<double> retvalues;
-	Fasta seqwriter1;
-	VectorSequenceContainer * sc1 = new VectorSequenceContainer(alphabet);
+	FastaUtil seqwriter1;
+	vector<Sequence> sc1;
 	for(unsigned int i=0;i<inseqs->size();i++){
 		if(rcs->at(i) == false){
-			sc1->addSequence(inseqs->at(i));
+			sc1.push_back(inseqs->at(i));
 		}else{
-			Sequence * rev = SequenceTools::reverse(inseqs->at(i));
-			Sequence *comp = SequenceTools::complement(*rev);
-			sc1->addSequence(* comp);
-			delete(rev);
+			inseqs->at(i).perm_reverse_complement();
+			sc1.push_back(inseqs->at(i));
+			//inseqs->at(i).perm_reverse_complement();
 		}
 	}
 	const string fn1 = "TEMPFILES/tempfile";
-	seqwriter1.write(fn1,*sc1);
+	seqwriter1.writeFileFromVector(fn1,sc1);
 
 	//make alignment
-	const char * cmd = "mafft --auto TEMPFILES/tempfile > TEMPFILES/outfile";
+	const char * cmd = "mafft --thread 2 --auto TEMPFILES/tempfile > TEMPFILES/outfile";
 	cout << "aligning" << endl;
 	FILE *fp = popen(cmd, "r" );
 	char buff[1000];
@@ -1219,8 +1207,6 @@ void SQLiteConstructor::make_mafft_multiple_alignment(vector<DBSeq> * inseqs,vec
 		string line(buff);
 	}
 	pclose( fp );
-	delete(sc1);
-	delete(alphabet);
 }
 /*
  * should replace paup
@@ -1305,13 +1291,13 @@ double SQLiteConstructor::calculate_MAD_quicktree(){
 	vector<double>all_abs;
 	double med = 0;
 	for (unsigned int i=0;i<p_values.size();i++){
-		all_abs.push_back(abs(jc_values[i]-p_values[i]));
+		all_abs.push_back(fabs(jc_values[i]-p_values[i]));
 	}
 	med = median(all_abs);
 	cout << "median: " << med << endl;
 	vector<double> all_meds;
 	for (unsigned int i=0;i<p_values.size();i++){
-		all_meds.push_back(abs(med-all_abs[i]));
+		all_meds.push_back(fabs(med-all_abs[i]));
 	}
 	return 1.4826*(median(all_meds));
 }
@@ -1353,16 +1339,13 @@ void SQLiteConstructor::saturation_tests(string name_id, vector<DBSeq> * keep_se
 
 	vector<DBSeq> orphan_seqs;
 	vector<bool> orphan_seqs_rc;
-	const NucleicAlphabet * alphabet1 = new DNA();
-	VectorSequenceContainer * allseqs = new VectorSequenceContainer(alphabet1); //remove these as they are written
+	vector<Sequence> allseqs; 
 	for(int i=0;i<keep_seqs->size();i++){
 		if(keep_rc->at(i) == false){
-			allseqs->addSequence(keep_seqs->at(i));
+			allseqs.push_back(keep_seqs->at(i));
 		}else{
-			Sequence * rev = SequenceTools::reverse(keep_seqs->at(i));
-			Sequence *comp = SequenceTools::complement(*rev);
-			allseqs->addSequence(* comp);
-			delete(rev);
+			keep_seqs->at(i).perm_reverse_complement();
+			allseqs.push_back(keep_seqs->at(i));
 		}
 	}
 
@@ -1384,24 +1367,28 @@ void SQLiteConstructor::saturation_tests(string name_id, vector<DBSeq> * keep_se
 			 */
 			cout << name << " " << temp_seqs->size() << endl;
 			//make file
-			const NucleicAlphabet * alphabet = new DNA();
-			Fasta seqwriter1;
-			VectorSequenceContainer * sc1 = new VectorSequenceContainer(alphabet);
+			FastaUtil seqwriter1;
+			vector<Sequence> sc1;
 			for(int i=0;i<temp_seqs->size();i++){
-				allseqs->removeSequence(temp_seqs->at(i).getName());
+				//need to implement a better way, but this is it for now
+				int eraseint=0;
+				for(int zz=0;zz<allseqs.size();zz++){
+					if (temp_seqs->at(i).get_id() == allseqs[zz].get_id()){
+						eraseint = zz;
+						break;
+					}
+				}
+				allseqs.erase(allseqs.begin()+eraseint);
 				if(temp_rcs->at(i) == false)
-					sc1->addSequence(temp_seqs->at(i));
+					sc1.push_back(temp_seqs->at(i));
 				else{
-					Sequence * rev = SequenceTools::reverse(temp_seqs->at(i));
-					Sequence *comp = SequenceTools::complement(*rev);
-					sc1->addSequence(* comp);
-					delete(rev);
+					temp_seqs->at(i).perm_reverse_complement();
+					sc1.push_back(temp_seqs->at(i));
 				}
 			}
 			string fn1 = gene_name;
 			fn1 += "/" + name;
-			seqwriter1.write(fn1,*sc1);
-			delete sc1;
+			seqwriter1.writeFileFromVector(fn1,sc1);
 		}else if (temp_seqs->size() == 0){
 			continue;
 		}else{
@@ -1429,24 +1416,28 @@ void SQLiteConstructor::saturation_tests(string name_id, vector<DBSeq> * keep_se
 			cout << "mad: "<<mad << endl;
 			//if mad scores are good, store result
 			if (mad <= mad_cutoff){
-				const NucleicAlphabet * alphabet = new DNA();
-				Fasta seqwriter1;
-				VectorSequenceContainer * sc1 = new VectorSequenceContainer(alphabet);
+				FastaUtil seqwriter1;
+				vector<Sequence> sc1; 
 				for(int i=0;i<temp_seqs->size();i++){
-					allseqs->removeSequence(temp_seqs->at(i).getName());
+					//need to implement a better way, but this is it for now
+					int eraseint=0;
+					for(int zz=0;zz<allseqs.size();zz++){
+						if (temp_seqs->at(i).get_id() == allseqs[zz].get_id()){
+							eraseint = zz;
+							break;
+						}
+					}
+					allseqs.erase(allseqs.begin()+eraseint);
 					if(temp_rcs->at(i) == false){
-						sc1->addSequence(temp_seqs->at(i));
+						sc1.push_back(temp_seqs->at(i));
 					}else{
-						Sequence * rev = SequenceTools::reverse(temp_seqs->at(i));
-						Sequence *comp = SequenceTools::complement(*rev);
-						sc1->addSequence(* comp);
-						delete(rev);
+						temp_seqs->at(i).perm_reverse_complement();
+						sc1.push_back(temp_seqs->at(i));
 					}
 				}
 				string fn1 = gene_name;
 				fn1 += "/" + name;
-				seqwriter1.write(fn1,*sc1);
-				delete sc1;
+				seqwriter1.writeFileFromVector(fn1,sc1);
 			}
 			//if mad scores are bad push the children into names
 			else{
@@ -1480,7 +1471,7 @@ void SQLiteConstructor::saturation_tests(string name_id, vector<DBSeq> * keep_se
 				query.free_result();
 			}
 		}
-//		allseqs->getSequence("173412");
+//		allseqs->at("173412");
 //		173412
 //		173413
 //		173430
@@ -1491,17 +1482,17 @@ void SQLiteConstructor::saturation_tests(string name_id, vector<DBSeq> * keep_se
 	/*
 	 * deal with the singletons
 	 */
-	cout << "leftovers: " << allseqs->getNumberOfSequences() << endl;
-	for(int i=0;i<allseqs->getNumberOfSequences();i++){
+	cout << "leftovers: " << allseqs.size() << endl;
+	for(int i=0;i<allseqs.size();i++){
 		Database conn(db);
-		VectorSequenceContainer * sc1 = new VectorSequenceContainer(alphabet1);
+		vector<Sequence> sc1; 
 		//TODO : there was a pointer problem here
-		sc1->addSequence(allseqs->getSequence(i));
+		sc1.push_back(allseqs.at(i));
 		string name;
 		string sql = "SELECT name,name_class FROM taxonomy WHERE ncbi_id = ";
 		//TODO : there was a pointer problem here
-		sql += allseqs->getSequence(i).getName();
-		cout <<"-"<<allseqs->getSequence(i).getName()<<endl;
+		sql += allseqs.at(i).get_id();
+		cout <<"-"<<allseqs.at(i).get_id()<<endl;
 		Query query(conn);
 		query.get_result(sql);
 		//StoreQueryResult R = query.store();
@@ -1509,20 +1500,17 @@ void SQLiteConstructor::saturation_tests(string name_id, vector<DBSeq> * keep_se
 			string tn = query.getstr();
 			string cln = query.getstr();
 			if(cln.find("scientific")!=string::npos && tn.find("environmental")==string::npos && cln.find("environmental")==string::npos){
-				string tid = allseqs->getSequence(i).getName();
+				string tid = allseqs.at(i).get_id();
 				name = tn;
 			}
 		}
 		query.free_result();
 		cout << name << endl;
-		Fasta seqwriter1;
+		FastaUtil seqwriter1;
 		string fn1 = gene_name;
 		fn1 += "/" + name;
-		seqwriter1.write(fn1,*sc1,false);
-		delete (sc1);
+		seqwriter1.writeFileFromVector(fn1,sc1);
 	 }
-	 delete (allseqs);
-	 delete (alphabet1);
 }
 
 /*

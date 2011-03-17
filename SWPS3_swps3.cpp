@@ -44,11 +44,7 @@
 #include <string.h>
 #include <assert.h>
 #include <float.h>
-#include <Seq/Sequence.h>
-#include <Seq/containers>
-#include <Seq/ioseq>
-#include <Seq/alphabets>
-using namespace bpp;
+#include "sequence.h"
 
 static ssize_t write_all(int fd, const void *data, size_t len) {
 	size_t sent = 0;
@@ -123,19 +119,20 @@ static ssize_t read_all(int fd, void *buf, size_t len) {
  * db = test
  */
 #include "SWPS3_fasta.h"
-int swps3_maxscores ( SBMatrix matrix , const Sequence * known, const Sequence * test){
+//changing from const Sequence * known to Sequence * known
+int swps3_maxscores ( SBMatrix matrix , Sequence * known, Sequence * test){
 	int i,queryLen;
 	const char * query;
 	//SWType type = SSE2;
 	Options options = {-12,-2,DBL_MAX};
 
 	char * x1;
-	x1 = (char*)malloc(sizeof(char)*known->size());
-	memcpy(x1, known->toString().c_str(), known->size());
-	swps3_translateSequence(x1,known->size(),NULL);
+	x1 = (char*)malloc(sizeof(char)*known->get_sequence().size());
+	memcpy(x1, known->get_sequence().c_str(), known->get_sequence().size());
+	swps3_translateSequence(x1,known->get_sequence().size(),NULL);
 	query = x1;
 	//query = known->toString().c_str();
-	queryLen = known->size();
+	queryLen = known->get_sequence().size();
 	double score = 0;
 #ifdef SSE2
 	ProfileByte  * profileByte = swps3_createProfileByteSSE( query, queryLen, matrix );
@@ -145,12 +142,12 @@ int swps3_maxscores ( SBMatrix matrix , const Sequence * known, const Sequence *
 	const char * db;
 
 	char * x2;
-	x2 = (char*)malloc(sizeof(char)*test->size());
-	memcpy(x2, test->toString().c_str(), test->size());
-	swps3_translateSequence(x2,test->size(),NULL);
+	x2 = (char*)malloc(sizeof(char)*test->get_sequence().size());
+	memcpy(x2, test->get_sequence().c_str(), test->get_sequence().size());
+	swps3_translateSequence(x2,test->get_sequence().size(),NULL);
 	db = x2;
 	//db=test->toString().c_str();
-	dbLen = test->size();
+	dbLen = test->get_sequence().size();
 
 #ifdef DEBUG
 	for(i=0; i<queryLen; ++i) printf("\t%c",query[i]);

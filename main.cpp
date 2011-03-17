@@ -22,6 +22,8 @@
 #include <cstdio>
 #include <fstream>
 #include <string.h>
+#include <stdlib.h>
+#include <math.h>
 
 using namespace std;
 
@@ -29,15 +31,11 @@ using namespace std;
 #include "SQLiteProfiler.h"
 #include "SQLiteTreeNameConvertor.h"
 #include "utils.h"
-
+#include "SQLiteDBController.h"
 #include "SmithWatermanGotoh.h"
 
-#include <Seq/Sequence.h>
-#include <Seq/containers>
-#include <Seq/ioseq>
-#include <Seq/alphabets>
-#include <Seq/sequences>
-using namespace bpp;
+#include "sequence.h"
+
 #include "SWPS3_matrix.h"
 #include "SWPS3_Same_seq_pthread.h"
 
@@ -161,7 +159,7 @@ int main(int argc, char* argv[]){
 			//sqlite // NEW
 			cout << "using sqlite" << endl;
 			if(asse == true){
-
+				cout << "assembly" << endl;
 				SQLiteConstructor * a;
 				a = new SQLiteConstructor(clade, search,gene,mad,coverage,identity,db,knownfile,useITS, numthreads,automated);
 				cout << "number of threads: " << a->get_numthreads() << endl;

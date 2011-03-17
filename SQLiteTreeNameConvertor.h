@@ -28,10 +28,7 @@
 #include <string>
 using namespace std;
 
-
-
-#include <Phyl/TreeTemplate.h>
-using namespace bpp;
+#include "tree.h"
 
 class SQLiteTreeNameConvertor {
 	private:

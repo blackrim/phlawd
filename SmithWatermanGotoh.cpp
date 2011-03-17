@@ -25,6 +25,8 @@
 #include <vector>
 #include <string>
 #include <limits>
+#include <stdio.h>
+#include <iostream>
 
 using namespace std;
 

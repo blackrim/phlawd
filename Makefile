@@ -2,10 +2,17 @@ CC = g++
 CFLAGS = -msse3 -DSSE2 -O3 -g -w -Wall
 
 CPP_SRCS += \
+sequence.cpp \
+tree.cpp \
+tree_reader.cpp \
+node.cpp \
+tree_utils.cpp \
+fasta_util.cpp \
 DBSeq.cpp \
 SQLiteConstructor.cpp \
 SQLiteProfiler.cpp \
 SQLiteTreeNameConvertor.cpp \
+SQLiteDBController.cpp \
 SWPS3_DynProgr_scalar.cpp \
 SWPS3_DynProgr_sse_byte.cpp \
 SWPS3_DynProgr_sse_short.cpp \
@@ -20,10 +27,17 @@ main.cpp \
 utils.cpp 
 
 OBJS += \
+./sequence.o \
+./tree.o \
+./tree_reader.o \
+./node.o \
+./tree_utils.o \
+./fasta_util.o \
 ./DBSeq.o \
 ./SQLiteConstructor.o \
 ./SQLiteProfiler.o \
 ./SQLiteTreeNameConvertor.o \
+./SQLiteDBController.o \
 ./SWPS3_DynProgr_scalar.o \
 ./SWPS3_DynProgr_sse_byte.o \
 ./SWPS3_DynProgr_sse_short.o \
@@ -38,10 +52,17 @@ OBJS += \
 ./utils.o 
 
 CPP_DEPS += \
+./sequence.d \
+./tree.d \
+./tree_reader.d \
+./node.d \
+./tree_utils.d \
+./fasta_util.d \
 ./DBSeq.d \
 ./SQLiteConstructor.d \
 ./SQLiteProfiler.d \
 ./SQLiteTreeNameConvertor.d \
+./SQLiteDBController.d \
 ./SWPS3_DynProgr_scalar.d \
 ./SWPS3_DynProgr_sse_byte.d \
 ./SWPS3_DynProgr_sse_short.d \

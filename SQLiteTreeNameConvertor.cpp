@@ -23,14 +23,14 @@
  */
 
 #include <string>
+#include <fstream>
 #include <vector>
+#include <iostream>
 using namespace std;
 
-
-#include <Phyl/TreeTemplate.h>
-#include <Phyl/Newick.h>
-#include <Phyl/Tree.h>
-using namespace bpp;
+#include "tree.h"
+#include "node.h"
+#include "tree_reader.h"
 
 #include "libsqlitewrapped.h"
 
@@ -43,13 +43,19 @@ SQLiteTreeNameConvertor::SQLiteTreeNameConvertor(string filen,string dbs){
 
 Tree * SQLiteTreeNameConvertor::convert(){
 	Database conn(db);
-	Newick * newickReader = new Newick(false); //No comment allowed!
+	TreeReader nw;
+	ifstream infile2(filename.c_str());
+	vector<string> lines;
+	string line;
+	while (getline(infile2, line)){
+		lines.push_back(line);
+	}
+	infile2.close();
+	intree = nw.readTree(lines[0]);
 	//try {
-		intree = newickReader->read(filename); // Tree in file MyTestTree.dnd
-		cout << "Tree has " << intree->getNumberOfLeaves() << " leaves." << endl;
-		vector<int> ids = intree->getLeavesId();
-		for(int i=0;i<ids.size();i++){
-			string dbsearchid = intree->getNodeName(ids[i]);
+		cout << "Tree has " << intree->getExternalNodeCount() << " leaves." << endl;
+		for(int i=0;i<intree->getExternalNodeCount();i++){
+			string dbsearchid = intree->getExternalNode(i)->getName();
 			Query query(conn);
 			query.get_result("SELECT name FROM taxonomy WHERE ncbi_id = '"+dbsearchid+"' AND name_class = 'scientific name'");
 //			StoreQueryResult R = query.store();
@@ -57,18 +63,17 @@ Tree * SQLiteTreeNameConvertor::convert(){
 			while(query.fetch_row()){
 				sname = query.getstr();
 			}
-			intree->setNodeName(ids[i],sname);
+			intree->getExternalNode(i)->setName(sname);
 		}
 	//} catch (Exception e) {
 	//	cout << "Error when reading tree." << endl;
 	//}
-	delete newickReader;
 	return intree;
 }
 
 void SQLiteTreeNameConvertor::writetree(string outfilename){
-	Newick * newickWriter = new Newick(false);
-	newickWriter->write(*intree,outfilename,true);
-	delete newickWriter;
-	delete intree;
+	ofstream outfile;
+	outfile.open(outfilename.c_str(),ios::out);
+	outfile << intree->getRoot()->getNewick(true) << ";" << endl;
+	outfile.close();
 }

@@ -25,19 +25,24 @@
 #include <string>
 #include <vector>
 #include <iostream>
+#include <sstream>
 #include <map>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <fstream>
+#include <algorithm>
 
 using namespace std;
 
-#include <Phyl/trees>
-#include <Phyl/Newick.h>
-#include <Seq/alphabets>
-#include <Seq/sequences>
-#include <Seq/containers>
-#include <Seq/ioseq>
-using namespace bpp;
+#include "tree.h"
+#include "node.h"
+#include "tree_utils.h"
+#include "tree_reader.h"
+#include "sequence.h"
+#include "fasta_util.h"
+
 
 #include "utils.h"
 
@@ -99,7 +104,7 @@ void SQLiteProfiler::prelimalign(){
 			pclose( fp );
 		}else{
 			cout << file_names[i] << endl;
-			string cmd = "mafft --auto ";
+			string cmd = "mafft --thread 2 --auto ";
 			cmd += gene_name+"/";
 			//cmd += file_names[i];//fix spaces here
 			string tfilen = file_names[i];
@@ -201,13 +206,21 @@ void SQLiteProfiler::run(){
 }
 
 Tree * SQLiteProfiler::read_user_guide_tree(string filen){
-	Newick nw;
-	Tree * tree = nw.read(filen.c_str());
+	TreeReader nw;
+	ifstream infile2(filen.c_str());
+	vector<string> lines;
+	string line;
+	while (getline(infile2, line)){
+		lines.push_back(line);
+	}
+	infile2.close();
+
+	Tree * tree = nw.readTree(lines[0]);
 	vector<string> orphans;
 	for(int i=0;i<file_names.size();i++){
 		try{
-			tree->getLeafId(file_names[i]);
-		}catch(NodeNotFoundException){
+			tree->getExternalNode(file_names[i])->getName();
+		}catch(int e){
 			orphans.push_back(file_names[i]);
 			use_orphan = true;
 		}
@@ -465,14 +478,14 @@ void SQLiteProfiler::create_distances(string clade_name, vector<string> names,ma
 void SQLiteProfiler::create_distances(vector<string> names,Tree * tree,map<string,string> * numnames
 		,map<string,string> * namesnum, vector< vector<double> > * numlist){
 	for(int i=0;i<names.size();i++){
-		int id1 = tree->getLeafId(names[i]);
+		Node * nd1 = tree->getExternalNode(names[i]);
 		vector<double> tdistance;
 		for(int j=0;j<names.size();j++){
 			if (i == j){
 				tdistance.push_back(666666);
 			}else{
-				int id2 = tree->getLeafId(names[j]);
-				double distance = TreeTools::getDistanceBetweenAnyTwoNodes(* tree,id1,id2);
+				Node * nd2 = tree->getExternalNode(names[j]);
+				double distance = get_distance_between_two_nodes(tree,nd1,nd2);
 				tdistance.push_back(distance);
 			}
 		}
@@ -950,11 +963,11 @@ void SQLiteProfiler::copy_final_file(string filename){
 	pclose( fp );
 }
 
-void SQLiteProfiler::calculate_for_removal_quicktree(SequenceContainer * seqs,
+void SQLiteProfiler::calculate_for_removal_quicktree(vector<Sequence> * seqs,
 		map<string,double> & allmeans){
-	Fasta seqwriter;
+	FastaUtil seqwriter;
 	const string fn1 = "TEMPFILES/tempremoval";
-	seqwriter.write(fn1,*seqs);
+	seqwriter.writeFileFromVector(fn1,*seqs);
 
 	string phcmd = "phyutility -concat -in TEMPFILES/tempremoval -out TEMPFILES/outfile.nex";
 	FILE *phfp = popen(phcmd.c_str(), "r" );
@@ -1049,11 +1062,10 @@ void SQLiteProfiler::calculate_for_removal_quicktree(SequenceContainer * seqs,
 }
 
 void SQLiteProfiler::remove_outliers(){
-	Fasta seqreader;
-	const NucleicAlphabet * alphabet = new DNA();
-	OrderedSequenceContainer * sequences;
-	sequences = seqreader.read(profilefoldername+"FINAL.aln", &AlphabetTools::DNA_ALPHABET);
-	int numseqs = sequences->getNumberOfSequences();
+	FastaUtil seqreader;
+	vector<Sequence> * sequences = new vector<Sequence>();
+	seqreader.readFile(profilefoldername+"FINAL.aln", *sequences);
+	int numseqs = sequences->size();
 	cout << numseqs << endl;
 	map<string,double> allmeans;
 	if(numseqs < 5000){
@@ -1061,20 +1073,19 @@ void SQLiteProfiler::remove_outliers(){
 	}else{
 		int NBREAKS = 10;
 		for (int i=0;i<NBREAKS;i++){
-			VectorSequenceContainer * tempsc1 = new VectorSequenceContainer(alphabet);
+			vector<Sequence> tempsc1;
 			if((i+1) < NBREAKS){
 				for(int j=(i*(numseqs/NBREAKS));j < ((numseqs/NBREAKS)*(i+1));j++){
 					//TODO : there was a pointer problem here
-					tempsc1->addSequence(sequences->getSequence(j));
+					tempsc1.push_back(sequences->at(j));
 				}
 			}else{
 				for(int j=(i*(numseqs/NBREAKS));j < numseqs;j++){
 					//TODO : there was a pointer problem here
-					tempsc1->addSequence(sequences->getSequence(j));
+					tempsc1.push_back(sequences->at(j));
 				}
 			}
-			calculate_for_removal_quicktree(tempsc1,allmeans);
-			delete tempsc1;
+			calculate_for_removal_quicktree(&tempsc1,allmeans);
 		}
 	}
 	/*
@@ -1083,7 +1094,7 @@ void SQLiteProfiler::remove_outliers(){
 	vector<double> mns(numseqs);
 	for(int i=0;i<numseqs;i++){
 		//TODO : there was a pointer problem here
-		mns[i] = allmeans[sequences->getSequence(i).getName()];
+		mns[i] = allmeans[sequences->at(i).get_id()];
 	}
 	double sd = stdev(mns);
 	double mn = mean(mns);
@@ -1091,18 +1102,17 @@ void SQLiteProfiler::remove_outliers(){
 	/*
 	 * read in the fasta file
 	 */
-	VectorSequenceContainer * sc1 = new VectorSequenceContainer(alphabet);
+	vector<Sequence> sc1;
 	for(int i=0;i<mns.size();i++){
 		if (mns[i] < dev){
-			sc1->addSequence(sequences->getSequence(i));
+			sc1.push_back(sequences->at(i));
 		}else{
 			//cout << i << endl;
 		}
 	}
-	Fasta seqwriter;
+	FastaUtil seqwriter;
 	const string fn1 = profilefoldername+"FINAL.aln.cln";
-	seqwriter.write(fn1,*sc1);
-	delete sc1;
+	seqwriter.writeFileFromVector(fn1,sc1);
 }
 
 
@@ -1128,9 +1138,9 @@ void SQLiteProfiler::rename_final_alignment(string which){
 	/*
 	 * read in the final file
 	 */
-	Fasta seqreader;
-	OrderedSequenceContainer * sequences;
-	sequences = seqreader.read(profilefoldername+which, &AlphabetTools::DNA_ALPHABET);
+	FastaUtil seqreader;
+	vector<Sequence> * sequences = new vector<Sequence>();
+	seqreader.readFile(profilefoldername+which, *sequences);
 	/*
 	 * read in the table
 	 */
@@ -1163,18 +1173,19 @@ void SQLiteProfiler::rename_final_alignment(string which){
 	/*
 	 * write the final file
 	 */
-	VectorSequenceContainer * sc1 = new VectorSequenceContainer(&AlphabetTools::DNA_ALPHABET);
-	Fasta seqwriter;
-	const string fn1 = profilefoldername+which+".rn";
-	for(int i=0;i<sequences->getNumberOfSequences();i++){
+	vector<Sequence> sc1;
+	FastaUtil seqwriter;
+	string fn1 = profilefoldername+which+".rn";
+	cout << "print " << fn1 << endl;
+	for(int i=0;i<sequences->size();i++){
 		//TODO : there was a pointer problem here
-		string tname = db_to_name[sequences->getSequence(i).getName()];
-		Sequence ts = sequences->getSequence(i);
-		ts.setName(tname);
-		sc1->addSequence(ts);
+		string tname = db_to_name[sequences->at(i).get_id()];
+		Sequence ts = sequences->at(i);
+		ts.set_id(tname);
+		sc1.push_back(ts);
 	}
-	seqwriter.write(fn1,*sc1);
-	delete sc1;
+	seqwriter.writeFileFromVector(fn1,sc1);
+	delete sequences;
 }
 
 //should not be in use anymore

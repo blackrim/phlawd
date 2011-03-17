@@ -27,6 +27,7 @@
 
 #include <string>
 #include <vector>
+#include <stdint.h>
 
 using namespace std;
 
@@ -46,8 +47,8 @@ struct SWPS3_thread_data{
 };
 
 typedef int8_t * SBMatrix;
-
-int get_swps3_score_and_rc_cstyle(SBMatrix mat, const Sequence * inseq1, const Sequence * inseq2);
+//took out the const
+int get_swps3_score_and_rc_cstyle(SBMatrix mat, Sequence * inseq1, Sequence * inseq2);
 
 void * SWPS3_Same_seq_pthread_go(void *threadarg);
 
