@@ -1176,7 +1176,6 @@ void SQLiteProfiler::rename_final_alignment(string which){
 	vector<Sequence> sc1;
 	FastaUtil seqwriter;
 	string fn1 = profilefoldername+which+".rn";
-	cout << "print " << fn1 << endl;
 	for(int i=0;i<sequences->size();i++){
 		//TODO : there was a pointer problem here
 		string tname = db_to_name[sequences->at(i).get_id()];

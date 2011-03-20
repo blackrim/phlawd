@@ -1,5 +1,5 @@
 #clade = Viridiplantae
-clade = Dipsacales
+clade = Asterales
 search = rbcL
 gene = rbcL
 mad = 0.05

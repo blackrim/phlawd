@@ -464,10 +464,11 @@ DBSeq SQLiteConstructor::add_higher_taxa(string taxon_id,vector<DBSeq> seqs){
 					//TODO : there was a pointer problem here
 					int ret = get_swps3_score_and_rc_cstyle(mat,&known_seqs->at(j), & tseq);
 					double tsc = double(ret)/double(scores[j]);
-					tseq.perm_reverse_complement();
+					Sequence tseqrc;
+					tseqrc.set_id(tseq.get_id());
+					tseqrc.set_sequence(tseq.reverse_complement());
 					//TODO : there was a pointer problem here
-					int retrc = get_swps3_score_and_rc_cstyle(mat,&known_seqs->at(j), & tseq);
-					tseq.perm_reverse_complement(); //TODO: make sure that this still works
+					int retrc = get_swps3_score_and_rc_cstyle(mat,&known_seqs->at(j), &tseqrc);
 					if(retrc > ret){
 						trc = true;
 						tsc = double(retrc)/double(scores[j]);
@@ -993,10 +994,11 @@ void SQLiteConstructor::remove_duplicates_SWPS3(vector<DBSeq> * keep_seqs, vecto
 					//TODO : there was a pointer problem here
 					int ret = get_swps3_score_and_rc_cstyle(mat,&known_seqs->at(j), & tseq);
 					double tsc = double(ret)/double(scores[j]);
-					tseq.perm_reverse_complement();
+					Sequence tseqrc;
+					tseqrc.set_id(tseq.get_id());
+					tseqrc.set_sequence(tseq.reverse_complement());
 					//TODO : there was a pointer problem here
-					int retrc = get_swps3_score_and_rc_cstyle(mat,&known_seqs->at(j), & tseq);
-					tseq.perm_reverse_complement();
+					int retrc = get_swps3_score_and_rc_cstyle(mat,&known_seqs->at(j), &tseqrc);
 					if(retrc > ret){
 						trc = true;
 						tsc = double(retrc)/double(scores[j]);
@@ -1049,10 +1051,11 @@ void SQLiteConstructor::reduce_genomes(vector<DBSeq> * keep_seqs, vector<bool> *
 				//TODO : there was a pointer problem here
 				int ret = get_swps3_score_and_rc_cstyle(mat,&known_seqs->at(j), & tseq);
 				double tsc = double(ret)/double(scores[j]);
-				tseq.perm_reverse_complement();
+				Sequence tseqrc;
+				tseqrc.set_id(tseq.get_id());
+				tseqrc.set_sequence(tseq.reverse_complement());
 				//TODO : there was a pointer problem here
-				int retrc = get_swps3_score_and_rc_cstyle(mat,&known_seqs->at(j), &tseq);
-				tseq.perm_reverse_complement();
+				int retrc = get_swps3_score_and_rc_cstyle(mat,&known_seqs->at(j), &tseqrc);
 				if(retrc > ret){
 					trc = true;
 					tsc = double(retrc)/double(scores[j]);
@@ -1072,8 +1075,10 @@ void SQLiteConstructor::reduce_genomes(vector<DBSeq> * keep_seqs, vector<bool> *
 			if(keep_rc->at(i) == false)
 				sc1.push_back(keep_seqs->at(i));
 			else{
-				keep_seqs->at(i).perm_reverse_complement();
-				sc1.push_back(keep_seqs->at(i));
+				Sequence tseqrc;
+				tseqrc.set_id(keep_seqs->at(i).get_id());
+				tseqrc.set_sequence(keep_seqs->at(i).reverse_complement());
+				sc1.push_back(tseqrc);
 			}
 			//for (int j=0;j<known_seqs->size();j++){
 			//TODO : there was a pointer problem here
@@ -1190,8 +1195,10 @@ void SQLiteConstructor::make_mafft_multiple_alignment(vector<DBSeq> * inseqs,vec
 		if(rcs->at(i) == false){
 			sc1.push_back(inseqs->at(i));
 		}else{
-			inseqs->at(i).perm_reverse_complement();
-			sc1.push_back(inseqs->at(i));
+			Sequence tseqrc;
+			tseqrc.set_id(inseqs->at(i).get_id());
+			tseqrc.set_sequence(inseqs->at(i).reverse_complement());
+			sc1.push_back(tseqrc);
 			//inseqs->at(i).perm_reverse_complement();
 		}
 	}
@@ -1344,8 +1351,10 @@ void SQLiteConstructor::saturation_tests(string name_id, vector<DBSeq> * keep_se
 		if(keep_rc->at(i) == false){
 			allseqs.push_back(keep_seqs->at(i));
 		}else{
-			keep_seqs->at(i).perm_reverse_complement();
-			allseqs.push_back(keep_seqs->at(i));
+			Sequence tseqrc;
+			tseqrc.set_id(keep_seqs->at(i).get_id());
+			tseqrc.set_sequence(keep_seqs->at(i).reverse_complement());
+			allseqs.push_back(tseqrc);
 		}
 	}
 
@@ -1382,8 +1391,10 @@ void SQLiteConstructor::saturation_tests(string name_id, vector<DBSeq> * keep_se
 				if(temp_rcs->at(i) == false)
 					sc1.push_back(temp_seqs->at(i));
 				else{
-					temp_seqs->at(i).perm_reverse_complement();
-					sc1.push_back(temp_seqs->at(i));
+					Sequence tseqrc;
+					tseqrc.set_id(temp_seqs->at(i).get_id());
+					tseqrc.set_sequence(temp_seqs->at(i).reverse_complement());
+					sc1.push_back(tseqrc);
 				}
 			}
 			string fn1 = gene_name;
@@ -1431,8 +1442,10 @@ void SQLiteConstructor::saturation_tests(string name_id, vector<DBSeq> * keep_se
 					if(temp_rcs->at(i) == false){
 						sc1.push_back(temp_seqs->at(i));
 					}else{
-						temp_seqs->at(i).perm_reverse_complement();
-						sc1.push_back(temp_seqs->at(i));
+						Sequence tseqrc;
+						tseqrc.set_id(temp_seqs->at(i).get_id());
+						tseqrc.set_sequence(temp_seqs->at(i).reverse_complement());
+						sc1.push_back(tseqrc);
 					}
 				}
 				string fn1 = gene_name;
