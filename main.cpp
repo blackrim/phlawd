@@ -42,7 +42,7 @@ using namespace std;
 
 int main(int argc, char* argv[]){
 	if(argc != 3){
-		cout << "PHLAWD 1.0" << endl;
+		cout << "PHLAWD 1.1 testing" << endl;
 		cout << "you need more arguments." << endl;
 		cout << "usage: PHLAWD task configfile" << endl;
 		cout << "possible tasks include:" << endl;
@@ -103,11 +103,16 @@ int main(int argc, char* argv[]){
 			bool useexclude_gi_listfile = false;
 			string exclude_gi_listfile;
 			bool containshigher = false;
+			bool containswild = false;
 			bool useITS = false;
+			string maskurl = "";
 			//read file
 			ifstream ifs(argv[2]);
 			string line;
 			while(getline(ifs,line)){
+				if (line.size() < 2){
+					continue;
+				}
 				vector<string> tokens;
 				string del("=");
 				tokens.clear();
@@ -126,21 +131,23 @@ int main(int argc, char* argv[]){
 						TrimSpaces(searchtokens[j]);
 					}
 					search = searchtokens;//change to a vector and parse with commas
-				}else if(!strcmp(tokens[0].c_str(),  "gene")){
+				}else if(!strcmp(tokens[0].c_str(), "gene")){
 					gene = tokens[1];
-				}else if(!strcmp(tokens[0].c_str(),  "mad")){
+				}else if(!strcmp(tokens[0].c_str(), "mad")){
 					mad = atof(tokens[1].c_str());
-				}else if(!strcmp(tokens[0].c_str(),  "coverage")){
+				}else if(!strcmp(tokens[0].c_str(), "coverage")){
 					coverage = atof(tokens[1].c_str());
-				}else if(!strcmp(tokens[0].c_str(),  "identity")){
+				}else if(!strcmp(tokens[0].c_str(), "identity")){
 					identity = atof(tokens[1].c_str());
-				}else if(!strcmp(tokens[0].c_str(),  "db")){
+				}else if(!strcmp(tokens[0].c_str(), "db")){
 					db = tokens[1];
-				}else if(!strcmp(tokens[0].c_str(),  "knownfile")){
+				}else if(!strcmp(tokens[0].c_str(), "knownfile")){
 					knownfile = tokens[1];
-				}else if(!strcmp(tokens[0].c_str(),  "containshigher")){
+				}else if(!strcmp(tokens[0].c_str(), "containshigher")){
 					containshigher = true;
-				}else if(!strcmp(tokens[0].c_str(),  "listfile")){
+				}else if(!strcmp(tokens[0].c_str(), "containswild")){
+					containswild = true;
+				}else if(!strcmp(tokens[0].c_str(), "listfile")){
 					listfile = tokens[1];
 					uselistfile = true;
 				}else if(!strcmp(tokens[0].c_str(),  "excludelistfile")){
@@ -153,6 +160,9 @@ int main(int argc, char* argv[]){
 					useITS = true;
 				}else if(!strcmp(tokens[0].c_str(),  "numthreads")){
 					numthreads = atoi(tokens[1].c_str());
+				}else if(!strcmp(tokens[0].c_str(), "gbmask")){
+					maskurl = tokens[1];
+
 				}
 			}
 			ifs.close();
@@ -173,7 +183,7 @@ int main(int argc, char* argv[]){
 				cout << "identity: " << a->get_identity() << endl;
 				if(uselistfile == true){
 					cout << "using names in list file: " << listfile << endl;
-					a->set_only_names_from_file(listfile,containshigher);
+					a->set_only_names_from_file(listfile,containshigher,containswild);
 				}
 				if(useexcludelistfile == true){
 					cout << "excluding names in list file: " << excludelistfile << endl;
@@ -183,8 +193,13 @@ int main(int argc, char* argv[]){
 					cout << "excluding gi's in list file: " << exclude_gi_listfile << endl;
 					a->set_exclude_gi_from_file(exclude_gi_listfile);
 				}
+				if(maskurl.size() > 0){
+					cout << "getting genbank mask from: " << maskurl << endl;
+					//vector<string> query_gis = query_mask(maskurl);
+				}
 				if(useITS == true){
 					cout << "using ITS mode: true" << endl;
+					cout << "warning: highly experimental" << endl;
 				}
 				a->run();
 				delete(a);

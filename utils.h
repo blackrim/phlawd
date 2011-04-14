@@ -44,4 +44,5 @@ void combine_ITS(vector<DBSeq> * seqs);
 void splitstring(string str, string seperater, string &first, string &second);
 void fix_bad_chars(string & tfilen);
 void fix_bad_chars_for_seq_names(string & tfilen);
+vector<string> query_mask(string url);
 #endif

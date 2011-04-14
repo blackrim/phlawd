@@ -1,5 +1,5 @@
-#clade = Viridiplantae
-clade = Asterales
+clade = Viridiplantae
+#clade = Asterales
 search = rbcL
 gene = rbcL
 mad = 0.05
@@ -10,4 +10,9 @@ knownfile = rbcL.keep
 numthreads = 2
 #listfile = include
 #excludelistfile = exclude
+listfile = include_wild
+#containshigher
+containswild
 #excludegilistfile = ex_gi
+#gbmask = http://127.0.0.1:8000/gbmask/mask/dump_mask
+

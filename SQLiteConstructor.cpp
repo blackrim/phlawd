@@ -81,9 +81,17 @@ SQLiteConstructor::SQLiteConstructor(string cn, vector <string> searchstr, strin
 	seqReader.readFile(known_seq_filen, *known_seqs);
 }
 
-void SQLiteConstructor::set_only_names_from_file(string filename,bool containshi){
+/*
+ * This will supercede the previous one in the main file. If you have higher taxa
+ * in the listfile and you say they are wildcards then it will supercede if you
+ * have higher taxa and don't want to pick one as above.
+ */
+void SQLiteConstructor::set_only_names_from_file(string filename, bool containshi, bool containswi){
 	onlynamesfromfile = true;
 	containshigher = containshi;
+	containswild = containswi;
+	if (containswild == true)
+		containshigher = false;
 	listfilename = filename;
 }
 
@@ -358,6 +366,49 @@ vector<DBSeq> SQLiteConstructor::use_only_names_from_file(vector<DBSeq> seqs){
 		}
 		query1.free_result();
 	}
+	cout << taxa_ids->size() << endl;
+	/*
+	 * the adding of wild taxa (this will add ALL the children of the names in the list file)
+	 */
+	if (containswild == true){
+		cout << "this file contains higher taxa" << endl;
+		vector<string> new_ids;
+		for(int i=0;i<taxa_ids->size();i++){
+			//first get the left and right value for the taxa
+			string sql = "SELECT left_value,right_value FROM taxonomy WHERE ncbi_id = "+taxa_ids->at(i)+";";
+			Query query2(conn);
+			query2.get_result(sql);
+			string lefts;string rights;
+			while(query2.fetch_row()){
+				int left = query2.getval();
+				int right = query2.getval();
+				lefts = to_string(left);
+				rights = to_string(right);
+			}
+			cout << lefts << " " << rights << endl;
+			sql = "SELECT ncbi_id FROM taxonomy WHERE left_value > "+lefts+" AND right_value < "+rights+" AND name_class = 'scientific name';";
+			Query query(conn);
+			query.get_result(sql);
+			long count = query.num_rows();
+			//exit(0);
+			if (count == 0){
+				continue;
+			}else{
+				while(query.fetch_row()){
+					new_ids.push_back(to_string(query.getval()));
+				}
+			}
+			query.free_result();
+		}
+		for(int i=0;i<new_ids.size();i++){
+			taxa_ids->push_back(new_ids[i]);
+		}
+	}
+	cout << taxa_ids->size() << endl;
+	/*
+	 * end of the wild taxa
+	 */
+
 	cout << taxa_ids->size() << " names in the file" << endl;
 	ifs.close();
 	//end read file
@@ -377,7 +428,7 @@ vector<DBSeq> SQLiteConstructor::use_only_names_from_file(vector<DBSeq> seqs){
 	/*
 	 * added for higher taxa
 	 */
-	if(containshigher == true){
+	if(containshigher == true && containswild == false){
 		cout << "this file contains higher taxa" << endl;
 		for(int i=0;i < taxa_ids->size();i++){
 			string sql = "SELECT ncbi_id FROM taxonomy WHERE parent_ncbi_id = "+taxa_ids->at(i)+" and name_class = 'scientific name';";

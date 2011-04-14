@@ -31,6 +31,8 @@
 #include <dirent.h>
 #include <errno.h>
 #include <math.h>
+#include <stdlib.h>
+#include <stdio.h>
 
 #include "DBSeq.h"
 
@@ -275,3 +277,28 @@ void fix_bad_chars_for_seq_names(string & tfilen){
 		found = tfilen.find("&",found+2);
 	}
 }
+
+
+/*
+ * This will query the mask given the mask url provided in the config file.
+ * It relies on curl to be installed and in the path. Though this is a 
+ * relatively low bar considering it is installed generally by default in 
+ * both MAC and Linux (basically all UNIX) machines.
+ *
+ * Would rather use libcurl but might be more difficult for source
+ * installers.
+ *
+ * url = the input url
+ * output = vector of the gi strings
+ */
+vector<string> query_mask(string url){
+	string systemcall = "curl "+url;
+	systemcall += " > gbmask.downloaded";
+	cout << systemcall << endl;
+	//need a check here to make sure that it is valid
+	system(systemcall.c_str());
+	vector<string> returngis;
+
+	return returngis;
+}
+

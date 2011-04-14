@@ -55,6 +55,7 @@ class SQLiteConstructor {
 		bool excludenamesfromfile;
 		bool excludegifromfile;
 		bool containshigher;
+		bool containswild;
 		bool useITS;
 		int numthreads;
 		bool automated;
@@ -87,7 +88,7 @@ class SQLiteConstructor {
 				double mad_cut,double cover, double ident, string dbs,
 				string known_seq_filen, bool its, int numt,bool autom);
 		~SQLiteConstructor(){}
-		void set_only_names_from_file(string filename, bool containshi);
+		void set_only_names_from_file(string filename, bool containshi, bool containswild);
 		void set_exclude_names_from_file(string filename);
 		void set_exclude_gi_from_file(string filename);
 		void run();
