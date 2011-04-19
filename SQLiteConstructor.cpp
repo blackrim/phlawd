@@ -385,7 +385,6 @@ vector<DBSeq> SQLiteConstructor::use_only_names_from_file(vector<DBSeq> seqs){
 				lefts = to_string(left);
 				rights = to_string(right);
 			}
-			cout << lefts << " " << rights << endl;
 			sql = "SELECT ncbi_id FROM taxonomy WHERE left_value > "+lefts+" AND right_value < "+rights+" AND name_class = 'scientific name';";
 			Query query(conn);
 			query.get_result(sql);
