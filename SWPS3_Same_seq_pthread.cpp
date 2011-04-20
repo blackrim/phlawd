@@ -32,6 +32,7 @@
 #include <vector>
 #include <iostream>
 #include <stdio.h>
+#include <limits>
 using namespace std;
 
 #include "SWPS3_matrix.h"
@@ -67,7 +68,6 @@ void * SWPS3_Same_seq_pthread_go(void *threadarg){
 	vector<int> scores;
 	SBMatrix mat = swps3_readSBMatrix( "EDNAFULL" );
 	for(int i=0;i<known_seqs->size();i++){
-		//TODO : there was a pointer problem here
 		scores.push_back(get_swps3_score_and_rc_cstyle(mat,&known_seqs->at(i),&known_seqs->at(i)));
 	}
 
@@ -79,22 +79,21 @@ void * SWPS3_Same_seq_pthread_go(void *threadarg){
 		bool rc = false;
 		for (int j=0;j<known_seqs->size();j++){
 			bool trc = false;
-			//TODO : there was a pointer problem here
 			int ret = get_swps3_score_and_rc_cstyle(mat,&known_seqs->at(j), & seqs[i]);
 			double tsc = double(ret)/double(scores[j]);
 			seqs[i].perm_reverse_complement();
-			//TODO : there was a pointer problem here
 			int retrc = get_swps3_score_and_rc_cstyle(mat,&known_seqs->at(j), &seqs[i]);
 			seqs[i].perm_reverse_complement();
+			//cout << ret << " " << retrc << " " << scores[j] << " " <<  tsc << endl;
 			if(retrc > ret){
 				trc = true;
 				tsc = double(retrc)/double(scores[j]);
 			}
-			if (tsc > maxide){
+			if (tsc > maxide && std::numeric_limits<double>::infinity() != tsc){
 				maxide = tsc;
 				rc = trc;
 			}
-		}//cout << maxide << endl;
+		}
 		if (maxide >= identity){
 			keep_seqs.push_back(seqs[i]);
 			keep_rc.push_back(rc);

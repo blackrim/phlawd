@@ -33,7 +33,6 @@ using namespace std;
 #include "DBSeq.h"
 template <class T>
 inline std::string to_string (const T& t);
-
 void Tokenize(const string& str, vector<string>& tokens,const string& delimiters = " ");
 void TrimSpaces( string& str);
 double median(vector<double> arr);

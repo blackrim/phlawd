@@ -215,6 +215,15 @@ void SQLiteConstructor::run(){
 	 * reduce genome sequences
 	 */
 	reduce_genomes(keep_seqs, keep_rc);
+
+	/*
+	 * checking the diversity stats for each of the taxa
+	 * 
+	 * this uses the diversity numbers from NCBI but could
+	 * eventually be used with the numbers from another place
+	 */
+	//TODO: add boolean here after testing
+	diversity_test(keep_seqs);
 	
 	//saturation tests
 	saturation_tests(sname_id, keep_seqs, keep_rc);
@@ -255,6 +264,12 @@ int SQLiteConstructor::get_numthreads(){
 }
 
 //private
+
+void SQLiteConstructor::diversity_test(vector<DBSeq> * kseqs){
+	cout << "diversity: " << kseqs->size() << endl;
+}
+
+//
 /*
  * should retrieve all the matches for a sequence based on the description
  * should return the vector of two strings of the ids,taxon_ids in the sequence table
@@ -498,7 +513,6 @@ DBSeq SQLiteConstructor::add_higher_taxa(string taxon_id,vector<DBSeq> seqs){
 		vector<int> scores;
 		SBMatrix mat = swps3_readSBMatrix( "EDNAFULL" );
 		for(int i=0;i<known_seqs->size();i++){
-			//TODO : there was a pointer problem here
 			scores.push_back(get_swps3_score_and_rc_cstyle(mat,&known_seqs->at(i),&known_seqs->at(i)));
 		}
 
@@ -511,13 +525,11 @@ DBSeq SQLiteConstructor::add_higher_taxa(string taxon_id,vector<DBSeq> seqs){
 				bool rc = false;
 				for (int j=0;j<known_seqs->size();j++){
 					bool trc = false;
-					//TODO : there was a pointer problem here
 					int ret = get_swps3_score_and_rc_cstyle(mat,&known_seqs->at(j), & tseq);
 					double tsc = double(ret)/double(scores[j]);
 					Sequence tseqrc;
 					tseqrc.set_id(tseq.get_id());
 					tseqrc.set_sequence(tseq.reverse_complement());
-					//TODO : there was a pointer problem here
 					int retrc = get_swps3_score_and_rc_cstyle(mat,&known_seqs->at(j), &tseqrc);
 					if(retrc > ret){
 						trc = true;
@@ -696,7 +708,6 @@ void SQLiteConstructor::get_same_seqs(vector<DBSeq> seqs,  vector<DBSeq> * keep_
 		rc = false;
 		for (int j=0;j<known_seqs->size();j++){
 			bool trc = false;
-			//TODO : there was a pointer problem here
 			vector<double> ret = get_blast_score_and_rc(known_seqs->at(j), seqs[i], &trc); //should be pointer?
 			if (ret.size() > 1){
 				/*if (ret[0] >maxide){
@@ -909,7 +920,6 @@ void SQLiteConstructor::remove_duplicates(vector<DBSeq> * keep_seqs, vector<bool
 				for (int k=0;k<known_seqs->size();k++){
 					bool trc = false;
 					//vector<double> ret = get_blast_score_and_rc(*known_seqs->at(k), tseq,&trc); //should be pointer?
-					//TODO : there was a pointer problem here
 					vector<double> ret = get_blast_score_and_rc_cstyle(known_seqs->at(k), tseq, &trc, 0);
 					if (ret.size() > 1){
 						/*if (ret[0] >maxiden){
@@ -1017,7 +1027,6 @@ void SQLiteConstructor::remove_duplicates_SWPS3(vector<DBSeq> * keep_seqs, vecto
 	vector<int> scores;
 	SBMatrix mat = swps3_readSBMatrix( "EDNAFULL" );
 	for(int i=0;i<known_seqs->size();i++){
-		//TODO : there was a pointer problem here
 		scores.push_back(get_swps3_score_and_rc_cstyle(mat,&known_seqs->at(i),&known_seqs->at(i)));
 	}
 
@@ -1041,13 +1050,11 @@ void SQLiteConstructor::remove_duplicates_SWPS3(vector<DBSeq> * keep_seqs, vecto
 				bool rc = false;
 				for (int j=0;j<known_seqs->size();j++){
 					bool trc = false;
-					//TODO : there was a pointer problem here
 					int ret = get_swps3_score_and_rc_cstyle(mat,&known_seqs->at(j), & tseq);
 					double tsc = double(ret)/double(scores[j]);
 					Sequence tseqrc;
 					tseqrc.set_id(tseq.get_id());
 					tseqrc.set_sequence(tseq.reverse_complement());
-					//TODO : there was a pointer problem here
 					int retrc = get_swps3_score_and_rc_cstyle(mat,&known_seqs->at(j), &tseqrc);
 					if(retrc > ret){
 						trc = true;
@@ -1086,7 +1093,6 @@ void SQLiteConstructor::reduce_genomes(vector<DBSeq> * keep_seqs, vector<bool> *
 	vector<int> scores;
 	SBMatrix mat = swps3_readSBMatrix( "EDNAFULL" );
 	for(int j=0;j<known_seqs->size();j++){
-		//TODO : there was a pointer problem here
 		scores.push_back(get_swps3_score_and_rc_cstyle(mat,&known_seqs->at(j),&known_seqs->at(j)));
 	}
 	for(unsigned int i =0; i<keep_seqs->size(); i++){
@@ -1098,13 +1104,11 @@ void SQLiteConstructor::reduce_genomes(vector<DBSeq> * keep_seqs, vector<bool> *
 			int maxknown = 0;
 			for (int j=0;j<known_seqs->size();j++){
 				bool trc = false;
-				//TODO : there was a pointer problem here
 				int ret = get_swps3_score_and_rc_cstyle(mat,&known_seqs->at(j), & tseq);
 				double tsc = double(ret)/double(scores[j]);
 				Sequence tseqrc;
 				tseqrc.set_id(tseq.get_id());
 				tseqrc.set_sequence(tseq.reverse_complement());
-				//TODO : there was a pointer problem here
 				int retrc = get_swps3_score_and_rc_cstyle(mat,&known_seqs->at(j), &tseqrc);
 				if(retrc > ret){
 					trc = true;
@@ -1131,7 +1135,6 @@ void SQLiteConstructor::reduce_genomes(vector<DBSeq> * keep_seqs, vector<bool> *
 				sc1.push_back(tseqrc);
 			}
 			//for (int j=0;j<known_seqs->size();j++){
-			//TODO : there was a pointer problem here
 				sc1.push_back(known_seqs->at(maxknown));
 			//}
 			seqwriter.writeFileFromVector(tempfile,sc1);
@@ -1158,7 +1161,6 @@ void SQLiteConstructor::reduce_genomes(vector<DBSeq> * keep_seqs, vector<bool> *
 			vector<Sequence> sequences;
 			seqreader.readFile("TEMPFILES/genome_shrink_out", sequences);
 			for (int j=0;j<sequences.size();j++){
-				//TODO : there was a pointer problem here
 				if (sequences.at(j).get_id() ==  keep_seqs->at(i).get_id()){
 					keep_seqs->at(i).set_sequence(sequences.at(j).get_sequence());
 					keep_rc->at(i) = false;
@@ -1256,9 +1258,11 @@ void SQLiteConstructor::make_mafft_multiple_alignment(vector<DBSeq> * inseqs,vec
 	seqwriter1.writeFileFromVector(fn1,sc1);
 
 	//make alignment
-	const char * cmd = "mafft --thread 2 --auto TEMPFILES/tempfile > TEMPFILES/outfile";
+	//const char * cmd = "mafft --thread 2 --auto TEMPFILES/tempfile > TEMPFILES/outfile";
+	string cmd = "mafft --thread " + to_string(numthreads);
+	cmd += " --auto TEMPFILES/tempfile > TEMPFILES/outfile";
 	cout << "aligning" << endl;
-	FILE *fp = popen(cmd, "r" );
+	FILE *fp = popen(cmd.c_str(), "r" );
 	char buff[1000];
 	while ( fgets( buff, sizeof buff, fp ) != NULL ) {//doesn't exit out
 		string line(buff);
@@ -1456,7 +1460,7 @@ void SQLiteConstructor::saturation_tests(string name_id, vector<DBSeq> * keep_se
 			cout << name << " " << temp_seqs->size() << endl;
 			double mad;
 			if(temp_seqs->size() > 2){
-				//PAUP
+				//PAU"diversity: "P
 				if (temp_seqs->size() < 3000){
 					make_mafft_multiple_alignment(temp_seqs,temp_rcs);
 					//mad = calculate_MAD_PAUP();
@@ -1549,11 +1553,9 @@ void SQLiteConstructor::saturation_tests(string name_id, vector<DBSeq> * keep_se
 	for(int i=0;i<allseqs.size();i++){
 		Database conn(db);
 		vector<Sequence> sc1; 
-		//TODO : there was a pointer problem here
 		sc1.push_back(allseqs.at(i));
 		string name;
 		string sql = "SELECT name,name_class FROM taxonomy WHERE ncbi_id = ";
-		//TODO : there was a pointer problem here
 		sql += allseqs.at(i).get_id();
 		cout <<"-"<<allseqs.at(i).get_id()<<endl;
 		Query query(conn);

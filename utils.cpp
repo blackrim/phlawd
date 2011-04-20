@@ -33,7 +33,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
-
+#include <limits>
 #include "DBSeq.h"
 
 using namespace std;

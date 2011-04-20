@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 import sqlite3,sys
 
 """
@@ -27,7 +27,7 @@ class tree_utils:
 		self.updcmd = "update taxonomy set left_value = "+str(lft)+", right_value = "+str(rgt)+" where ncbi_id = "+str(gid)+";" #and name_class = scientific name
 		self.cur.execute(self.updcmd)
 		if self.count % 100000 == 0:
-			print self.count
+			print (self.count)
 		self.count += 1
 		return rgt + 1
 	
