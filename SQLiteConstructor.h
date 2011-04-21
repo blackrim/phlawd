@@ -82,7 +82,6 @@ class SQLiteConstructor {
 		double calculate_MAD_quicktree_sample(vector<DBSeq> * inseqs,vector<bool> * rcs);
 		void saturation_tests(string name_id, vector<DBSeq> * keep_seqs, vector<bool> * keep_rc);
 		void write_gi_numbers(vector<DBSeq> *);
-		void diversity_test(vector<DBSeq> * keep_seqs);
 	public:
 		SQLiteConstructor(string cn, vector <string> searchstr, string genen,
 				double mad_cut,double cover, double ident, string dbs,

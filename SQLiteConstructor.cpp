@@ -216,15 +216,6 @@ void SQLiteConstructor::run(){
 	 */
 	reduce_genomes(keep_seqs, keep_rc);
 
-	/*
-	 * checking the diversity stats for each of the taxa
-	 * 
-	 * this uses the diversity numbers from NCBI but could
-	 * eventually be used with the numbers from another place
-	 */
-	//TODO: add boolean here after testing
-	diversity_test(keep_seqs);
-	
 	//saturation tests
 	saturation_tests(sname_id, keep_seqs, keep_rc);
 
@@ -264,10 +255,6 @@ int SQLiteConstructor::get_numthreads(){
 }
 
 //private
-
-void SQLiteConstructor::diversity_test(vector<DBSeq> * kseqs){
-	cout << "diversity: " << kseqs->size() << endl;
-}
 
 //
 /*
