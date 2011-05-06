@@ -22,8 +22,8 @@ MainWindow::~MainWindow(){
 void MainWindow::load_sequencesqlite(){
 	if (sdb.connectionName().length() != 0){
 		cout << "existing connection" << endl;
-		sdb.close();
-		sdb.removeDatabase(sdb.connectionName());
+		QSqlDatabase::database(sdb.databaseName()).close();
+		QSqlDatabase::removeDatabase(sdb.databaseName());
 	}
 	QString filename = QFileDialog::getOpenFileName( this, tr("Open Document"), QDir::currentPath(), tr("Database files (*.db *.sql *.sqlite);;All files (*.*)"), 0, QFileDialog::DontUseNativeDialog );
 	cout << filename.toStdString() << endl;
@@ -31,17 +31,27 @@ void MainWindow::load_sequencesqlite(){
 	sdb.setDatabaseName(filename);
 	if (!sdb.open())
 			cout << "open failed" << endl;
-	else
+	else{
 		ui->statusBar->showMessage("sequence database opened");
-
-//	QSqlQuery q;
-//	q.exec("SELECT * from taxonomy where edited_name = 'Viburnum'");
-//	if (q.next()){
-//		cout << q.value(0).toString().toStdString() << endl;
-//	}
-
+		ui->actionDB_stats->setEnabled(true);
+		ui->actionDB_stats->setText("get stats: "+filename);
+		ui->statusBar->showMessage("current: "+filename);
+	}
+	QSqlQuery q;
+	cout << q.exec("SELECT Count(*) FROM sequence;") << endl;
+	if (q.next()){
+		QString numvalues (q.value(0).toString());
+		cout << q.value(0).toString().toStdString() << endl;
+		ui->textBrowser->setText("Number of sequences: "+numvalues);
+	}
 }
 
 void MainWindow::get_sequencedb_stats(){
+	QSqlQuery q;
 
+	cout << q.exec("SELECT Count(*) FROM sequence;") << endl;
+	if (q.next()){
+		cout <<	 q.value(0).toString().toStdString()<< endl;
+	}
+	ui->textBrowser->setText("");
 }

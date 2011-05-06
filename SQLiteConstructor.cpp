@@ -22,7 +22,6 @@
  * SQLiteConstructor.cpp
  */
 
-//TODO: need to edit the reverse complement stuff in here
 
 #include "Same_seq_pthread.h"
 #include "SWPS3_Same_seq_pthread.h"
@@ -1238,7 +1237,6 @@ void SQLiteConstructor::make_mafft_multiple_alignment(vector<DBSeq> * inseqs,vec
 			tseqrc.set_id(inseqs->at(i).get_id());
 			tseqrc.set_sequence(inseqs->at(i).reverse_complement());
 			sc1.push_back(tseqrc);
-			//inseqs->at(i).perm_reverse_complement();
 		}
 	}
 	const string fn1 = "TEMPFILES/tempfile";
