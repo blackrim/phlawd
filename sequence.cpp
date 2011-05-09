@@ -54,7 +54,6 @@ void Sequence::set_aligned(bool _aligned){
 //this one is private
 //it should eventually be generalized for both nucleotide and protein, 
 //but for now it is just nucleotide for simplicity
-//TODO: need to add ambiguity
 string Sequence::reverse(string charin){
 	string ret;
 	if (charin == "-")
