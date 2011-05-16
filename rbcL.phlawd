@@ -1,8 +1,8 @@
-clade = Viridiplantae
+clade = campanulids
 #clade = Asterales
 search = rbcL
-gene = rbcL
-mad = 0.05
+gene = rbcL2
+mad = 0.001
 coverage = 0.4
 identity = 0.3
 db = /home/smitty/Desktop/pln.182updatetest.db
@@ -15,4 +15,6 @@ listfile = include_wild
 containswild
 #excludegilistfile = ex_gi
 #gbmask = http://127.0.0.1:8000/gbmask/mask/dump_mask
+#updateDB
+#updateFILE = rbcl.mine
 

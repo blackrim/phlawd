@@ -44,10 +44,11 @@ class SQLiteProfiler{
 		string profilefoldername;
 		bool use_orphan;
 		bool automated;
+		bool updatedb;
 		Tree * read_user_guide_tree(string filen);
 		void get_children(string in_id, vector<string> * in_ids, vector<string> * in_keepids);
 		vector<string> get_final_children(string id);
-		int count_seqs(string file_name);
+		int count_seqs(string dirc, string file_name);
 		string get_right_one(vector<string> allids,Query & res);
 		vector<string> get_left_right_children(string id);
 		void create_distances(string clade_name, vector<string> names,map<string,string> * numnames,
@@ -67,8 +68,16 @@ class SQLiteProfiler{
 						map<string,double> & allmeans);
 		void remove_outliers();
 		void rename_final_alignment(string which);
+
+		//updated runs things
+		vector<string> updatedfiles;
+		vector<string> profilerun;
+		map<string,vector<string> > profilekey;
+		vector<string> flaggedprofiles; // these are the ones that need to be rerun
+		void update_profile();
+		string get_profilekey_value(string profile_string);
 	public:
-		SQLiteProfiler(string gn, string cn, string dbs, bool autom);
+		SQLiteProfiler(string gn, string cn, string dbs, bool autom,bool updb);
 		void prelimalign();
 		void run();
 };

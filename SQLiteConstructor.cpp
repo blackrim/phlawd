@@ -40,6 +40,7 @@
 #include <sstream>
 #include <time.h>
 #include <math.h>
+#include <stdio.h>
 
 using namespace std;
 
@@ -64,7 +65,8 @@ return ss.str();
 }
 
 SQLiteConstructor::SQLiteConstructor(string cn, vector <string> searchstr, string genen,
-		double mad_cut,double cover, double ident, string dbs, string known_seq_filen, bool its, int numt,bool autom){
+		double mad_cut,double cover, double ident, string dbs, string known_seq_filen, bool its, int numt,bool autom,
+		bool inupdatedb,string inupdatefile){
 	clade_name=cn;
 	search=searchstr;
 	gene_name = genen;
@@ -76,6 +78,15 @@ SQLiteConstructor::SQLiteConstructor(string cn, vector <string> searchstr, strin
 	numthreads = numt;
 	automated = autom;
 	FastaUtil seqReader;
+	//added updating seqs from db
+	updateDB = inupdatedb;
+	//added updating seqs from file
+	if(inupdatefile.length() > 0){
+		updateFILE = true;
+		updatef = inupdatefile;
+	}else{
+		updateFILE = false;
+	}
 	known_seqs = new vector<Sequence>();
 	seqReader.readFile(known_seq_filen, *known_seqs);
 }
@@ -110,13 +121,53 @@ void SQLiteConstructor::run(){
 	logfile.open(logn.c_str());
 	string gin = gene_name;
 	gin.append(".gi");
-	gifile.open(gin.c_str());
-	//gifile << "tax_id\tncbi_tax_id\tgi_number" << endl;
-	gifile << "ncbi_tax_id\tgi_number" << endl;
+	//updatedb code
+	//need to store the existing sequences if there are any
+	//TODO: skip the test below for taxa that are already in the file -- add to the exclude names file maybe
+	map<string,string> stored_seqs;
+	if(updateDB == true){
+		cout << "processing existing seqs" << endl;
+		gifile.open(gin.c_str(),fstream::in);
+		string line;
+		bool first = true;
+		while(getline(gifile,line)){
+			if (first == true){
+				first = false;
+				continue;
+			}
+			vector<string> searchtokens;
+			Tokenize(line,searchtokens, "\t");
+			for(int j=0;j<searchtokens.size();j++){
+				TrimSpaces(searchtokens[j]);
+			}
+			stored_seqs[searchtokens[0]] = searchtokens[1];
+		}
+		cout << "existing seqs: " << stored_seqs.size() << endl;
+		gifile.close();
+		gifile.open(gin.c_str(),fstream::app | fstream::out);
+	}else{
+		gifile.open(gin.c_str(),fstream::out);
+		//gifile << "tax_id\tncbi_tax_id\tgi_number" << endl;
+		gifile << "ncbi_tax_id\tgi_number" << endl;
+	}
+	//end the gi reading
 
 	// if temp directory doesn't exist
 	mkdir("TEMPFILES",S_IRWXU | S_IRWXG | S_IROTH | S_IWOTH);
 	mkdir(gene_name.c_str(),S_IRWXU | S_IRWXG | S_IROTH | S_IWOTH);
+
+	//if directory exists, delete all files if not updating
+	if(updateDB == false){
+		//delete all the files in the directory if they are there
+		vector<string> exist_filenames;
+		getdir(gene_name.c_str(),exist_filenames);
+		cout << "removing existing files" << endl;
+		for(unsigned int i=0;i<exist_filenames.size();i++){
+			string tname = gene_name+"/"+exist_filenames[i];
+			cout << "removing: " << tname << endl;
+			remove(tname.c_str());
+		}
+	}
 
 	vector<vector<string> > start_res;
 	first_seq_search_for_gene_left_right(start_res);
@@ -214,12 +265,95 @@ void SQLiteConstructor::run(){
 	 * reduce genome sequences
 	 */
 	reduce_genomes(keep_seqs, keep_rc);
+	
+	//add the updatedb code here
+	//get the list of files and record the higher taxa name and 
+	//add the additional sequences to the right hierarchy
+	vector<string> sname_ids;
+	vector<string> snames;
+	if(updateDB == true){
+		vector<int> toremove;
+		for(int j=0;j<keep_seqs->size();j++){
+			if(stored_seqs.count(keep_seqs->at(j).get_ncbi_taxid()) > 0){
+				//cout << "removing: " << keep_seqs->at(j).get_ncbi_taxid() << endl;
+				toremove.push_back(j);
+			}
+		}
+		for(int j=0;j<toremove.size();j++){
+			keep_seqs->erase(keep_seqs->begin()+toremove[toremove.size()-(j+1)]);
+			keep_rc->erase(keep_rc->begin()+toremove[toremove.size()-(j+1)]);
+		}
+		//end the program if there is nothing to update
+		if(keep_seqs->size() == 0 ){
+			cout << "There are no new sequences to add." << endl;
+			gifile.close();
+			exit(0);//maybe break out to profile
+		}
+		cout << "total size of updated:" << keep_seqs->size() << endl;
+		for(int j=0;j<keep_seqs->size();j++){
+			cout << "adding: " << keep_seqs->at(j).get_ncbi_taxid() << endl;
+		}
+		//add the write gi numbers before add the rest of the seqs are added to keep_seqs
+		write_gi_numbers(keep_seqs);
+		gifile.close();
+		//check files for existing taxonomic break down as it will generally be 
+		//these seperations or more fine
+		vector<string> file_names;
+		getdir(gene_name,file_names);
+		for (unsigned int i = 0;i < file_names.size();i++){
+			string sql = "SELECT ncbi_id,left_value,right_value FROM taxonomy WHERE name = '"+file_names[i]+"';";
+			Query query(conn);
+			query.get_result(sql);
+			string t_id; string l_id; string r_id;
+			while(query.fetch_row()){
+				t_id = query.getstr();
+				l_id = query.getstr();
+				r_id = query.getstr();
+			}
+			if (t_id.size() == 0){
+				cout << "There is an error getting the id for " << file_names[i] << endl;
+				exit(0);
+			}
+			for(unsigned int j = 0; j < keep_seqs->size(); j++){
+				//start here, need to get the higher taxon
+				sql = "SELECT left_value,right_value FROM taxonomy WHERE ncbi_id = '"+keep_seqs->at(j).get_ncbi_taxid()+"';";
+				Query query2(conn);
+				query2.get_result(sql);
+				string lefttid;
+				string righttid;
+				while(query2.fetch_row()){
+					lefttid = query2.getstr();
+					righttid = query2.getstr();
+				}
+				if (lefttid > l_id && righttid < r_id){
+					if ((int) count(sname_ids.begin(),sname_ids.end(),t_id) == 0){
+						sname_ids.push_back(t_id);
+						snames.push_back(file_names[i]);
+						//add the sequences from the file into keep_seqs , this should be easier when moving to sqlite
+						add_seqs_from_file_to_dbseqs_vector(file_names[i],keep_seqs,keep_rc,stored_seqs);
+						string nfilename = gene_name+"/"+file_names[i];
+						remove(nfilename.c_str());
+					}
+					break;
+				}
+			}
+		}
+	}
 
 	//saturation tests
-	saturation_tests(sname_id, keep_seqs, keep_rc);
+	if (updateDB == true) {
+		//using the snames as the list of clade names
+		//using the snames_ids as the list of ncbi_taxon_ids
+		saturation_tests(sname_ids, snames, keep_seqs, keep_rc);
+	}else{
+		write_gi_numbers(keep_seqs);
+		gifile.close();
+		sname_ids.push_back(sname_id);
+		snames.push_back(clade_name);
+		saturation_tests(sname_ids, snames, keep_seqs, keep_rc);
+	}
 
 	logfile.close();
-	gifile.close();
 	delete known_seqs;
 	delete keep_seqs;
 	delete keep_rc;
@@ -945,35 +1079,6 @@ void SQLiteConstructor::remove_duplicates(vector<DBSeq> * keep_seqs, vector<bool
 	for(unsigned int i=0;i<remove.size();i++){
 		keep_rc->erase(keep_rc->begin()+remove[i]);
 	}
-	//uses a bit too much memory
-	/*
-	vector<DBSeq> seqremoves;
-	for(unsigned int i=0;i<remove.size();i++){
-		//cout << i << " " << remove[i] << endl;
-		seqremoves.push_back(keep_seqs->at(remove[i]));
-	}
-	for(unsigned int i=0;i<seqremoves.size();i++){
-		vector<DBSeq>::iterator it;
-		it = find(keep_seqs->begin(), keep_seqs->end(), seqremoves[i]);
-		//++it;
-		keep_seqs->erase(it);
-		//keep_rc->erase(it);
-	}
-	vector<bool> rckeep;
-	for(unsigned int i=0;i<keep_rc->size();i++){
-		bool x = false;
-		for(unsigned int j=0;j<remove.size();j++){
-			if(remove[j]==i)
-				x = true;
-		}
-		if(x == false){
-			rckeep.push_back(keep_rc->at(i));
-		}
-	}
-	keep_rc->clear();
-	for(unsigned int i=0;i<rckeep.size();i++){
-		keep_rc->push_back(rckeep[i]);
-	}*/
 }
 
 void SQLiteConstructor::remove_duplicates_SWPS3(vector<DBSeq> * keep_seqs, vector<bool> * keep_rc){
@@ -1376,12 +1481,22 @@ double SQLiteConstructor::calculate_MAD_quicktree_sample(vector<DBSeq> * inseqs,
 	return calculate_MAD_quicktree();
 }
 
+/*
+ * changed this to accept a set of name_ids and names
+ * this should allow for more flexible input when updating
+ * species
+ *
+ * the standard run will simply put one name and one id 
+ * in the vectors
+ */
+void SQLiteConstructor::saturation_tests(vector<string> name_ids, vector<string> names, 
+	vector<DBSeq> * keep_seqs, vector<bool> * keep_rc){
 
-void SQLiteConstructor::saturation_tests(string name_id, vector<DBSeq> * keep_seqs, vector<bool> * keep_rc){
-	vector<string> name_ids;
-	vector<string> names;
-	name_ids.push_back(name_id);
-	names.push_back(clade_name);
+//void SQLiteConstructor::saturation_tests(string name_id, vector<DBSeq> * keep_seqs, vector<bool> * keep_rc){
+//	vector<string> name_ids;
+//	vector<string> names;
+//	name_ids.push_back(name_id);
+//	names.push_back(clade_name);
 
 	vector<DBSeq> orphan_seqs;
 	vector<bool> orphan_seqs_rc;
@@ -1397,9 +1512,8 @@ void SQLiteConstructor::saturation_tests(string name_id, vector<DBSeq> * keep_se
 		}
 	}
 
-	write_gi_numbers(keep_seqs);
-
 	string name;
+	string name_id;
 	while(!names.empty()){
 		name_id = name_ids.back();
 		name_ids.pop_back();
@@ -1465,6 +1579,7 @@ void SQLiteConstructor::saturation_tests(string name_id, vector<DBSeq> * keep_se
 			}
 			cout << "mad: "<<mad << endl;
 			//if mad scores are good, store result
+			//write to file and to sqlite database
 			if (mad <= mad_cutoff){
 				FastaUtil seqwriter1;
 				vector<Sequence> sc1; 
@@ -1490,6 +1605,8 @@ void SQLiteConstructor::saturation_tests(string name_id, vector<DBSeq> * keep_se
 				string fn1 = gene_name;
 				fn1 += "/" + name;
 				seqwriter1.writeFileFromVector(fn1,sc1);
+				//SQLITE database storing
+
 			}
 			//if mad scores are bad push the children into names
 			else{
@@ -1523,11 +1640,6 @@ void SQLiteConstructor::saturation_tests(string name_id, vector<DBSeq> * keep_se
 				query.free_result();
 			}
 		}
-//		allseqs->at("173412");
-//		173412
-//		173413
-//		173430
-//		173706
 		delete (temp_seqs);
 		delete (temp_rcs);
 	}
@@ -1578,101 +1690,31 @@ void SQLiteConstructor::write_gi_numbers(vector<DBSeq> * dbs){
 
 
 
-/*should no longer be in use
- * double SQLiteConstructor::calculate_MAD_PAUP(){
-	const char * phcmd = "phyutility -concat -in TEMPFILES/outfile -out TEMPFILES/outfile.nex";
-	FILE *phfp = popen(phcmd, "r" );
-	pclose( phfp );
-
-	string text = "\nBEGIN PAUP;\ndset distance=p;\nsavedist file=TEMPFILES/p replace=yes;\ndset distance=jc;\nsavedist file=TEMPFILES/jc replace=yes;\nquit;\nEND;\n";
-	ofstream myfile;
-	myfile.open ("TEMPFILES/outfile.nex",ios::app);
-	myfile << text;
-	myfile.close();
-
-	const char * cmd = "paup TEMPFILES/outfile.nex";
-	cout << "calculating distance" << endl;
-	FILE *fp = popen(cmd, "r" );
-	char buff[1000];
-	while ( fgets( buff, sizeof buff, fp ) != NULL ) {//doesn't exit out
-		string line(buff);
-	}
-	pclose( fp );
-
-	vector<double> p_values;
-	vector<double> jc_values;
-
-	string line;
-	ifstream pfile ("TEMPFILES/p");
-	vector<string> tokens;
-	if (pfile.is_open()){
-		while (! pfile.eof() ){
-			getline (pfile,line);
-			string del("\t");
-			tokens.clear();
-			Tokenize(line, tokens, del);
-			if(tokens.size() > 1){
-				double n1;
-				n1 = atof(tokens.at(2).c_str());
-				p_values.push_back(n1);
-			}
-		}
-		pfile.close();
-	}
-	ifstream jcfile ("TEMPFILES/jc");
-	if (jcfile.is_open()){
-		while (! jcfile.eof() ){
-			getline (jcfile,line);
-			string del("\t");
-			tokens.clear();
-			Tokenize(line, tokens, del);
-			if(tokens.size() > 1){
-				double n1;
-				n1 = atof(tokens.at(2).c_str());
-				jc_values.push_back(n1);
-			}
-		}
-		jcfile.close();
-	}
-	vector<double>all_abs;
-	double med = 0;
-	for (unsigned int i=0;i<p_values.size();i++){
-		all_abs.push_back(abs(jc_values[i]-p_values[i]));
-	}
-	med = median(all_abs);
-	cout << "median: " << med << endl;
-	vector<double> all_meds;
-	for (unsigned int i=0;i<p_values.size();i++){
-		all_meds.push_back(abs(med-all_abs[i]));
-	}
-	return 1.4826*(median(all_meds));
-}
-
-double SQLiteConstructor::calculate_MAD_PAUP_sample(vector<DBSeq> * inseqs,vector<bool> * rcs){
-	srand ( time(NULL) );
-	vector<int> rands;
-	for(int i=0;i<1000;i++){
-		int n = rand() % inseqs->size();
-		bool x = false;
-		for(int j=0;j<rands.size();j++){
-			if(n == rands[j]){
-				x = true;
-			}continue;
-		}
-		if(x == true){
-			i--;
-		}else{
-			rands.push_back(n);
-		}
-	}
-	sort(rands.begin(),rands.end());
-	vector<DBSeq> tseqs;
-	vector<bool> trcs;
-	for(int i=0;i<1000;i++){
-		tseqs.push_back(inseqs->at(rands[i]));
-		trcs.push_back(rcs->at(rands[i]));
-	}
-	make_mafft_multiple_alignment(&tseqs,&trcs);
-	return calculate_MAD_PAUP();
-}
+/*
+ * this is primarily used for add the seqs from a file to the dbseq and rc vectors 
+ * most for updating alignments
+ *
+ * all the sequences need to be in the database for this to work
  */
+void SQLiteConstructor::add_seqs_from_file_to_dbseqs_vector(string filename,vector<DBSeq> * keep_seqs, vector<bool> * keep_rc,map<string,string> & taxgimap){
+	FastaUtil fu;
+	vector<Sequence> tseqs;
+	fu.readFile(gene_name+"/"+filename,tseqs);
+	cout << "seqs from " << filename << ": " << tseqs.size() << endl;
+	Database conn(db);
+	for(unsigned int i=0;i<tseqs.size();i++){
+		string ncbi = taxgimap[tseqs[i].get_id()];
+		string sql = "SELECT accession_id,description FROM sequence WHERE identifier = "+ncbi+";";
+		Query query3(conn);
+		query3.get_result(sql);
+		string descr,acc;
+		while(query3.fetch_row()){
+			acc = query3.getstr();
+			descr = query3.getstr();
+		}
+		query3.free_result();
+		DBSeq tseq(tseqs[i].get_id(), tseqs[i].get_sequence(), acc, ncbi, tseqs[i].get_id(), " ", descr);
+		keep_seqs->push_back(tseq);
+		keep_rc->push_back(false);
+	}
+}

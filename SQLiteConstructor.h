@@ -39,7 +39,7 @@ using namespace std;
 class SQLiteConstructor {
 	private:
 		ofstream logfile;
-		ofstream gifile;
+		fstream gifile;
 		string clade_name;
 		vector <string> search;
 		string gene_name;
@@ -59,6 +59,9 @@ class SQLiteConstructor {
 		bool useITS;
 		int numthreads;
 		bool automated;
+		bool updateDB;
+		bool updateFILE;
+		string updatef;
 		vector<Sequence> * known_seqs;
 		vector<DBSeq> use_only_names_from_file(vector<DBSeq> seqs);
 		DBSeq add_higher_taxa(string taxon_id,vector<DBSeq> seqs);
@@ -80,12 +83,15 @@ class SQLiteConstructor {
 		//double calculate_MAD_PAUP_sample(vector<DBSeq> * inseqs,vector<bool> * rcs);
 		double calculate_MAD_quicktree();
 		double calculate_MAD_quicktree_sample(vector<DBSeq> * inseqs,vector<bool> * rcs);
-		void saturation_tests(string name_id, vector<DBSeq> * keep_seqs, vector<bool> * keep_rc);
+		void saturation_tests(vector<string> name_ids, vector<string> names, vector<DBSeq> * keep_seqs, vector<bool> * keep_rc);
+		// was void saturation_tests(string name_id, vector<DBSeq> * keep_seqs, vector<bool> * keep_rc);
 		void write_gi_numbers(vector<DBSeq> *);
+		void add_seqs_from_file_to_dbseqs_vector(string filename,vector<DBSeq> * keep_seqs, vector<bool> * keep_rc, map<string,string> & taxgimap);
 	public:
 		SQLiteConstructor(string cn, vector <string> searchstr, string genen,
 				double mad_cut,double cover, double ident, string dbs,
-				string known_seq_filen, bool its, int numt,bool autom);
+				string known_seq_filen, bool its, int numt,bool autom,
+				bool updb, string updf);
 		~SQLiteConstructor(){}
 		void set_only_names_from_file(string filename, bool containshi, bool containswild);
 		void set_exclude_names_from_file(string filename);

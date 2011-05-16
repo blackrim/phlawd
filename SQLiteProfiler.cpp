@@ -22,7 +22,7 @@
  * SQLiteProfiler.cpp
  */
 
-#include <string>
+#include <string.h>
 #include <vector>
 #include <iostream>
 #include <sstream>
@@ -33,6 +33,8 @@
 #include <stdlib.h>
 #include <fstream>
 #include <algorithm>
+#include <cstdio>
+
 
 using namespace std;
 
@@ -58,90 +60,246 @@ ss << t;
 return ss.str();
 }
 
-SQLiteProfiler::SQLiteProfiler(string gn, string cn, string dbs,bool autom){
+SQLiteProfiler::SQLiteProfiler(string gn, string cn, string dbs,bool autom,bool updb){
 	gene_name = gn;
 	use_orphan = false;
 	cladename = cn;
 	db = dbs;
 	automated = autom;
+	updatedb = updb;
 	profilefoldername = gene_name+"_PROFILE/";
 }
 
 void SQLiteProfiler::prelimalign(){
 	// if temp directory doesn't exist
 	mkdir(profilefoldername.c_str(),S_IRWXU | S_IRWXG | S_IROTH | S_IWOTH);
-
-	file_names = vector<string>();
-	cout << "getting file names" << endl;
-	getdir(gene_name,file_names);
-	for (unsigned int i = 0;i < file_names.size();i++) {
-		/*
-		 * test to see how many sequences in the file
-		 * if there is only one, just copy, if there
-		 * are many, then align
-		 */
-		bool many = false;
-		int intReturn = count_seqs(file_names[i]);
-		if(intReturn > 1){
-			many = true;
-		}
-		if(many == false){
-			string cmd = "cp ";
-			cmd += gene_name+"/";
-			string tfilen = file_names[i];
-			fix_bad_chars(tfilen);
-			cmd += tfilen;
-			cmd += " ";
-			cmd += profilefoldername;
-			cmd += tfilen;//fix spaces here
-			cout << "copying file with single fasta" << endl;
-			cout << cmd << endl;
-			FILE *fp = popen(cmd.c_str(), "r" );
-			char buff[1000];
-			while ( fgets( buff, sizeof buff, fp ) != NULL ) {//doesn't exit out
-				string line(buff);
+	bool standard = true;
+	if(updatedb == true){
+		vector<string> samefiles; //files were not updated at all
+		bool newfiles=false; // if there are new files from MAD in align stage, kick out and tree as new for now 
+		vector<string> originalalnfiles;
+		vector<string> curfiles;
+		getdir(profilefoldername.c_str(),curfiles);
+		getdir(gene_name.c_str(),originalalnfiles);
+		//to get updated files, just diff the seq counts for each original file and the profilefiles
+		for(unsigned int i=0;i< originalalnfiles.size();i++){
+			int origcounts = count_seqs(gene_name,originalalnfiles[i]);
+			if(count(curfiles.begin(),curfiles.end(),originalalnfiles[i]) == 1){
+				int counts = count_seqs(profilefoldername,originalalnfiles[i]);
+				if (counts < origcounts){
+					updatedfiles.push_back(originalalnfiles[i]);
+				}else if (counts == origcounts){
+					samefiles.push_back(originalalnfiles[i]);
+				}
+			}else{//count == 0
+				newfiles = true;
+				cout << "there is a new file: " << originalalnfiles[i] << endl;
+				break;
 			}
-			pclose( fp );
-		}else{
-			cout << file_names[i] << endl;
-			string cmd = "mafft --thread 2 --auto ";
-			cmd += gene_name+"/";
-			//cmd += file_names[i];//fix spaces here
-			string tfilen = file_names[i];
-			fix_bad_chars(tfilen);
-			cmd += tfilen;
-			cmd += " > ";
-			cmd += profilefoldername;
-			cmd += tfilen;//fix spaces here
-			cout << "prelim aligning" << endl;
-			cout << cmd << endl;
-			FILE *fp = popen(cmd.c_str(), "r" );
-			char buff[1000];
-			while ( fgets( buff, sizeof buff, fp ) != NULL ) {//doesn't exit out
-				string line(buff);
+		}if (newfiles == true){
+			//delete all the files in the directory if they are there
+			vector<string> exist_filenames;
+			getdir(profilefoldername.c_str(),exist_filenames);
+			cout << "removing existing files" << endl;
+			for(unsigned int i=0;i<exist_filenames.size();i++){
+				string tname = profilefoldername+"/"+exist_filenames[i];
+				cout << "removing: " << tname << endl;
+				remove(tname.c_str());
 			}
-			pclose( fp );
+			standard = true;
+		}else{//update the profiles
+			standard = false;
+			//files to skip are record.log, and the original alignment files, except for the updated ones
+			//delete everything else
+			//reading the record.log
+			string tname = profilefoldername+"/record.log";
+			ifstream ifs(tname.c_str());
+			string line;
+			while(getline(ifs,line)){
+				vector<string> tokens;
+				string del(",");
+				tokens.clear();
+				Tokenize(line,tokens,del);
+				for(int i=0;i<tokens.size();i++){TrimSpaces(tokens[i]);}
+				profilerun.push_back(tokens[0]);
+				vector<string> tokens2;
+				string del2("++");
+				tokens2.clear();
+				Tokenize(tokens[1],tokens2,del2);
+				//look to see if an updated file is in the profile
+				for(unsigned int i=0;i<updatedfiles.size();i++){
+					size_t found1 = tokens2[0].find(updatedfiles[i]);
+					size_t found2 = tokens2[1].find(updatedfiles[i]);
+					//cout << found1 << " " << found2 << " " << tokens2[0] << " " << tokens2[1] << " " << updatedfiles[i] << endl;
+					if(found1 != string::npos){// find it in the first part of the profile
+						string tname = profilefoldername+"/"+tokens[0];
+						cout << "removing profile file: " << tname << endl;
+						remove(tname.c_str());
+						flaggedprofiles.push_back(tokens[0]);
+					}else if(found2 != string::npos){ //find it in the second part of the profile
+						string tname = profilefoldername+"/"+tokens[0];
+						cout << "removing profile file: " << tname << endl;
+						remove(tname.c_str());
+						flaggedprofiles.push_back(tokens[0]);
+					}
+				}
+				vector<string> tvec;
+				tvec.push_back(tokens2[0]);
+				tvec.push_back(tokens2[1]);
+				profilekey[tokens[0]] =tvec;
+			}
+			//deleting things
+			for(unsigned int i=0;i<updatedfiles.size();i++){
+				string tname = profilefoldername+"/"+updatedfiles[i];
+				cout << "removing updated file: " << tname << endl;
+				remove(tname.c_str());
+			}
+			//delete everything that isn't in the same file or in the profilerun vector
+			for(unsigned int i=0;i<curfiles.size();i++){
+				if(count(samefiles.begin(),samefiles.end(),curfiles[i]) == 0){
+					if(count(profilerun.begin(),profilerun.end(),curfiles[i]) == 0){
+						if(curfiles[i] != "record.log"){
+							string tname = profilefoldername+"/"+curfiles[i];
+							cout << "removing file: "<< tname << endl;
+							remove(tname.c_str());
+						}
+					}
+				}
+			}
 		}
-		if(intReturn > 100){
-			clean_before_profile(file_names[i]);
+	}else{//standard run
+		//delete all the files in the directory if they are there
+		vector<string> exist_filenames;
+		getdir(profilefoldername.c_str(),exist_filenames);
+		cout << "removing existing files" << endl;
+		for(unsigned int i=0;i<exist_filenames.size();i++){
+			string tname = profilefoldername+"/"+exist_filenames[i];
+			cout << "removing: " << tname << endl;
+			remove(tname.c_str());
+		}
+	}
+	
+	if(standard == true){//not an update run
+		file_names = vector<string>();
+		cout << "getting file names" << endl;
+		getdir(gene_name,file_names);
+		for (unsigned int i = 0;i < file_names.size();i++) {
+			/*
+			 * test to see how many sequences in the file
+			 * if there is only one, just copy, if there
+			 * are many, then align
+			 */
+			bool many = false;
+			int intReturn = count_seqs(gene_name, file_names[i]);
+			if(intReturn > 1){
+				many = true;
+			}
+			if(many == false){
+				string cmd = "cp ";
+				cmd += gene_name+"/";
+				string tfilen = file_names[i];
+				fix_bad_chars(tfilen);
+				cmd += tfilen;
+				cmd += " ";
+				cmd += profilefoldername;
+				cmd += tfilen;//fix spaces here
+				cout << "copying file with single fasta" << endl;
+				cout << cmd << endl;
+				FILE *fp = popen(cmd.c_str(), "r" );
+				char buff[1000];
+				while ( fgets( buff, sizeof buff, fp ) != NULL ) {//doesn't exit out
+					string line(buff);
+				}
+				pclose( fp );
+			}else{
+				cout << file_names[i] << endl;
+				string cmd = "mafft --thread 2 --auto ";
+				cmd += gene_name+"/";
+				//cmd += file_names[i];//fix spaces here
+				string tfilen = file_names[i];
+				fix_bad_chars(tfilen);
+				cmd += tfilen;
+				cmd += " > ";
+				cmd += profilefoldername;
+				cmd += tfilen;//fix spaces here
+				cout << "prelim aligning" << endl;
+				cout << cmd << endl;
+				FILE *fp = popen(cmd.c_str(), "r" );
+				char buff[1000];
+				while ( fgets( buff, sizeof buff, fp ) != NULL ) {//doesn't exit out
+					string line(buff);
+				}
+				pclose( fp );
+			}
+			if(intReturn > 100){
+				clean_before_profile(file_names[i]);
+			}
+		}
+	}else{//updaterun
+		//only align those files that are updated
+		file_names = vector<string>();
+		cout << "aligning updated files" << endl;
+		for(unsigned int i=0;i<updatedfiles.size();i++){
+			int intReturn = count_seqs(gene_name,updatedfiles[i]);
+			bool many = false;
+			if(intReturn > 1){
+				many = true;
+			}
+			if(many == false){
+				string cmd = "cp ";
+				cmd += gene_name+"/";
+				string tfilen = updatedfiles[i];
+				fix_bad_chars(tfilen);
+				cmd += tfilen;
+				cmd += " ";
+				cmd += profilefoldername;
+				cmd += tfilen;//fix spaces here
+				cout << "copying file with single fasta" << endl;
+				cout << cmd << endl;
+				FILE *fp = popen(cmd.c_str(), "r" );
+				char buff[1000];
+				while ( fgets( buff, sizeof buff, fp ) != NULL ) {//doesn't exit out
+					string line(buff);
+				}
+				pclose( fp );
+			}else{
+				cout << updatedfiles[i] << endl;
+				string cmd = "mafft --thread 2 --auto ";
+				cmd += gene_name+"/";
+				string tfilen = updatedfiles[i];
+				fix_bad_chars(tfilen);
+				cmd += tfilen;
+				cmd += " > ";
+				cmd += profilefoldername;
+				cmd += tfilen;//fix spaces here
+				cout << "prelim aligning" << endl;
+				cout << cmd << endl;
+				FILE *fp = popen(cmd.c_str(), "r" );
+				char buff[1000];
+				while ( fgets( buff, sizeof buff, fp ) != NULL ) {//doesn't exit out
+					string line(buff);
+				}
+				pclose( fp );
+			}
+			if(intReturn > 100){
+				clean_before_profile(updatedfiles[i]);
+			}
 		}
 	}
 }
 
-int SQLiteProfiler::count_seqs(string file_name){
+int SQLiteProfiler::count_seqs(string dirc, string file_name){
 	string cmd = "grep -c \\> ";
-	cmd += gene_name+"/";
+	cmd += dirc+"/";
 	string tfilen = file_name;
 	fix_bad_chars(tfilen);
 	cmd += tfilen;
-	cout << cmd << endl;
 	FILE *fp = popen(cmd.c_str(), "r" );
 	char buff[1000];
 	int intReturn;
 	while ( fgets( buff, sizeof buff, fp ) != NULL ) {//doesn't exit out
 		string line(buff);
 		intReturn = atoi(line.c_str());
-		cout << intReturn << " " << line << endl;
 		break;
 	}
 	pclose( fp );
@@ -149,60 +307,69 @@ int SQLiteProfiler::count_seqs(string file_name){
 }
 
 void SQLiteProfiler::run(){
-	file_names = vector<string>();
-	cout << "getting file names" << endl;
-	getdir(profilefoldername.c_str(),file_names);
-	for (unsigned int i = 0;i < file_names.size();i++) {
-		cout << file_names[i] << endl;
-	}
-	if(file_names.size() > 1){
-		//get guide tree
-		//if the guide tree is not there, then use the ncbi tree
-		string guiname = gene_name+".guide";
-		bool flag = false;
-		fstream fin;
-		fin.open(guiname.c_str(),ios::in);
-		if( fin.is_open() ){
-			flag=true;
+	if(updatedb == false){//standard
+		file_names = vector<string>();
+		cout << "getting file names" << endl;
+		getdir(profilefoldername.c_str(),file_names);
+		if(file_names.size() > 1){
+			//get guide tree
+			//if the guide tree is not there, then use the ncbi tree
+			string guiname = gene_name+".guide";
+			bool flag = false;
+			fstream fin;
+			fin.open(guiname.c_str(),ios::in);
+			if( fin.is_open() ){
+				flag=true;
+			}
+			fin.close();
+			//end test for guide tree
+			map<string,string> numnames;
+			map<string,string> namesnum;
+			vector< vector<double> > numlist;
+			if(flag == true){
+				cout << "user guide tree" << endl;
+				Tree * tree = read_user_guide_tree(guiname);
+				create_distances(file_names,tree,&numnames,&namesnum,&numlist);
+			}else{//use ncbi tree
+				cout << "ncbi guide tree" << endl;
+				create_distances(cladename,file_names,&numnames,&namesnum,&numlist);
+			}
+			//start profiling
+			cout<<"profiling"<<endl;
+			profile(numnames,namesnum,numlist);
+		}else{
+			copy_final_file(file_names[0]);
 		}
-		fin.close();
-		map<string,string> numnames;
-		map<string,string> namesnum;
-		vector< vector<double> > numlist;
-		if(flag == true){
-			cout << "user guide tree" << endl;
-			Tree * tree = read_user_guide_tree(guiname);
-			create_distances(file_names,tree,&numnames,&namesnum,&numlist);
-		}else{//use ncbi tree
-			cout << "ncbi guide tree" << endl;
-			create_distances(cladename,file_names,&numnames,&namesnum,&numlist);
-		}
-		//	//print
-		//	cout <<"numnames" <<endl;
-		//	map<string,string>::iterator it;
-		//	for ( it=numnames.begin() ; it != numnames.end(); it++ )
-		//		cout << (*it).first << " => " << (*it).second << endl;
-		//	cout <<"namesnum" <<endl;
-		//	for ( it=namesnum.begin() ; it != namesnum.end(); it++ )
-		//		cout << (*it).first << " => " << (*it).second << endl;
-		//	cout <<"numlist" <<endl;
-		//	for(int i=0;i<numlist.size();i++){
-		//		for(int j=0;j<numlist.at(i).size();j++){
-		//			cout << numlist[i][j] << " ";
-		//		}
-		//		cout << endl;
-		//	}
-
-		//start profiling
-		cout<<"profiling"<<endl;
-		profile(numnames,namesnum,numlist);
-	}else{
-		copy_final_file(file_names[0]);
+	}else{//updatedb
+		update_profile();
 	}
 	rename_final_alignment("FINAL.aln");//requires FINAL.aln
 	remove_outliers();//requires FINAL.aln
 	rename_final_alignment("FINAL.aln.cln"); //requires FINAL.aln.cln
 
+}
+
+//for updating alignments
+//send  the profile key and a profile strings
+//
+//return the string if there is no match
+//return the profile number (as a string if there is a match)
+string SQLiteProfiler::get_profilekey_value(string profile_string){
+	bool match = false;
+	string match_string;
+	for(unsigned int i= 0; i< profilerun.size(); i++){
+		vector<string> tstrings = profilekey[profilerun[i]];
+		string combined = tstrings[0]+"__"+tstrings[1];
+		if (combined == profile_string){
+			match = true;
+			match_string = profilerun[i];
+			break;
+		}
+	}
+	if(match == false){
+		return profile_string;
+	}
+	return match_string;
 }
 
 Tree * SQLiteProfiler::read_user_guide_tree(string filen){
@@ -341,8 +508,11 @@ string SQLiteProfiler::get_right_one(vector<string> allids,Query & res){
 //ncbi one
 void SQLiteProfiler::create_distances(string clade_name, vector<string> names,map<string,string> * numnames,
 		map<string,string>* namesnum, vector< vector<double> > * numlist){
+	//the map of clade name and number
 	numnames->clear();
+	//the opposite
 	namesnum->clear();
+	//the distances in terms of i and j
 	numlist->clear();
 	//get id for clade name
 	// Make SQL string and execute it
@@ -385,7 +555,7 @@ void SQLiteProfiler::create_distances(string clade_name, vector<string> names,ma
 	for(int i=0;i<names.size();i++){
 		Database conn(db);
 		sql = "SELECT ncbi_id FROM taxonomy WHERE name = '"+names[i]+"' and name_class = 'scientific name';";
-		cout << sql << endl;
+		//cout << sql << endl;
 		Query query2(conn);
 		query2.get_result(sql);
 //		StoreQueryResult R = query2.store();
@@ -403,12 +573,12 @@ void SQLiteProfiler::create_distances(string clade_name, vector<string> names,ma
 			cout << "parentid1 " << parentid << endl;
 			nameid = parentid;
 			sql = "SELECT parent_ncbi_id FROM taxonomy WHERE ncbi_id = "+nameid+" and name_class = 'scientific name';";
-			cout << sql << endl;
+			//cout << sql << endl;
 			Query query5(conn);
 			query5.get_result(sql);
 //			StoreQueryResult R3 = query5.store();
 			parentid = get_right_one(allids,query5);
-			cout << "parentid2 " << parentid << endl;
+			//cout << "parentid2 " << parentid << endl;
 		}
 		route.push_back(parentid);
 		/*
@@ -556,6 +726,9 @@ void SQLiteProfiler::clean_before_profile(string infile){
  */
 void SQLiteProfiler::profile(map<string,string> numnames,map<string,string> namesnum,
 		vector< vector<double> > numlist){
+	cout << "writing everything to record.log" << endl;
+	string recordname = profilefoldername+"/record.log";
+	ofstream ofs(recordname.c_str());
 	bool muscle = true;
 	vector<string> profile_files;
 	map<string,int> profile_files_dict;
@@ -573,9 +746,6 @@ void SQLiteProfiler::profile(map<string,string> numnames,map<string,string> name
 		vector<string>::iterator it;
 		it = find (newnames.begin(), newnames.end(), shortestnameone);
 		newnames.erase(it);
-		for(int i=0;i<newnames.size();i++)
-			cout << newnames.at(i) << " ";
-		cout << endl;
 		//only one, simple case
 		if(shortestnamestwo->size() == 1){
 			string firstfile = shortestnameone;
@@ -596,6 +766,7 @@ void SQLiteProfiler::profile(map<string,string> numnames,map<string,string> name
 			}
 			profile_files.push_back(firstfile+"__"+secondfile);
 			profile_files_dict.insert( pair<string,int>(firstfile+"__"+secondfile,profile_files_count) );
+			ofs << profile_files_count << "," << firstfile+"++"+secondfile << endl;
 			if(muscle == false){
 				//if already == True:
 				//	os.system("mafft-linsi --seed "+directory+str(profile_files_dict[secondfile])+" "+directory+firstfile+" > "+directory+str(profile_files_dict[firstfile+"__"+secondfile]))
@@ -769,6 +940,7 @@ void SQLiteProfiler::profile(map<string,string> numnames,map<string,string> name
 				secondfile = bestsn;
 				profile_files.push_back(firstfile+"__"+secondfile);
 				profile_files_dict.insert( pair<string,int>(firstfile+"__"+secondfile,profile_files_count) );
+				ofs << profile_files_count << "," << firstfile+"++"+secondfile << endl;
 				string cmd = "cp ";
 				cmd += profilefoldername;
 				string tfilen = firstfile;
@@ -805,6 +977,7 @@ void SQLiteProfiler::profile(map<string,string> numnames,map<string,string> name
 				profile_files.erase(it);
 				profile_files.push_back(firstfile+"__"+secondfile);
 				profile_files_dict.insert( pair<string,int>(firstfile+"__"+secondfile,profile_files_count) );
+				ofs << profile_files_count << "," << firstfile+"++"+secondfile << endl;
 				if (muscle == false){
 				//	os.system("mafft-linsi --seed "+directory+str(profile_files_dict[secondfile])+" "+directory+firstfile+" > "+directory+str(profile_files_dict[firstfile+"__"+secondfile]))
 				}else{
@@ -887,7 +1060,7 @@ void SQLiteProfiler::profile(map<string,string> numnames,map<string,string> name
 
 		profile_files.push_back(firstfile+"__"+secondfile);
 		profile_files_dict.insert( pair<string,int>(firstfile+"__"+secondfile,profile_files_count) );
-
+		ofs << profile_files_count << "," << firstfile+"++"+secondfile <<endl;
 		if (muscle == false){
 			//	os.system("mafft-linsi --seed "+directory+str(profile_files_dict[secondfile])+" "+directory+firstfile+" > "+directory+str(profile_files_dict[firstfile+"__"+secondfile]))
 		}else{
@@ -939,6 +1112,57 @@ void SQLiteProfiler::profile(map<string,string> numnames,map<string,string> name
 	//else:
 	//	os.system("cp "+directory+profile_files[0]+" "+directory+"FINAL.aln")
 	copy_final_file(last_profile_file);
+	ofs.close();
+}
+
+/*
+ * The idea here is to run through the profilerun (and therefore profilekey)
+ * rerunning all the flaggedprofiles (in the vector)
+ *
+ * They are already premapped so you are just rerunning the ones that have updated seqs
+ */
+void SQLiteProfiler::update_profile(){
+	for(unsigned int i=0;i<profilerun.size();i++){
+		cout << count(flaggedprofiles.begin(),flaggedprofiles.end(),profilerun[i])  << " " << profilerun[i] << endl;
+		if(count(flaggedprofiles.begin(),flaggedprofiles.end(),profilerun[i]) > 0){
+			cout << "reruning " << profilerun[i] << endl;
+			string profile1 = get_profilekey_value(profilekey[profilerun[i]][0]);
+			string profile2 = get_profilekey_value(profilekey[profilerun[i]][1]);
+			cout << profile1 << " " << profile2 <<endl;
+			string cmd = "muscle -profile -in1 ";
+			cmd += profilefoldername;
+			std::string ts;
+			std::stringstream tout;
+			tout << profile1;
+			ts = tout.str();
+			cmd += ts;
+			cmd += " -in2 ";
+			cmd += profilefoldername;
+			string tfilen = profile2;
+			fix_bad_chars(tfilen);
+			cmd += tfilen;
+			cmd += " -out ";
+			cmd += profilefoldername;
+			std::string ts2;
+			std::stringstream tout2;
+			tout2 << profilerun[i];
+			ts2 = tout2.str();
+			cmd += ts2;
+			cout << "aligning" << endl;
+			cout << cmd << endl;
+			FILE *fp = popen(cmd.c_str(), "r" );
+			char buff[1000];
+			while ( fgets( buff, sizeof buff, fp ) != NULL ) {//doesn't exit out
+				string line(buff);
+			}
+			pclose( fp );
+			//clean
+			clean_before_profile(ts2);
+		}else{
+			cout << "skipping " << profilerun[i] << endl;
+		}
+	}
+	copy_final_file(profilerun[profilerun.size()-1]);
 }
 
 /*
@@ -1186,91 +1410,4 @@ void SQLiteProfiler::rename_final_alignment(string which){
 	seqwriter.writeFileFromVector(fn1,sc1);
 	delete sequences;
 }
-
-//should not be in use anymore
-/*void SQLiteProfiler::calculate_for_removal(SequenceContainer * seqs,
-		map<string,double> & allmeans){
-	Fasta seqwriter;
-	const string fn1 = "TEMPFILES/tempremoval";
-	seqwriter.write(fn1,*seqs);
-
-	string phcmd = "phyutility -concat -in TEMPFILES/tempremoval -out TEMPFILES/outfile.nex";
-	FILE *phfp = popen(phcmd.c_str(), "r" );
-	pclose( phfp );
-
-	cout << phcmd << endl;
-
-	string text = "\nBEGIN PAUP;\ndset distance=p;\nsavedist format=TabText file=TEMPFILES/p replace=yes;"
-			"\nquit;\nEND;\n";
-	ofstream myfile;
-	myfile.open ("TEMPFILES/outfile.nex",ios::app);
-	myfile << text;
-	myfile.close();
-
-	const char * cmd = "paup TEMPFILES/outfile.nex";
-	cout << "calculating distance" << endl;
-	FILE *fp = popen(cmd, "r" );
-	char buff[1000];
-	while ( fgets( buff, sizeof buff, fp ) != NULL ) {//doesn't exit out
-		string line(buff);
-	}
-	pclose( fp );
-
-	//new
-	vector<string> ids;
-	vector<vector<double> > nums;
-	bool first = true;
-
-	string line;
-	ifstream pfile ("TEMPFILES/p");
-	vector<string> tokens;
-	if (pfile.is_open()){
-		int y = 0;
-		while (! pfile.eof() ){
-			if (first == false){
-				getline (pfile,line);
-				string del("\t");
-				tokens.clear();
-				Tokenize(line, tokens, del);
-				if(tokens.size() >= 1){
-					bool smfirst = true;
-					int x = 0;
-					for(int i=0;i<tokens.size();i++){
-						if (smfirst == false){
-							double n1;
-							n1 = atof(tokens.at(i).c_str());
-							nums[y][x] = n1;
-							nums[x][y] = n1;
-							x += 1;
-						}else{
-							smfirst = false;
-						}
-					}
-				}
-				y += 1;
-			}else{
-				first = false;
-				getline (pfile,line);
-				string del("\t");
-				tokens.clear();
-				Tokenize(line, tokens, del);
-				cout << tokens.size() << endl;
-				ids = vector<string>(tokens.size());
-				for(int i=0;i<tokens.size();i++){
-					ids[i] = tokens.at(i);
-				}
-				vector<double> cols(tokens.size(), 0);
-				nums = vector< vector<double> >(tokens.size(), cols);
-			}
-		}
-		pfile.close();
-	}
-
-	 * calculate the means
-
-	vector<double> mns(ids.size());
-	for(int i=0;i<nums.size();i++){
-		allmeans[ids[i]] = mean(nums[i]);
-	}
-}*/
 

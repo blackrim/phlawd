@@ -42,14 +42,14 @@ using namespace std;
 
 int main(int argc, char* argv[]){
 	if(argc != 3){
-		cout << "PHLAWD 1.1 testing" << endl;
+		cout << "PHLAWD 2.0a" << endl;
 		cout << "you need more arguments." << endl;
 		cout << "usage: PHLAWD task configfile" << endl;
 		cout << "possible tasks include:" << endl;
 		cout << "	assemble -- includes assembling and profiling" << endl;
 		cout << "	justprofile -- just profiles (assumes you have assembled)" << endl;
 		cout << "	justassemble -- just assembles (assumes you will profile with justprofile" << endl;
-		cout << "	changenames -- changes from ncbi numbers to names for a file (newick, fasta, newick, phylip)" <<endl;
+		//cout << "	changenames -- changes from ncbi numbers to names for a file (newick, fasta, newick, phylip)" <<endl;
 	//	cout << "	setupdb -- tasks performed on the SQLite database" << endl;
 	}else{
 		/*
@@ -77,7 +77,7 @@ int main(int argc, char* argv[]){
 			cout << "	assemble -- includes assembling and profiling" << endl;
 			cout << "	justprofile -- just profiles (assumes you have assembled)" << endl;
 			cout << "	justassemble -- just assembles (assumes you will profile with justprofile" << endl;
-			cout << "	changenames -- changes from ncbi numbers to names for a file (newick, fasta, newick, phylip)" <<endl;
+			//cout << "	changenames -- changes from ncbi numbers to names for a file (newick, fasta, newick, phylip)" <<endl;
 		//	cout << "	setupdb -- tasks performed on the SQLite database" << endl;
 		}
 
@@ -105,6 +105,9 @@ int main(int argc, char* argv[]){
 			bool containshigher = false;
 			bool containswild = false;
 			bool useITS = false;
+			bool updateDB = false;
+			bool updateFILE = false;
+			string updatef = "";
 			string maskurl = "";
 			//read file
 			ifstream ifs(argv[2]);
@@ -162,7 +165,14 @@ int main(int argc, char* argv[]){
 					numthreads = atoi(tokens[1].c_str());
 				}else if(!strcmp(tokens[0].c_str(), "gbmask")){
 					maskurl = tokens[1];
-
+				}else if(!strcmp(tokens[0].c_str(), "updateDB")){
+					updateDB = true;
+					cout << "updateDB" << endl;
+				}else if(!strcmp(tokens[0].c_str(), "updateFILE")){
+					updateFILE = true;
+					updatef = tokens[1];
+					cout << "updateFILE" << endl;
+					cout << "updated file " << updatef << endl;
 				}
 			}
 			ifs.close();
@@ -171,7 +181,7 @@ int main(int argc, char* argv[]){
 			if(asse == true){
 				cout << "assembly" << endl;
 				SQLiteConstructor * a;
-				a = new SQLiteConstructor(clade, search,gene,mad,coverage,identity,db,knownfile,useITS, numthreads,automated);
+				a = new SQLiteConstructor(clade, search,gene,mad,coverage,identity,db,knownfile,useITS, numthreads,automated,updateDB,updatef);
 				cout << "number of threads: " << a->get_numthreads() << endl;
 				cout << "clade name: " << a->get_cladename() << endl;
 				for(int i=0;i<a->get_search().size(); i++){
@@ -209,7 +219,7 @@ int main(int argc, char* argv[]){
 			 */
 			if(prof == true){
 				SQLiteProfiler * b;
-				b = new SQLiteProfiler(gene,clade,db,automated);
+				b = new SQLiteProfiler(gene,clade,db,automated,updateDB);
 				b->prelimalign();
 				b->run();
 				delete(b);
