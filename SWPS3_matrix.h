@@ -32,6 +32,8 @@
 
 #include "SWPS3_swps3.h"
 #include <sys/types.h>
+#include <string>
+using namespace std;
 
 typedef int8_t * SBMatrix;
 typedef double * DMatrix;
@@ -40,5 +42,6 @@ DMatrix swps3_readDMatrix( char * filename );
 SBMatrix swps3_readSBMatrix( char * filename );
 SBMatrix swps3_convertMatrixD2SB( double factor );
 double swps3_factorFromThreshold( double threshold, double singleGapCost );
+void write_EDNAFILE();
 
 #endif /* MATRIX_H */

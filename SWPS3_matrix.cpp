@@ -36,6 +36,12 @@
 #include "SWPS3_debug.h"
 #include <sys/types.h>
 #include <math.h>
+#include <string>
+#include <iostream>
+#include <fstream>
+#include <cstdio>
+
+using namespace std;
 
 static char * skip( char * line ){
 	while (isspace( * line )) line ++;
@@ -104,7 +110,8 @@ EXPORT SBMatrix swps3_readSBMatrix( char * filename ){
 	fp = fopen( filename, "r" );
 	if (!fp){
 		perror("Matrix - Error opening file:" );
-		exit( 1 );
+		write_EDNAFILE();
+		//exit( 1 );
 	}
 	/* parse the first line containing the caption ( "A R N ..." )*/
 	while ( !count && fgets( line, sizeof( line ), fp ) ){
@@ -163,3 +170,13 @@ EXPORT double swps3_factorFromThreshold( double threshold, double singleGapCost 
 	return 256.0/threshold;
 }
 
+void write_EDNAFILE(){
+	ifstream ifile("EDNAFULL");
+	if (ifile) {
+		return;
+	}
+	string to_write = "#\n# This matrix was created by Todd Lowe   12/10/92\n#\n# Uses ambiguous nucleotide codes, probabilities rounded to\n#  nearest integer\n#\n# Lowest score = -4, Highest score = 5\n#\n    A   T   G   C   S   W   R   Y   K   M   B   V   H   D   N   U\nA   5  -4  -4  -4  -4   1   1  -4  -4   1  -4  -1  -1  -1  -2  -4\nT  -4   5  -4  -4  -4   1  -4   1   1  -4  -1  -4  -1  -1  -2   5\nG  -4  -4   5  -4   1  -4   1  -4   1  -4  -1  -1  -4  -1  -2  -4\nC  -4  -4  -4   5   1  -4  -4   1  -4   1  -1  -1  -1  -4  -2  -4\nS  -4  -4   1   1  -1  -4  -2  -2  -2  -2  -1  -1  -3  -3  -1  -4\nW   1   1  -4  -4  -4  -1  -2  -2  -2  -2  -3  -3  -1  -1  -1   1\nR   1  -4   1  -4  -2  -2  -1  -4  -2  -2  -3  -1  -3  -1  -1  -4\nY  -4   1  -4   1  -2  -2  -4  -1  -2  -2  -1  -3  -1  -3  -1   1\nK  -4   1   1  -4  -2  -2  -2  -2  -1  -4  -1  -3  -3  -1  -1   1\nM   1  -4  -4   1  -2  -2  -2  -2  -4  -1  -3  -1  -1  -3  -1  -4\nB  -4  -1  -1  -1  -1  -3  -3  -1  -1  -3  -1  -2  -2  -2  -1  -1\nV  -1  -4  -1  -1  -1  -3  -1  -3  -3  -1  -2  -1  -2  -2  -1  -4\nH  -1  -1  -4  -1  -3  -1  -3  -1  -3  -1  -2  -2  -1  -2  -1  -1\nD  -1  -1  -1  -4  -3  -1  -1  -3  -1  -3  -2  -2  -2  -1  -1  -1\nN  -2  -2  -2  -2  -1  -1  -1  -1  -1  -1  -1  -1  -1  -1  -1  -2\nU  -4   5  -4  -4  -4   1  -4   1   1  -4  -1  -4  -1  -1  -2   5";
+	ofstream ofs("EDNAFULL");
+	ofs << to_write << endl;
+	ofs.close();
+}

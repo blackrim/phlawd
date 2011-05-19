@@ -125,6 +125,7 @@ void SQLiteConstructor::run(){
 	//need to store the existing sequences if there are any
 	//TODO: skip the test below for taxa that are already in the file -- add to the exclude names file maybe
 	map<string,string> stored_seqs;
+	write_EDNAFILE();//if it doesn't exist
 	if(updateDB == true){
 		cout << "processing existing seqs" << endl;
 		gifile.open(gin.c_str(),fstream::in);

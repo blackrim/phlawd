@@ -67,6 +67,7 @@ void * SWPS3_Same_seq_pthread_go(void *threadarg){
 	 */
 	vector<int> scores;
 	SBMatrix mat = swps3_readSBMatrix( "EDNAFULL" );
+	//SBMatrix mat = swps3_get_premade_SBMatrix( "EDNAFULL" );
 	for(int i=0;i<known_seqs->size();i++){
 		scores.push_back(get_swps3_score_and_rc_cstyle(mat,&known_seqs->at(i),&known_seqs->at(i)));
 	}
