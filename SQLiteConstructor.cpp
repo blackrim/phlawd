@@ -1229,7 +1229,7 @@ void SQLiteConstructor::reduce_genomes(vector<DBSeq> * keep_seqs, vector<bool> *
 				sc1.push_back(known_seqs->at(maxknown));
 			//}
 			seqwriter.writeFileFromVector(tempfile,sc1);
-			const char * cmd = "mafft --auto TEMPFILES/genome_shrink > TEMPFILES/genome_shrink_aln";
+			const char * cmd = "mafft --thread 2 --auto TEMPFILES/genome_shrink > TEMPFILES/genome_shrink_aln";
 			cout << "aligning" << endl;
 			FILE *fp = popen(cmd, "r" );
 			char buff[1000];

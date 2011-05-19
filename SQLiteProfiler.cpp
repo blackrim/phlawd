@@ -107,6 +107,7 @@ void SQLiteProfiler::prelimalign(){
 				remove(tname.c_str());
 			}
 			standard = true;
+			updatedb = false;
 		}else{//update the profiles
 			standard = false;
 			//files to skip are record.log, and the original alignment files, except for the updated ones
@@ -338,6 +339,10 @@ void SQLiteProfiler::run(){
 			cout<<"profiling"<<endl;
 			profile(numnames,namesnum,numlist);
 		}else{
+			//need to create an empty record file
+			string recordname = profilefoldername+"/record.log";
+			ofstream ofs(recordname.c_str());
+			ofs.close();
 			copy_final_file(file_names[0]);
 		}
 	}else{//updatedb
@@ -1162,7 +1167,11 @@ void SQLiteProfiler::update_profile(){
 			cout << "skipping " << profilerun[i] << endl;
 		}
 	}
-	copy_final_file(profilerun[profilerun.size()-1]);
+	if(profilerun.size() > 0){
+		copy_final_file(profilerun[profilerun.size()-1]);
+	}else{
+		copy_final_file(updatedfiles[0]); //should mean that there is only one file
+	}
 }
 
 /*
