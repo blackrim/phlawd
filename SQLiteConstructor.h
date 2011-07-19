@@ -51,8 +51,10 @@ class SQLiteConstructor {
 		string listfilename;
 		string excludefilename;
 		string exclude_gi_filename;
+		string include_gi_filename;
 		bool onlynamesfromfile;
 		bool excludenamesfromfile;
+		bool includegifromfile;
 		bool excludegifromfile;
 		bool containshigher;
 		bool containswild;
@@ -67,6 +69,7 @@ class SQLiteConstructor {
 		DBSeq add_higher_taxa(string taxon_id,vector<DBSeq> seqs);
 		vector<DBSeq> exclude_names_from_file(vector<DBSeq> seqs);
 		vector<DBSeq> exclude_gis_from_file(vector<DBSeq> seqs);
+		vector<DBSeq> include_gis_from_file(vector<DBSeq> seqs);
 		void first_seq_search_for_gene_left_right(vector<vector<string> >  &);
 		vector<DBSeq> first_get_seqs_for_name_use_left_right(int name_id, vector<vector<string> > & results);
 		vector<double> get_blast_score_and_rc(Sequence inseq1, DBSeq inseq2, bool * rc);
@@ -96,6 +99,7 @@ class SQLiteConstructor {
 		void set_only_names_from_file(string filename, bool containshi, bool containswild);
 		void set_exclude_names_from_file(string filename);
 		void set_exclude_gi_from_file(string filename);
+		void set_include_gi_from_file(string filename);
 		void run();
 		string get_cladename();
 		vector <string> get_search();

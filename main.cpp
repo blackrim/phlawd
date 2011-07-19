@@ -102,6 +102,8 @@ int main(int argc, char* argv[]){
 			string excludelistfile;
 			bool useexclude_gi_listfile = false;
 			string exclude_gi_listfile;
+			bool useinclude_gi_listfile = true;
+			string include_gi_listfile;
 			bool containshigher = false;
 			bool containswild = false;
 			bool useITS = false;
@@ -159,6 +161,9 @@ int main(int argc, char* argv[]){
 				}else if(!strcmp(tokens[0].c_str(),  "excludegilistfile")){
 					exclude_gi_listfile = tokens[1];
 					useexclude_gi_listfile = true;
+				}else if(!strcmp(tokens[0].c_str(),  "includegilistfile")){
+					include_gi_listfile = tokens[1];
+					useinclude_gi_listfile = true;
 				}else if(!strcmp(tokens[0].c_str(),  "ITS")){
 					useITS = true;
 				}else if(!strcmp(tokens[0].c_str(),  "numthreads")){
@@ -202,6 +207,10 @@ int main(int argc, char* argv[]){
 				if(useexclude_gi_listfile == true){
 					cout << "excluding gi's in list file: " << exclude_gi_listfile << endl;
 					a->set_exclude_gi_from_file(exclude_gi_listfile);
+				}
+				if(useinclude_gi_listfile == true){
+					cout << "including gi's in list file: " << include_gi_listfile << endl;
+					a->set_include_gi_from_file(include_gi_listfile);
 				}
 				if(maskurl.size() > 0){
 					cout << "getting genbank mask from: " << maskurl << endl;

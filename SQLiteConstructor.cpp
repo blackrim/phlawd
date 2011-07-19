@@ -115,6 +115,11 @@ void SQLiteConstructor::set_exclude_gi_from_file(string filename){
 	exclude_gi_filename = filename;
 }
 
+void SQLiteConstructor::set_include_gi_from_file(string filename){
+	includegifromfile = true;
+	include_gi_filename = filename;
+}
+
 void SQLiteConstructor::run(){
 	string logn = gene_name;
 	logn.append(".log");
@@ -228,6 +233,12 @@ void SQLiteConstructor::run(){
 	if(excludegifromfile == true){
 		startseqs = exclude_gis_from_file(startseqs);
 		cout << "after excluding gis: " << startseqs.size() << endl;
+	}
+
+	//if including gi's from file
+	if(includegifromfile == true){
+		startseqs = include_gis_from_file(startseqs);
+		cout << "after including gis: " << startseqs.size() << endl;
 	}
 
 	//use blast to idenify seqs and rc
@@ -750,6 +761,34 @@ vector<DBSeq> SQLiteConstructor::exclude_gis_from_file(vector<DBSeq> seqs){
 		string giid = seqs[i].get_gi();
 		int scount = count(gi_ids->begin(),gi_ids->end(),giid);
 		if(scount == 0){
+			seqs_fn.push_back(seqs[i]);
+		}
+	}
+	delete gi_ids;
+	return seqs_fn;
+}
+
+/*
+ * include only gis from file
+ */
+vector <DBSeq> SQLiteConstructor::include_gis_from_file(vector<DBSeq> seqs){
+	vector<string> * gi_ids = new vector<string> ();
+	//read file
+	ifstream ifs(include_gi_filename.c_str());
+	string line;
+	while(getline(ifs,line)){
+		TrimSpaces(line);
+		gi_ids->push_back(line);
+	}
+	cout << gi_ids->size() << " gis in the file" << endl;
+	ifs.close();
+	//end read file
+	vector<DBSeq> seqs_fn;
+	for(int i=0;i<seqs.size();i++){
+		//string giid = seqs[i].get_accession();
+		string giid = seqs[i].get_gi();
+		int scount = count(gi_ids->begin(),gi_ids->end(),giid);
+		if(scount == 1){
 			seqs_fn.push_back(seqs[i]);
 		}
 	}
