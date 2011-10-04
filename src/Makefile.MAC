@@ -2,6 +2,12 @@ CC = g++
 CFLAGS = -msse3 -DSSE2 -O3 -g -w -Wall
 
 CPP_SRCS += \
+sequence.cpp \
+tree.cpp \
+tree_reader.cpp \
+node.cpp \
+tree_utils.cpp \
+fasta_util.cpp \
 DBSeq.cpp \
 SQLiteDBController.cpp \
 SQLiteConstructor.cpp \
@@ -21,6 +27,12 @@ main.cpp \
 utils.cpp 
 
 OBJS += \
+sequence.o \
+tree.o \
+tree_reader.o \
+node.o \
+tree_utils.o \
+fasta_util.o \
 ./DBSeq.o \
 ./SQLiteDBController.o \
 ./SQLiteConstructor.o \
@@ -40,6 +52,12 @@ OBJS += \
 ./utils.o 
 
 CPP_DEPS += \
+sequence.d \
+tree.d \
+tree_reader.d \
+node.d \
+tree_utils.d \
+fasta_util.d \
 ./DBSeq.d \
 ./SQLiteDBController.d \
 ./SQLiteConstructor.d \
@@ -61,37 +79,11 @@ CPP_DEPS += \
 
 # Each subdirectory must supply rules for building sources it contributes
 %.o: %.cpp
-	@echo 'Building file: $<'
-	@echo 'Invoking: GCC C++ Compiler'
 	$(CC) $(CFLAGS) -c -fmessage-length=0 -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -o"$@" "$<"
-	@echo 'Finished building: $<'
-	@echo ' '
 
-
-LIBS := -lbpp-popgen -lbpp-phyl -lbpp-seq -lbpp-numcalc -lbpp-utils -lm -lpthread -lsqlitewrapped -lsqlite3
+LIBS := -lm -lpthread -lsqlitewrapped -lsqlite3
 
 RM := rm -rf
-
-ifneq ($(MAKECMDGOALS),clean)
-ifneq ($(strip $(C++_DEPS)),)
--include $(C++_DEPS)
-endif
-ifneq ($(strip $(CC_DEPS)),)
--include $(CC_DEPS)
-endif
-ifneq ($(strip $(C_DEPS)),)
--include $(C_DEPS)
-endif
-ifneq ($(strip $(CPP_DEPS)),)
--include $(CPP_DEPS)
-endif
-ifneq ($(strip $(CXX_DEPS)),)
--include $(CXX_DEPS)
-endif
-ifneq ($(strip $(C_UPPER_DEPS)),)
--include $(C_UPPER_DEPS)
-endif
-endif
 
 # Add inputs and outputs from these tool invocations to the build variables 
 
@@ -101,13 +93,12 @@ all: PHLAWD
 # Tool invocations
 PHLAWD: $(OBJS) $(USER_OBJS)
 	@echo 'Building target: $@'
-	@echo 'Invoking: C++ Linker'
-	$(CC) -msse3 -DSSE2 -Ldeps/mac -L/usr/local/lib -o "PHLAWD" $(OBJS) $(USER_OBJS) $(LIBS)
+	$(CC) -msse3 -DSSE2 -L../deps/mac -L/usr/local/lib -o "PHLAWD" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
 # Other Targets
 clean:
-	-$(RM) $(OBJS)$(C++_DEPS)$(EXECUTABLES)$(CC_DEPS)$(C_DEPS)$(CPP_DEPS)$(CXX_DEPS)$(C_UPPER_DEPS) PHLAWD
+	-$(RM) *.o *.d
 	-@echo ' '
 
