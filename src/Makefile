@@ -79,7 +79,7 @@ utils.d
 
 # Each subdirectory must supply rules for building sources it contributes
 %.o: ./%.cpp
-	$(CC) $(CFLAGS)  -Ldeps/linux/ -c -fmessage-length=0 -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -o"$@" "$<"
+	$(CC) $(CFLAGS)  -L../deps/linux/ -c -fmessage-length=0 -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -o"$@" "$<"
 
 LIBS := -lm -lsqlitewrapped -lsqlite3
 
