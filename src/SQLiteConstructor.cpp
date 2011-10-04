@@ -403,7 +403,7 @@ int SQLiteConstructor::get_numthreads(){
  * should retrieve all the matches for a sequence based on the description
  * should return the vector of two strings of the ids,taxon_ids in the sequence table
  */
-void SQLiteConstructor::first_seq_search_for_gene_left_right(vector<vector<string> > & retvals{
+void SQLiteConstructor::first_seq_search_for_gene_left_right(vector<vector<string> > & retvals){
     Database conn(db);
     string sql;
     if (search.size() == 1){
@@ -1535,181 +1535,181 @@ void SQLiteConstructor::saturation_tests(vector<string> name_ids, vector<string>
 //	name_ids.push_back(name_id);
 //	names.push_back(clade_name);
 
-	vector<DBSeq> orphan_seqs;
-	vector<bool> orphan_seqs_rc;
-	vector<Sequence> allseqs; 
-	for(int i=0;i<keep_seqs->size();i++){
-		if(keep_rc->at(i) == false){
-			allseqs.push_back(keep_seqs->at(i));
-		}else{
-			Sequence tseqrc;
-			tseqrc.set_id(keep_seqs->at(i).get_id());
-			tseqrc.set_sequence(keep_seqs->at(i).reverse_complement());
-			allseqs.push_back(tseqrc);
-		}
+    vector<DBSeq> orphan_seqs;
+    vector<bool> orphan_seqs_rc;
+    vector<Sequence> allseqs; 
+    for(int i=0;i<keep_seqs->size();i++){
+	if(keep_rc->at(i) == false){
+	    allseqs.push_back(keep_seqs->at(i));
+	}else{
+	    Sequence tseqrc;
+	    tseqrc.set_id(keep_seqs->at(i).get_id());
+	    tseqrc.set_sequence(keep_seqs->at(i).reverse_complement());
+	    allseqs.push_back(tseqrc);
 	}
+    }
 
-	string name;
-	string name_id;
-	while(!names.empty()){
-		name_id = name_ids.back();
-		name_ids.pop_back();
-		name = names.back();
-		names.pop_back();
-		vector<DBSeq> * temp_seqs = new vector<DBSeq>();
-		vector<bool> * temp_rcs = new vector<bool>();
-		temp_seqs->empty();
-		get_seqs_for_names(name_id,keep_seqs,keep_rc,temp_seqs,temp_rcs);
-		if(temp_seqs->size() == 1){
-			/*
-			 * use to make an orphan but rather just make a singleton file
-			 */
-			cout << name << " " << temp_seqs->size() << endl;
-			//make file
-			FastaUtil seqwriter1;
-			vector<Sequence> sc1;
-			for(int i=0;i<temp_seqs->size();i++){
-				//need to implement a better way, but this is it for now
-				int eraseint=0;
-				for(int zz=0;zz<allseqs.size();zz++){
-					if (temp_seqs->at(i).get_id() == allseqs[zz].get_id()){
-						eraseint = zz;
-						break;
-					}
-				}
-				allseqs.erase(allseqs.begin()+eraseint);
-				if(temp_rcs->at(i) == false)
-					sc1.push_back(temp_seqs->at(i));
-				else{
-					Sequence tseqrc;
-					tseqrc.set_id(temp_seqs->at(i).get_id());
-					tseqrc.set_sequence(temp_seqs->at(i).reverse_complement());
-					sc1.push_back(tseqrc);
-				}
-			}
-			string fn1 = gene_name;
-			fn1 += "/" + name;
-			seqwriter1.writeFileFromVector(fn1,sc1);
-		}else if (temp_seqs->size() == 0){
-			continue;
-		}else{
-			cout << name << " " << temp_seqs->size() << endl;
-			double mad;
-			if(temp_seqs->size() > 2){
-				//PAU"diversity: "P
-				if (temp_seqs->size() < 3000){
-					make_mafft_multiple_alignment(temp_seqs,temp_rcs);
-					//mad = calculate_MAD_PAUP();
-					mad = calculate_MAD_quicktree();
-				}else if(temp_seqs->size() < 10000){
-					//need to make this happen 10 tens and average
-					mad = 0;
-					for (int i=0;i<10;i++)
-						//mad = mad + (calculate_MAD_PAUP_sample(temp_seqs,temp_rcs)/10.0);
-						mad = mad + (calculate_MAD_quicktree_sample(temp_seqs,temp_rcs)/10.0);
-					mad = mad * 2; //make sure is conservative
-				}else{
-					mad = mad_cutoff + 1;//make sure it gets broken up
-				}
-			}else{
-				mad = 0;
-			}
-			cout << "mad: "<<mad << endl;
-			//if mad scores are good, store result
-			//write to file and to sqlite database
-			if (mad <= mad_cutoff){
-				FastaUtil seqwriter1;
-				vector<Sequence> sc1; 
-				for(int i=0;i<temp_seqs->size();i++){
-					//need to implement a better way, but this is it for now
-					int eraseint=0;
-					for(int zz=0;zz<allseqs.size();zz++){
-						if (temp_seqs->at(i).get_id() == allseqs[zz].get_id()){
-							eraseint = zz;
-							break;
-						}
-					}
-					allseqs.erase(allseqs.begin()+eraseint);
-					if(temp_rcs->at(i) == false){
-						sc1.push_back(temp_seqs->at(i));
-					}else{
-						Sequence tseqrc;
-						tseqrc.set_id(temp_seqs->at(i).get_id());
-						tseqrc.set_sequence(temp_seqs->at(i).reverse_complement());
-						sc1.push_back(tseqrc);
-					}
-				}
-				string fn1 = gene_name;
-				fn1 += "/" + name;
-				seqwriter1.writeFileFromVector(fn1,sc1);
-				//SQLITE database storing
-
-			}
-			//if mad scores are bad push the children into names
-			else{
-				vector<string>child_ids;
-				Database conn(db);
-				string sql = "SELECT ncbi_id FROM taxonomy WHERE parent_ncbi_id = ";
-				sql += name_id;
-				sql += " and name_class = 'scientific name';";
-				Query query(conn);
-				query.get_result(sql);
-				//StoreQueryResult R = query.store();
-				while(query.fetch_row()){
-					string sql2 = "SELECT name,name_class FROM taxonomy WHERE ncbi_id = ";
-					string resstr = to_string(query.getval());
-					sql2 += resstr;
-					sql2 += " and name_class = 'scientific name';";
-					Query query2(conn);
-					query2.get_result(sql2);
-					//StoreQueryResult R2 = query2.store();
-					while(query2.fetch_row()){
-						string tn = query2.getstr();
-						string cln = query2.getstr();
-						if(cln.find("scientific")!=string::npos && tn.find("environmental")==string::npos && cln.find("environmental")==string::npos){
-							string tid = resstr;
-							name_ids.push_back(tid);
-							names.push_back(tn);
-						}
-					}
-					query2.free_result();
-				}
-				query.free_result();
-			}
+    string name;
+    string name_id;
+    while(!names.empty()){
+	name_id = name_ids.back();
+	name_ids.pop_back();
+	name = names.back();
+	names.pop_back();
+	vector<DBSeq> * temp_seqs = new vector<DBSeq>();
+	vector<bool> * temp_rcs = new vector<bool>();
+	temp_seqs->empty();
+	get_seqs_for_names(name_id,keep_seqs,keep_rc,temp_seqs,temp_rcs);
+	if(temp_seqs->size() == 1){
+	    /*
+	     * use to make an orphan but rather just make a singleton file
+	     */
+	    cout << name << " " << temp_seqs->size() << endl;
+	    //make file
+	    FastaUtil seqwriter1;
+	    vector<Sequence> sc1;
+	    for(int i=0;i<temp_seqs->size();i++){
+		//need to implement a better way, but this is it for now
+		int eraseint=0;
+		for(int zz=0;zz<allseqs.size();zz++){
+		    if (temp_seqs->at(i).get_id() == allseqs[zz].get_id()){
+			eraseint = zz;
+			break;
+		    }
 		}
-		delete (temp_seqs);
-		delete (temp_rcs);
-	}
-	/*
-	 * deal with the singletons
-	 */
-	cout << "leftovers: " << allseqs.size() << endl;
-	for(int i=0;i<allseqs.size();i++){
-		Database conn(db);
+		allseqs.erase(allseqs.begin()+eraseint);
+		if(temp_rcs->at(i) == false)
+		    sc1.push_back(temp_seqs->at(i));
+		else{
+		    Sequence tseqrc;
+		    tseqrc.set_id(temp_seqs->at(i).get_id());
+		    tseqrc.set_sequence(temp_seqs->at(i).reverse_complement());
+		    sc1.push_back(tseqrc);
+		}
+	    }
+	    string fn1 = gene_name;
+	    fn1 += "/" + name;
+	    seqwriter1.writeFileFromVector(fn1,sc1);
+	}else if (temp_seqs->size() == 0){
+	    continue;
+	}else{
+	    cout << name << " " << temp_seqs->size() << endl;
+	    double mad;
+	    if(temp_seqs->size() > 2){
+		//PAU"diversity: "P
+		if (temp_seqs->size() < 3000){
+		    make_mafft_multiple_alignment(temp_seqs,temp_rcs);
+		    //mad = calculate_MAD_PAUP();
+		    mad = calculate_MAD_quicktree();
+		}else if(temp_seqs->size() < 10000){
+		    //need to make this happen 10 tens and average
+		    mad = 0;
+		    for (int i=0;i<10;i++)
+			//mad = mad + (calculate_MAD_PAUP_sample(temp_seqs,temp_rcs)/10.0);
+			mad = mad + (calculate_MAD_quicktree_sample(temp_seqs,temp_rcs)/10.0);
+		    mad = mad * 2; //make sure is conservative
+		}else{
+		    mad = mad_cutoff + 1;//make sure it gets broken up
+		}
+	    }else{
+		mad = 0;
+	    }
+	    cout << "mad: "<<mad << endl;
+	    //if mad scores are good, store result
+	    //write to file and to sqlite database
+	    if (mad <= mad_cutoff){
+		FastaUtil seqwriter1;
 		vector<Sequence> sc1; 
-		sc1.push_back(allseqs.at(i));
-		string name;
-		string sql = "SELECT name,name_class FROM taxonomy WHERE ncbi_id = ";
-		sql += allseqs.at(i).get_id();
-		cout <<"-"<<allseqs.at(i).get_id()<<endl;
+		for(int i=0;i<temp_seqs->size();i++){
+		    //need to implement a better way, but this is it for now
+		    int eraseint=0;
+		    for(int zz=0;zz<allseqs.size();zz++){
+			if (temp_seqs->at(i).get_id() == allseqs[zz].get_id()){
+			    eraseint = zz;
+			    break;
+			}
+		    }
+		    allseqs.erase(allseqs.begin()+eraseint);
+		    if(temp_rcs->at(i) == false){
+			sc1.push_back(temp_seqs->at(i));
+		    }else{
+			Sequence tseqrc;
+			tseqrc.set_id(temp_seqs->at(i).get_id());
+			tseqrc.set_sequence(temp_seqs->at(i).reverse_complement());
+			sc1.push_back(tseqrc);
+		    }
+		}
+		string fn1 = gene_name;
+		fn1 += "/" + name;
+		seqwriter1.writeFileFromVector(fn1,sc1);
+		//SQLITE database storing
+
+	    }
+	    //if mad scores are bad push the children into names
+	    else{
+		vector<string>child_ids;
+		Database conn(db);
+		string sql = "SELECT ncbi_id FROM taxonomy WHERE parent_ncbi_id = ";
+		sql += name_id;
+		sql += " and name_class = 'scientific name';";
 		Query query(conn);
 		query.get_result(sql);
 		//StoreQueryResult R = query.store();
 		while(query.fetch_row()){
-			string tn = query.getstr();
-			string cln = query.getstr();
+		    string sql2 = "SELECT name,name_class FROM taxonomy WHERE ncbi_id = ";
+		    string resstr = to_string(query.getval());
+		    sql2 += resstr;
+		    sql2 += " and name_class = 'scientific name';";
+		    Query query2(conn);
+		    query2.get_result(sql2);
+		    //StoreQueryResult R2 = query2.store();
+		    while(query2.fetch_row()){
+			string tn = query2.getstr();
+			string cln = query2.getstr();
 			if(cln.find("scientific")!=string::npos && tn.find("environmental")==string::npos && cln.find("environmental")==string::npos){
-				string tid = allseqs.at(i).get_id();
-				name = tn;
+			    string tid = resstr;
+			    name_ids.push_back(tid);
+			    names.push_back(tn);
 			}
+		    }
+		    query2.free_result();
 		}
 		query.free_result();
-		cout << name << endl;
-		FastaUtil seqwriter1;
-		string fn1 = gene_name;
-		fn1 += "/" + name;
-		seqwriter1.writeFileFromVector(fn1,sc1);
-	 }
+	    }
+	}
+	delete (temp_seqs);
+	delete (temp_rcs);
+    }
+    /*
+     * deal with the singletons
+     */
+    cout << "leftovers: " << allseqs.size() << endl;
+    for(int i=0;i<allseqs.size();i++){
+	Database conn(db);
+	vector<Sequence> sc1; 
+	sc1.push_back(allseqs.at(i));
+	string name;
+	string sql = "SELECT name,name_class FROM taxonomy WHERE ncbi_id = ";
+	sql += allseqs.at(i).get_id();
+	cout <<"-"<<allseqs.at(i).get_id()<<endl;
+	Query query(conn);
+	query.get_result(sql);
+	//StoreQueryResult R = query.store();
+	while(query.fetch_row()){
+	    string tn = query.getstr();
+	    string cln = query.getstr();
+	    if(cln.find("scientific")!=string::npos && tn.find("environmental")==string::npos && cln.find("environmental")==string::npos){
+		string tid = allseqs.at(i).get_id();
+		name = tn;
+	    }
+	}
+	query.free_result();
+	cout << name << endl;
+	FastaUtil seqwriter1;
+	string fn1 = gene_name;
+	fn1 += "/" + name;
+	seqwriter1.writeFileFromVector(fn1,sc1);
+    }
 }
 
 /*
@@ -1717,12 +1717,12 @@ void SQLiteConstructor::saturation_tests(vector<string> name_ids, vector<string>
  */
 
 void SQLiteConstructor::write_gi_numbers(vector<DBSeq> * dbs){
-	for(int i=0;i<dbs->size();i++){
-		//gifile << dbs->at(i).get_tax_id() << "\t"; //don't need this anymore
-		gifile << dbs->at(i).get_ncbi_taxid() << "\t";
-		//gifile << dbs->at(i).get_accession() << endl;
-		gifile << dbs->at(i).get_gi() << endl;
-	}
+    for(int i=0;i<dbs->size();i++){
+	//gifile << dbs->at(i).get_tax_id() << "\t"; //don't need this anymore
+	gifile << dbs->at(i).get_ncbi_taxid() << "\t";
+	//gifile << dbs->at(i).get_accession() << endl;
+	gifile << dbs->at(i).get_gi() << endl;
+    }
 }
 
 
@@ -1734,24 +1734,24 @@ void SQLiteConstructor::write_gi_numbers(vector<DBSeq> * dbs){
  * all the sequences need to be in the database for this to work
  */
 void SQLiteConstructor::add_seqs_from_file_to_dbseqs_vector(string filename,vector<DBSeq> * keep_seqs, vector<bool> * keep_rc,map<string,string> & taxgimap){
-	FastaUtil fu;
-	vector<Sequence> tseqs;
-	fu.readFile(gene_name+"/"+filename,tseqs);
-	cout << "seqs from " << filename << ": " << tseqs.size() << endl;
-	Database conn(db);
-	for(unsigned int i=0;i<tseqs.size();i++){
-		string ncbi = taxgimap[tseqs[i].get_id()];
-		string sql = "SELECT accession_id,description FROM sequence WHERE identifier = "+ncbi+";";
-		Query query3(conn);
-		query3.get_result(sql);
-		string descr,acc;
-		while(query3.fetch_row()){
-			acc = query3.getstr();
-			descr = query3.getstr();
-		}
-		query3.free_result();
-		DBSeq tseq(tseqs[i].get_id(), tseqs[i].get_sequence(), acc, ncbi, tseqs[i].get_id(), " ", descr);
-		keep_seqs->push_back(tseq);
-		keep_rc->push_back(false);
+    FastaUtil fu;
+    vector<Sequence> tseqs;
+    fu.readFile(gene_name+"/"+filename,tseqs);
+    cout << "seqs from " << filename << ": " << tseqs.size() << endl;
+    Database conn(db);
+    for(unsigned int i=0;i<tseqs.size();i++){
+	string ncbi = taxgimap[tseqs[i].get_id()];
+	string sql = "SELECT accession_id,description FROM sequence WHERE identifier = "+ncbi+";";
+	Query query3(conn);
+	query3.get_result(sql);
+	string descr,acc;
+	while(query3.fetch_row()){
+	    acc = query3.getstr();
+	    descr = query3.getstr();
 	}
+	query3.free_result();
+	DBSeq tseq(tseqs[i].get_id(), tseqs[i].get_sequence(), acc, ncbi, tseqs[i].get_id(), " ", descr);
+	keep_seqs->push_back(tseq);
+	keep_rc->push_back(false);
+    }
 }
