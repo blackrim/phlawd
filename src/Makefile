@@ -93,7 +93,7 @@ all: PHLAWD
 # Tool invocations
 PHLAWD: $(OBJS)
 	@echo 'Building target: $@'
-	$(CC) -msse3 -DSSE2 -Ldeps/linux -o "PHLAWD" $(OBJS) $(LIBS) -lpthread
+	$(CC) -msse3 -DSSE2 -L../deps/linux -o "PHLAWD" $(OBJS) $(LIBS) -lpthread
 	@echo 'Finished building target: $@'
 	@echo ' '
 
