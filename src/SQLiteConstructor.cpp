@@ -109,18 +109,18 @@ void SQLiteConstructor::set_only_names_from_file(string filename, bool containsh
 }
 
 void SQLiteConstructor::set_exclude_names_from_file(string filename){
-	excludenamesfromfile = true;
-	excludefilename = filename;
+    excludenamesfromfile = true;
+    excludefilename = filename;
 }
 
 void SQLiteConstructor::set_exclude_gi_from_file(string filename){
-	excludegifromfile = true;
-	exclude_gi_filename = filename;
+    excludegifromfile = true;
+    exclude_gi_filename = filename;
 }
 
 void SQLiteConstructor::set_include_gi_from_file(string filename){
-	includegifromfile = true;
-	include_gi_filename = filename;
+    includegifromfile = true;
+    include_gi_filename = filename;
 }
 
 void SQLiteConstructor::run(){
@@ -373,31 +373,31 @@ void SQLiteConstructor::run(){
 }
 
 string SQLiteConstructor::get_cladename(){
-	return clade_name;
+    return clade_name;
 }
 
 vector <string> SQLiteConstructor::get_search(){
-	return search;
+    return search;
 }
 
 string SQLiteConstructor::get_genename(){
-	return gene_name;
+    return gene_name;
 }
 
 double SQLiteConstructor::get_madcutoff(){
-	return mad_cutoff;
+    return mad_cutoff;
 }
 
 double SQLiteConstructor::get_coverage(){
-	return coverage;
+    return coverage;
 }
 
 double SQLiteConstructor::get_identity(){
-	return identity;
+    return identity;
 }
 
 int SQLiteConstructor::get_numthreads(){
-	return numthreads;
+    return numthreads;
 }
 
 //private
@@ -705,40 +705,40 @@ DBSeq SQLiteConstructor::add_higher_taxa(string taxon_id,vector<DBSeq> seqs){
  * excluding taxa from sequences
  */
 vector<DBSeq> SQLiteConstructor::exclude_names_from_file(vector<DBSeq> seqs){
-	Database conn(db);
-	vector<string> * taxa =new vector<string>();
-	vector<string> * taxa_ids =new vector<string>();
-	//read file
-	ifstream ifs(excludefilename.c_str());
-	string line;
-	while(getline(ifs,line)){
-		TrimSpaces(line);
-		taxa->push_back(line);
-		string sql = "SELECT ncbi_id FROM taxonomy WHERE name = '"+line+"'";
-		Query query1(conn);
-		query1.get_result(sql);
-		while(query1.fetch_row()){
-			int id;
-			id = query1.getval();
-			taxa_ids->push_back(to_string(id));
-		}
-		query1.free_result();
+    Database conn(db);
+    vector<string> * taxa =new vector<string>();
+    vector<string> * taxa_ids =new vector<string>();
+    //read file
+    ifstream ifs(excludefilename.c_str());
+    string line;
+    while(getline(ifs,line)){
+	TrimSpaces(line);
+	taxa->push_back(line);
+	string sql = "SELECT ncbi_id FROM taxonomy WHERE name = '"+line+"'";
+	Query query1(conn);
+	query1.get_result(sql);
+	while(query1.fetch_row()){
+	    int id;
+	    id = query1.getval();
+	    taxa_ids->push_back(to_string(id));
 	}
-	cout << taxa_ids->size() << " names in the file" << endl;
-	ifs.close();
-	//end read file
-	vector<DBSeq> seqs_fn;
-	for(int i=0;i<seqs.size();i++){
-		//string taxid = seqs[i].get_tax_id();
-		string taxid = seqs[i].get_ncbi_taxid();
-		int scount = count(taxa_ids->begin(),taxa_ids->end(),taxid);
-		if(scount == 0){
-			seqs_fn.push_back(seqs[i]);
-		}
+	query1.free_result();
+    }
+    cout << taxa_ids->size() << " names in the file" << endl;
+    ifs.close();
+    //end read file
+    vector<DBSeq> seqs_fn;
+    for(int i=0;i<seqs.size();i++){
+	//string taxid = seqs[i].get_tax_id();
+	string taxid = seqs[i].get_ncbi_taxid();
+	int scount = count(taxa_ids->begin(),taxa_ids->end(),taxid);
+	if(scount == 0){
+	    seqs_fn.push_back(seqs[i]);
 	}
-	delete taxa;
-	delete taxa_ids;
-	return seqs_fn;
+    }
+    delete taxa;
+    delete taxa_ids;
+    return seqs_fn;
 }
 
 /*
@@ -1011,86 +1011,6 @@ void SQLiteConstructor::get_same_seqs_openmp_SWPS3(vector<DBSeq> & seqs,  vector
     }
 }
 
-void SQLiteConstructor::remove_duplicates(vector<DBSeq> * keep_seqs, vector<bool> * keep_rc){
-    vector<string> ids;
-    vector<string> unique_ids;
-    int mycount;
-
-    for(unsigned int i =0; i<keep_seqs->size(); i++){
-	ids.push_back(keep_seqs->at(i).get_ncbi_taxid());
-	mycount = 0;
-	if(unique_ids.size() > 0){
-	    mycount = (int) count (unique_ids.begin(),unique_ids.end(), keep_seqs->at(i).get_ncbi_taxid());
-	}
-	if(mycount == 0){
-	    unique_ids.push_back(keep_seqs->at(i).get_ncbi_taxid());
-	}
-    }
-    vector<int> remove;
-    for(unsigned int i=0;i<unique_ids.size();i++){
-	mycount = 0;
-	mycount = (int) count (ids.begin(),ids.end(), unique_ids[i]);
-	if(mycount > 1){
-	    vector<int> tremove;
-	    for (int j=0;j<ids.size();j++){
-		if(ids[j] == unique_ids[i]){
-		    remove.push_back(j);
-		    tremove.push_back(j);
-		}
-	    }
-	    int bestid = 0;
-	    int bestcov = 0;
-	    int bestiden = 0;
-	    for (int j=0;j<tremove.size();j++){
-		DBSeq tseq = keep_seqs->at(tremove[j]);
-
-		int maxiden = 0;
-		int maxcov = 0;
-		bool rc = false;
-		for (int k=0;k<known_seqs->size();k++){
-		    bool trc = false;
-		    //vector<double> ret = get_blast_score_and_rc(*known_seqs->at(k), tseq,&trc); //should be pointer?
-		    vector<double> ret = get_blast_score_and_rc_cstyle(known_seqs->at(k), tseq, &trc, 0);
-		    if (ret.size() > 1){
-			/*if (ret[0] >maxiden){
-			  maxiden = ret[0];
-			  }
-			  if (ret[1] > maxcov){ // should these be in the same conditional statement
-			  maxcov = ret[1];
-			  rc = trc;//need to get it somewhere else -- pointer probably
-			  }*/
-			if (ret[0] >maxiden && ret[1] > maxcov){ // should these be in the same conditional statement
-			    maxiden = ret[0];
-			    maxcov = ret[1];
-			    rc = trc;//need to get it somewhere else -- pointer probably
-			}
-
-		    }
-		}
-		if (maxiden >= bestiden && maxcov >= bestcov){
-		    bestid = tremove[j];
-		    bestcov = maxcov;
-		    bestiden = maxiden;
-		}
-
-	    }
-	    vector<int>::iterator it;
-	    it = find(remove.begin(), remove.end(),bestid);
-	    //++it;
-	    remove.erase(it);
-	}
-    }
-    //testin
-    sort(remove.begin(),remove.end());
-    reverse(remove.begin(),remove.end());
-    for(unsigned int i=0;i<remove.size();i++){
-	keep_seqs->erase(keep_seqs->begin()+remove[i]);
-    }
-    for(unsigned int i=0;i<remove.size();i++){
-	keep_rc->erase(keep_rc->begin()+remove[i]);
-    }
-}
-
 void SQLiteConstructor::remove_duplicates_SWPS3(vector<DBSeq> * keep_seqs, vector<bool> * keep_rc){
     vector<string> ids;
     vector<string> unique_ids;
@@ -1340,34 +1260,34 @@ void SQLiteConstructor::get_seqs_for_names(string inname_id, vector<DBSeq> * seq
 }
 
 void SQLiteConstructor::make_mafft_multiple_alignment(vector<DBSeq> * inseqs,vector<bool> * rcs){
-	//make file
-	vector<double> retvalues;
-	FastaUtil seqwriter1;
-	vector<Sequence> sc1;
-	for(unsigned int i=0;i<inseqs->size();i++){
-		if(rcs->at(i) == false){
-			sc1.push_back(inseqs->at(i));
-		}else{
-			Sequence tseqrc;
-			tseqrc.set_id(inseqs->at(i).get_id());
-			tseqrc.set_sequence(inseqs->at(i).reverse_complement());
-			sc1.push_back(tseqrc);
-		}
+    //make file
+    vector<double> retvalues;
+    FastaUtil seqwriter1;
+    vector<Sequence> sc1;
+    for(unsigned int i=0;i<inseqs->size();i++){
+	if(rcs->at(i) == false){
+	    sc1.push_back(inseqs->at(i));
+	}else{
+	    Sequence tseqrc;
+	    tseqrc.set_id(inseqs->at(i).get_id());
+	    tseqrc.set_sequence(inseqs->at(i).reverse_complement());
+	    sc1.push_back(tseqrc);
 	}
-	const string fn1 = "TEMPFILES/tempfile";
-	seqwriter1.writeFileFromVector(fn1,sc1);
+    }
+    const string fn1 = "TEMPFILES/tempfile";
+    seqwriter1.writeFileFromVector(fn1,sc1);
 
-	//make alignment
-	//const char * cmd = "mafft --thread 2 --auto TEMPFILES/tempfile > TEMPFILES/outfile";
-	string cmd = "mafft --thread " + to_string(omp_get_num_threads());
-	cmd += " --auto TEMPFILES/tempfile > TEMPFILES/outfile";
-	cout << "aligning" << endl;
-	FILE *fp = popen(cmd.c_str(), "r" );
-	char buff[1000];
-	while ( fgets( buff, sizeof buff, fp ) != NULL ) {//doesn't exit out
-		string line(buff);
-	}
-	pclose( fp );
+    //make alignment
+    //const char * cmd = "mafft --thread 2 --auto TEMPFILES/tempfile > TEMPFILES/outfile";
+    string cmd = "mafft --thread " + to_string(omp_get_num_threads());
+    cmd += " --auto TEMPFILES/tempfile > TEMPFILES/outfile";
+    cout << "aligning" << endl;
+    FILE *fp = popen(cmd.c_str(), "r" );
+    char buff[1000];
+    while ( fgets( buff, sizeof buff, fp ) != NULL ) {//doesn't exit out
+	string line(buff);
+    }
+    pclose( fp );
 }
 /*
  * should replace paup
@@ -1375,92 +1295,92 @@ void SQLiteConstructor::make_mafft_multiple_alignment(vector<DBSeq> * inseqs,vec
  */
 
 double SQLiteConstructor::calculate_MAD_quicktree(){
-	const char * phcmd = "phyutility -concat -in TEMPFILES/outfile -out TEMPFILES/outfile.nex";
-	FILE *phfp = popen(phcmd, "r" );
-	pclose( phfp );
+    const char * phcmd = "phyutility -concat -in TEMPFILES/outfile -out TEMPFILES/outfile.nex";
+    FILE *phfp = popen(phcmd, "r" );
+    pclose( phfp );
 
-	ifstream infile;
-	ofstream outfile;
-	infile.open ("TEMPFILES/outfile.nex",ios::in);
-	outfile.open ("TEMPFILES/outfile.stoc",ios::out);
-	bool begin = false;
-	bool end = false;
-	string line;
-	/*
-	 * convert to stockholm format
-	 */
-	while(getline(infile,line)){
-		if (line.find("MATRIX") != string::npos){
-			begin = true;
-		}else if ((begin == true && end == false) && line.find_first_of(";") != string::npos){
-			end = true;
-		}else if (begin == true && end == false){
-			std::string::size_type begin = line.find_first_not_of("\t");
-			//std::string::size_type end   = line.find_last_not_of("\t");
-			std::string::size_type end = line.size();
-			std::string trimmed = line.substr(begin, end-begin + 1);
-			outfile << trimmed << endl;
+    ifstream infile;
+    ofstream outfile;
+    infile.open ("TEMPFILES/outfile.nex",ios::in);
+    outfile.open ("TEMPFILES/outfile.stoc",ios::out);
+    bool begin = false;
+    bool end = false;
+    string line;
+    /*
+     * convert to stockholm format
+     */
+    while(getline(infile,line)){
+	if (line.find("MATRIX") != string::npos){
+	    begin = true;
+	}else if ((begin == true && end == false) && line.find_first_of(";") != string::npos){
+	    end = true;
+	}else if (begin == true && end == false){
+	    std::string::size_type begin = line.find_first_not_of("\t");
+	    //std::string::size_type end   = line.find_last_not_of("\t");
+	    std::string::size_type end = line.size();
+	    std::string trimmed = line.substr(begin, end-begin + 1);
+	    outfile << trimmed << endl;
+	}
+    }
+    infile.close();
+    outfile.close();
+
+    const char * cmd = "quicktree -in a -out m TEMPFILES/outfile.stoc > TEMPFILES/dist";
+    cout << "calculating distance" << endl;
+    FILE *fp = popen(cmd, "r" );
+    char buff[1000];
+    while ( fgets( buff, sizeof buff, fp ) != NULL ) {//doesn't exit out
+	string line(buff);
+    }
+    pclose( fp );
+
+    vector<double> p_values;
+    vector<double> jc_values;
+
+    /*
+     * read the matrix
+     */
+    //string line;
+    ifstream pfile ("TEMPFILES/dist");
+    vector<string> tokens;
+    int nspecies = 0;
+    int curspecies = 0;
+    begin = true;
+    if (pfile.is_open()){
+	while (! pfile.eof() ){
+	    getline (pfile,line);
+	    string del("\t ");
+	    tokens.clear();
+	    Tokenize(line, tokens, del);
+	    if(tokens.size() > 1){
+		double n1;
+		for(int j = curspecies; j < nspecies-1;j++){
+		    n1 = atof(tokens.at(j+2).c_str());
+		    p_values.push_back(n1);
+		    //jc will be (-(3./4.)*math.log(1-(4./3.)*p))
+		    jc_values.push_back((-(3./4.)*log(1-(4./3.)*n1)));
 		}
+		curspecies += 1;
+	    }else if (begin == true){
+		begin = false;
+		TrimSpaces(line);
+		nspecies = atoi(line.c_str());
+	    }
 	}
-	infile.close();
-	outfile.close();
-
-	const char * cmd = "quicktree -in a -out m TEMPFILES/outfile.stoc > TEMPFILES/dist";
-	cout << "calculating distance" << endl;
-	FILE *fp = popen(cmd, "r" );
-	char buff[1000];
-	while ( fgets( buff, sizeof buff, fp ) != NULL ) {//doesn't exit out
-		string line(buff);
-	}
-	pclose( fp );
-
-	vector<double> p_values;
-	vector<double> jc_values;
-
-	/*
-	 * read the matrix
-	 */
-	//string line;
-	ifstream pfile ("TEMPFILES/dist");
-	vector<string> tokens;
-	int nspecies = 0;
-	int curspecies = 0;
-	begin = true;
-	if (pfile.is_open()){
-		while (! pfile.eof() ){
-			getline (pfile,line);
-			string del("\t ");
-			tokens.clear();
-			Tokenize(line, tokens, del);
-			if(tokens.size() > 1){
-				double n1;
-				for(int j = curspecies; j < nspecies-1;j++){
-						n1 = atof(tokens.at(j+2).c_str());
-						p_values.push_back(n1);
-						//jc will be (-(3./4.)*math.log(1-(4./3.)*p))
-						jc_values.push_back((-(3./4.)*log(1-(4./3.)*n1)));
-				}
-				curspecies += 1;
-			}else if (begin == true){
-				begin = false;
-				TrimSpaces(line);
-				nspecies = atoi(line.c_str());
-			}
-		}
-		pfile.close();
-	}
-	vector<double>all_abs;
-	double med = 0;
-	for (unsigned int i=0;i<p_values.size();i++){
-		all_abs.push_back(fabs(jc_values[i]-p_values[i]));
-	}
-	med = median(all_abs);
-	cout << "median: " << med << endl;
-	vector<double> all_meds;
-	for (unsigned int i=0;i<p_values.size();i++){
-		all_meds.push_back(fabs(med-all_abs[i]));
-	}
-	return 1.4826*(median(all_meds));
+	pfile.close();
+    }
+    vector<double>all_abs;
+    double med = 0;
+    for (unsigned int i=0;i<p_values.size();i++){
+	all_abs.push_back(fabs(jc_values[i]-p_values[i]));
+    }
+    med = median(all_abs);
+    cout << "median: " << med << endl;
+    vector<double> all_meds;
+    for (unsigned int i=0;i<p_values.size();i++){
+	all_meds.push_back(fabs(med-all_abs[i]));
+    }
+    return 1.4826*(median(all_meds));
 }
 
 double SQLiteConstructor::calculate_MAD_quicktree_sample(vector<DBSeq> * inseqs,vector<bool> * rcs){
@@ -1730,6 +1650,9 @@ void SQLiteConstructor::add_seqs_from_file_to_dbseqs_vector(string filename,vect
 }
 
 
+//DEPRECATED!!!!
+//THESE ARE HERE FOR HISTORICAL REASONS
+
 /*
  * things that are basically deprecated but keeping them just in case
  */
@@ -1832,4 +1755,84 @@ void SQLiteConstructor::get_same_seqs_pthreads_SWPS3(vector<DBSeq> seqs,  vector
     }
     loggingfile.close();
     //end the logging
+}
+
+void SQLiteConstructor::remove_duplicates(vector<DBSeq> * keep_seqs, vector<bool> * keep_rc){
+    vector<string> ids;
+    vector<string> unique_ids;
+    int mycount;
+
+    for(unsigned int i =0; i<keep_seqs->size(); i++){
+	ids.push_back(keep_seqs->at(i).get_ncbi_taxid());
+	mycount = 0;
+	if(unique_ids.size() > 0){
+	    mycount = (int) count (unique_ids.begin(),unique_ids.end(), keep_seqs->at(i).get_ncbi_taxid());
+	}
+	if(mycount == 0){
+	    unique_ids.push_back(keep_seqs->at(i).get_ncbi_taxid());
+	}
+    }
+    vector<int> remove;
+    for(unsigned int i=0;i<unique_ids.size();i++){
+	mycount = 0;
+	mycount = (int) count (ids.begin(),ids.end(), unique_ids[i]);
+	if(mycount > 1){
+	    vector<int> tremove;
+	    for (int j=0;j<ids.size();j++){
+		if(ids[j] == unique_ids[i]){
+		    remove.push_back(j);
+		    tremove.push_back(j);
+		}
+	    }
+	    int bestid = 0;
+	    int bestcov = 0;
+	    int bestiden = 0;
+	    for (int j=0;j<tremove.size();j++){
+		DBSeq tseq = keep_seqs->at(tremove[j]);
+
+		int maxiden = 0;
+		int maxcov = 0;
+		bool rc = false;
+		for (int k=0;k<known_seqs->size();k++){
+		    bool trc = false;
+		    //vector<double> ret = get_blast_score_and_rc(*known_seqs->at(k), tseq,&trc); //should be pointer?
+		    vector<double> ret = get_blast_score_and_rc_cstyle(known_seqs->at(k), tseq, &trc, 0);
+		    if (ret.size() > 1){
+			/*if (ret[0] >maxiden){
+			  maxiden = ret[0];
+			  }
+			  if (ret[1] > maxcov){ // should these be in the same conditional statement
+			  maxcov = ret[1];
+			  rc = trc;//need to get it somewhere else -- pointer probably
+			  }*/
+			if (ret[0] >maxiden && ret[1] > maxcov){ // should these be in the same conditional statement
+			    maxiden = ret[0];
+			    maxcov = ret[1];
+			    rc = trc;//need to get it somewhere else -- pointer probably
+			}
+
+		    }
+		}
+		if (maxiden >= bestiden && maxcov >= bestcov){
+		    bestid = tremove[j];
+		    bestcov = maxcov;
+		    bestiden = maxiden;
+		}
+
+	    }
+	    vector<int>::iterator it;
+	    it = find(remove.begin(), remove.end(),bestid);
+	    //++it;
+	    remove.erase(it);
+	}
+    }
+    //testin
+    sort(remove.begin(),remove.end());
+    reverse(remove.begin(),remove.end());
+    for(unsigned int i=0;i<remove.size();i++){
+	keep_seqs->erase(keep_seqs->begin()+remove[i]);
+    }
+    for(unsigned int i=0;i<remove.size();i++){
+	keep_rc->erase(keep_rc->begin()+remove[i]);
+    }
 }
