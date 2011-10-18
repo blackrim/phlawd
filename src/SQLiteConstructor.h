@@ -76,6 +76,7 @@ private:
     void get_same_seqs(vector<DBSeq> seqs, vector <DBSeq> * keep_seqs, vector<bool> * keep_rc);
     void get_same_seqs_pthreads(vector<DBSeq> seqs, vector <DBSeq> * keep_seqs, vector<bool> * keep_rc);
     void get_same_seqs_pthreads_SWPS3(vector<DBSeq> seqs,  vector<DBSeq> * keep_seqs, vector<bool> * keep_rc);
+    void get_same_seqs_openmp_SWPS3(vector<DBSeq> & seqs,  vector<DBSeq> * keep_seqs, vector<bool> * keep_rc);
     void remove_duplicates(vector<DBSeq> * keep_seqs, vector<bool> * keep_rc);
     void remove_duplicates_SWPS3(vector<DBSeq> * keep_seqs, vector<bool> * keep_rc);
     void reduce_genomes(vector<DBSeq> * keep_seqs, vector<bool> * keep_rc);

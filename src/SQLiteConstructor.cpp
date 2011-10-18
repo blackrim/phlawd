@@ -41,8 +41,11 @@
 #include <time.h>
 #include <math.h>
 #include <stdio.h>
+#include <limits>
 
 using namespace std;
+
+#include "omp.h"
 
 #include "libsqlitewrapped.h"
 
@@ -270,7 +273,7 @@ void SQLiteConstructor::run(){
     for(int i=0;i<keep_rc->size();i++){
 	cout << keep_rc->at(i);
     }cout << endl;
-
+    exit(0);
     /*
      * reduce genome sequences
      */
@@ -965,207 +968,47 @@ void SQLiteConstructor::get_same_seqs_pthreads(vector<DBSeq> seqs,  vector<DBSeq
     }
 }
 
-void SQLiteConstructor::get_same_seqs_pthreads_SWPS3(vector<DBSeq> seqs,  vector<DBSeq> * keep_seqs, vector<bool> * keep_rc){
-    //vector<DBSeq> keep_seqs;
-    //vector<DBSeq> keep_rc;
-
-    /*
-     * begin the parallelization here
-     */
-    //split the seqs into the num of threads
-    //vector<Same_seq_pthread_storage> storage;
-
-    struct SWPS3_thread_data thread_data_array[numthreads];
-
-    for (int i=0;i<numthreads; i++){
-	vector <DBSeq> st_seqs;
-	if((i+1) < numthreads){
-	    for(unsigned int j=(i*(seqs.size()/numthreads));j<((seqs.size()/numthreads))*(i+1);j++){
-		//for(int j=(i*(seqs.size()/numthreads));j<100;j++){
-		st_seqs.push_back(seqs[j]);
-	    }
-	}else{//last one
-	    for(unsigned int j=(i*(seqs.size()/numthreads));j<seqs.size();j++){
-		//for(int j=(i*(seqs.size()/numthreads));j<100;j++){
-		st_seqs.push_back(seqs[j]);
-	    }
-	}
-	cout << "splitting: " << st_seqs.size() << endl;
-	//Same_seq_pthread_storage temp (st_seqs,coverage,identity);
-	//storage.push_back(temp);
-	thread_data_array[i].thread_id = i;
-	thread_data_array[i].seqs = st_seqs;
-	thread_data_array[i].identity = identity;
-	thread_data_array[i].reports = 100;
-	thread_data_array[i].known_seqs = known_seqs;
-	vector<DBSeq> keep_seqs1;
-	vector<bool> keep_rc1;
-	thread_data_array[i].keep_seqs = keep_seqs1;
-	thread_data_array[i].keep_rc = keep_rc1;
-	map<string,double> lose_seqs1;
-	vector<bool> lose_rc1;
-	map<string,double> keep_seq_scores1;
-	thread_data_array[i].lose_seqs = lose_seqs1;
-	thread_data_array[i].lose_rc = lose_rc1;
-	thread_data_array[i].keep_seq_scores = keep_seq_scores1;
-    }
-    pthread_t threads[numthreads];
-    void *status;
-    int rc;
-    pthread_attr_t attr;
-    pthread_attr_init(&attr);
-    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
-    for(int i=0; i <numthreads; i++){
-	cout << "thread: " << i <<endl;
-	rc = pthread_create(&threads[i], &attr, SWPS3_Same_seq_pthread_go, (void *) &thread_data_array[i]);
-	if (rc){
-	    printf("ERROR; return code from pthread_create() is %d\n", rc);
-	    exit(-1);
-	}
-    }
-    pthread_attr_destroy(&attr);
-    for(int i=0;i<numthreads; i++){
-	cout << "joining: " << i << endl;
-	pthread_join( threads[i], &status);
-	if (rc){
-	    printf("ERROR; return code from pthread_join() is %d\n", rc);
-	    exit(-1);
-	}
-	printf("Completed join with thread %d status= %ld\n",i, (long)status);
-    }
-    /*
-     * bring em back and combine for keep_seqs and keep_rc
-     */
-
-    for (int i=0;i<numthreads; i++){
-	for(int j=0;j<thread_data_array[i].keep_seqs.size();j++){
-	    keep_seqs->push_back(thread_data_array[i].keep_seqs[j]);
-	    keep_rc->push_back(thread_data_array[i].keep_rc[j]);
-	}
-    }
-
-    //logging file for sequences that don't make it
-    ofstream loggingfile;
-    loggingfile.open("seq_bad_scores.log",ios::out);
-    for(int i=0;i<numthreads;i++){
-	map<string,double>::iterator it;
-	for(it = thread_data_array[i].lose_seqs.begin();it != thread_data_array[i].lose_seqs.end();it++){
-	    loggingfile << (*it).first << "\t" << (*it).second << endl;
-	}	
-    }
-    loggingfile.close();
-    loggingfile.open("seq_good_scores.log",ios::out);
-    for(int i=0;i<numthreads;i++){
-	map<string,double>::iterator it;
-	for(it = thread_data_array[i].keep_seq_scores.begin();it != thread_data_array[i].keep_seq_scores.end();it++){
-	    loggingfile << (*it).first << "\t" << (*it).second << endl;
-	}	
-    }
-    loggingfile.close();
-    //end the logging
-}
-
 /*
  * OPENMP version
  */
-void SQLiteConstructor::get_same_seqs_openmp_SWPS3(vector<DBSeq> seqs,  vector<DBSeq> * keep_seqs, vector<bool> * keep_rc){
-    //vector<DBSeq> keep_seqs;
-    //vector<DBSeq> keep_rc;
-
-    /*
-     * begin the parallelization here
-     */
-    //split the seqs into the num of threads
-    //vector<Same_seq_pthread_storage> storage;
-
-    struct SWPS3_thread_data thread_data_array[numthreads];
-
-    for (int i=0;i<numthreads; i++){
-	vector <DBSeq> st_seqs;
-	if((i+1) < numthreads){
-	    for(unsigned int j=(i*(seqs.size()/numthreads));j<((seqs.size()/numthreads))*(i+1);j++){
-		//for(int j=(i*(seqs.size()/numthreads));j<100;j++){
-		st_seqs.push_back(seqs[j]);
+void SQLiteConstructor::get_same_seqs_openmp_SWPS3(vector<DBSeq> & seqs,  vector<DBSeq> * keep_seqs, vector<bool> * keep_rc){
+    vector<int> known_scores;
+    SBMatrix mat = swps3_readSBMatrix( "EDNAFULL" );
+    //SBMatrix mat = swps3_get_premade_SBMatrix( "EDNAFULL" );
+    for(int i=0;i<known_seqs->size();i++){
+	known_scores.push_back(get_swps3_score_and_rc_cstyle(mat,&known_seqs->at(i),&known_seqs->at(i)));
+    }
+    map<DBSeq*,bool> keep_seqs_rc_map;
+#pragma omp parallel for shared(keep_seqs_rc_map)
+    for (int i=0;i<seqs.size();i++){
+	double maxide = 0;
+	bool rc = false;
+	for (int j=0;j<known_seqs->size();j++){
+	    bool trc = false;
+	    int ret = get_swps3_score_and_rc_cstyle(mat,&known_seqs->at(j), &seqs[i]);
+	    double tsc = double(ret)/double(known_scores[j]);
+	    seqs[i].perm_reverse_complement();
+	    int retrc = get_swps3_score_and_rc_cstyle(mat,&known_seqs->at(j), &seqs[i]);
+	    seqs[i].perm_reverse_complement();
+	    //cout <<i << " " << j << " " << ret << " " << retrc << " " << known_scores[j] << " " <<  tsc << endl;
+	    if(retrc > ret){
+		trc = true;
+		tsc = double(retrc)/double(known_scores[j]);
 	    }
-	}else{//last one
-	    for(unsigned int j=(i*(seqs.size()/numthreads));j<seqs.size();j++){
-		//for(int j=(i*(seqs.size()/numthreads));j<100;j++){
-		st_seqs.push_back(seqs[j]);
+	    if (tsc > maxide && std::numeric_limits<double>::infinity() != tsc){
+		maxide = tsc;
+		rc = trc;
 	    }
 	}
-	cout << "splitting: " << st_seqs.size() << endl;
-	//Same_seq_pthread_storage temp (st_seqs,coverage,identity);
-	//storage.push_back(temp);
-	thread_data_array[i].thread_id = i;
-	thread_data_array[i].seqs = st_seqs;
-	thread_data_array[i].identity = identity;
-	thread_data_array[i].reports = 100;
-	thread_data_array[i].known_seqs = known_seqs;
-	vector<DBSeq> keep_seqs1;
-	vector<bool> keep_rc1;
-	thread_data_array[i].keep_seqs = keep_seqs1;
-	thread_data_array[i].keep_rc = keep_rc1;
-	map<string,double> lose_seqs1;
-	vector<bool> lose_rc1;
-	map<string,double> keep_seq_scores1;
-	thread_data_array[i].lose_seqs = lose_seqs1;
-	thread_data_array[i].lose_rc = lose_rc1;
-	thread_data_array[i].keep_seq_scores = keep_seq_scores1;
-    }
-    pthread_t threads[numthreads];
-    void *status;
-    int rc;
-    pthread_attr_t attr;
-    pthread_attr_init(&attr);
-    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
-    for(int i=0; i <numthreads; i++){
-	cout << "thread: " << i <<endl;
-	rc = pthread_create(&threads[i], &attr, SWPS3_Same_seq_pthread_go, (void *) &thread_data_array[i]);
-	if (rc){
-	    printf("ERROR; return code from pthread_create() is %d\n", rc);
-	    exit(-1);
+	if (maxide >= identity){
+	    keep_seqs_rc_map[&seqs[i]] = rc;
 	}
     }
-    pthread_attr_destroy(&attr);
-    for(int i=0;i<numthreads; i++){
-	cout << "joining: " << i << endl;
-	pthread_join( threads[i], &status);
-	if (rc){
-	    printf("ERROR; return code from pthread_join() is %d\n", rc);
-	    exit(-1);
-	}
-	printf("Completed join with thread %d status= %ld\n",i, (long)status);
+    map<DBSeq*,bool>::iterator it;
+    for(it = keep_seqs_rc_map.begin(); it != keep_seqs_rc_map.end(); it++){
+	keep_seqs->push_back(*(*it).first);
+	keep_rc->push_back((*it).second);
     }
-    /*
-     * bring em back and combine for keep_seqs and keep_rc
-     */
-
-    for (int i=0;i<numthreads; i++){
-	for(int j=0;j<thread_data_array[i].keep_seqs.size();j++){
-	    keep_seqs->push_back(thread_data_array[i].keep_seqs[j]);
-	    keep_rc->push_back(thread_data_array[i].keep_rc[j]);
-	}
-    }
-
-    //logging file for sequences that don't make it
-    ofstream loggingfile;
-    loggingfile.open("seq_bad_scores.log",ios::out);
-    for(int i=0;i<numthreads;i++){
-	map<string,double>::iterator it;
-	for(it = thread_data_array[i].lose_seqs.begin();it != thread_data_array[i].lose_seqs.end();it++){
-	    loggingfile << (*it).first << "\t" << (*it).second << endl;
-	}	
-    }
-    loggingfile.close();
-    loggingfile.open("seq_good_scores.log",ios::out);
-    for(int i=0;i<numthreads;i++){
-	map<string,double>::iterator it;
-	for(it = thread_data_array[i].keep_seq_scores.begin();it != thread_data_array[i].keep_seq_scores.end();it++){
-	    loggingfile << (*it).first << "\t" << (*it).second << endl;
-	}	
-    }
-    loggingfile.close();
-    //end the logging
 }
 
 void SQLiteConstructor::remove_duplicates(vector<DBSeq> * keep_seqs, vector<bool> * keep_rc){
@@ -1345,88 +1188,88 @@ void SQLiteConstructor::remove_duplicates_SWPS3(vector<DBSeq> * keep_seqs, vecto
 }
 
 void SQLiteConstructor::reduce_genomes(vector<DBSeq> * keep_seqs, vector<bool> * keep_rc){
-	/*
-	 * get the best score for each known seq
-	 */
-	vector<int> scores;
-	SBMatrix mat = swps3_readSBMatrix( "EDNAFULL" );
-	for(int j=0;j<known_seqs->size();j++){
-		scores.push_back(get_swps3_score_and_rc_cstyle(mat,&known_seqs->at(j),&known_seqs->at(j)));
-	}
-	for(unsigned int i =0; i<keep_seqs->size(); i++){
-		if(keep_seqs->at(i).get_sequence().size() > 10000){
-			cout << "shrinking a genome: "<< keep_seqs->at(i).get_id() << endl;
-			DBSeq tseq = keep_seqs->at(i);
-			double maxiden = 0;
-			bool rc = false;
-			int maxknown = 0;
-			for (int j=0;j<known_seqs->size();j++){
-				bool trc = false;
-				int ret = get_swps3_score_and_rc_cstyle(mat,&known_seqs->at(j), & tseq);
-				double tsc = double(ret)/double(scores[j]);
-				Sequence tseqrc;
-				tseqrc.set_id(tseq.get_id());
-				tseqrc.set_sequence(tseq.reverse_complement());
-				int retrc = get_swps3_score_and_rc_cstyle(mat,&known_seqs->at(j), &tseqrc);
-				if(retrc > ret){
-					trc = true;
-					tsc = double(retrc)/double(scores[j]);
-				}
-				if (tsc > maxiden){
-					maxiden = tsc;
-					rc = trc;
-					maxknown = j;
-				}
-			}
-			/*
-			 * shrink with phyutility
-			 */
-			const string tempfile = "TEMPFILES/genome_shrink";
-			vector<Sequence> sc1; 
-			FastaUtil seqwriter;
-			if(keep_rc->at(i) == false)
-				sc1.push_back(keep_seqs->at(i));
-			else{
-				Sequence tseqrc;
-				tseqrc.set_id(keep_seqs->at(i).get_id());
-				tseqrc.set_sequence(keep_seqs->at(i).reverse_complement());
-				sc1.push_back(tseqrc);
-			}
-			//for (int j=0;j<known_seqs->size();j++){
-				sc1.push_back(known_seqs->at(maxknown));
-			//}
-			seqwriter.writeFileFromVector(tempfile,sc1);
-			const char * cmd = "mafft --thread 2 --auto TEMPFILES/genome_shrink > TEMPFILES/genome_shrink_aln";
-			cout << "aligning" << endl;
-			FILE *fp = popen(cmd, "r" );
-			char buff[1000];
-			while ( fgets( buff, sizeof buff, fp ) != NULL ) {//doesn't exit out
-				string line(buff);
-			}
-			pclose( fp );
-			const char * cmd2 = "phyutility -clean 0.5 -in TEMPFILES/genome_shrink_aln -out TEMPFILES/genome_shrink_out";
-			cout << "cleaning" << endl;
-			FILE *fp2 = popen(cmd2, "r" );
-			char buff2[1000];
-			while ( fgets( buff2, sizeof buff2, fp2 ) != NULL ) {//doesn't exit out
-				string line(buff2);
-			}
-			pclose( fp2 );
-			/*
-			 * reading in the sequencing and replacing
-			 */
-			FastaUtil seqreader;
-			vector<Sequence> sequences;
-			seqreader.readFile("TEMPFILES/genome_shrink_out", sequences);
-			for (int j=0;j<sequences.size();j++){
-				if (sequences.at(j).get_id() ==  keep_seqs->at(i).get_id()){
-					keep_seqs->at(i).set_sequence(sequences.at(j).get_sequence());
-					keep_rc->at(i) = false;
-				}
-			}
-			cout << "shrunk size: "<< keep_seqs->at(i).get_id() << endl;
+    /*
+     * get the best score for each known seq
+     */
+    vector<int> scores;
+    SBMatrix mat = swps3_readSBMatrix( "EDNAFULL" );
+    for(int j=0;j<known_seqs->size();j++){
+	scores.push_back(get_swps3_score_and_rc_cstyle(mat,&known_seqs->at(j),&known_seqs->at(j)));
+    }
+    for(unsigned int i =0; i<keep_seqs->size(); i++){
+	if(keep_seqs->at(i).get_sequence().size() > 10000){
+	    cout << "shrinking a genome: "<< keep_seqs->at(i).get_id() << endl;
+	    DBSeq tseq = keep_seqs->at(i);
+	    double maxiden = 0;
+	    bool rc = false;
+	    int maxknown = 0;
+	    for (int j=0;j<known_seqs->size();j++){
+		bool trc = false;
+		int ret = get_swps3_score_and_rc_cstyle(mat,&known_seqs->at(j), & tseq);
+		double tsc = double(ret)/double(scores[j]);
+		Sequence tseqrc;
+		tseqrc.set_id(tseq.get_id());
+		tseqrc.set_sequence(tseq.reverse_complement());
+		int retrc = get_swps3_score_and_rc_cstyle(mat,&known_seqs->at(j), &tseqrc);
+		if(retrc > ret){
+		    trc = true;
+		    tsc = double(retrc)/double(scores[j]);
 		}
+		if (tsc > maxiden){
+		    maxiden = tsc;
+		    rc = trc;
+		    maxknown = j;
+		}
+	    }
+	    /*
+	     * shrink with phyutility
+	     */
+	    const string tempfile = "TEMPFILES/genome_shrink";
+	    vector<Sequence> sc1; 
+	    FastaUtil seqwriter;
+	    if(keep_rc->at(i) == false)
+		sc1.push_back(keep_seqs->at(i));
+	    else{
+		Sequence tseqrc;
+		tseqrc.set_id(keep_seqs->at(i).get_id());
+		tseqrc.set_sequence(keep_seqs->at(i).reverse_complement());
+		sc1.push_back(tseqrc);
+	    }
+	    //for (int j=0;j<known_seqs->size();j++){
+	    sc1.push_back(known_seqs->at(maxknown));
+	    //}
+	    seqwriter.writeFileFromVector(tempfile,sc1);
+	    const char * cmd = "mafft --thread 2 --auto TEMPFILES/genome_shrink > TEMPFILES/genome_shrink_aln";
+	    cout << "aligning" << endl;
+	    FILE *fp = popen(cmd, "r" );
+	    char buff[1000];
+	    while ( fgets( buff, sizeof buff, fp ) != NULL ) {//doesn't exit out
+		string line(buff);
+	    }
+	    pclose( fp );
+	    const char * cmd2 = "phyutility -clean 0.5 -in TEMPFILES/genome_shrink_aln -out TEMPFILES/genome_shrink_out";
+	    cout << "cleaning" << endl;
+	    FILE *fp2 = popen(cmd2, "r" );
+	    char buff2[1000];
+	    while ( fgets( buff2, sizeof buff2, fp2 ) != NULL ) {//doesn't exit out
+		string line(buff2);
+	    }
+	    pclose( fp2 );
+	    /*
+	     * reading in the sequencing and replacing
+	     */
+	    FastaUtil seqreader;
+	    vector<Sequence> sequences;
+	    seqreader.readFile("TEMPFILES/genome_shrink_out", sequences);
+	    for (int j=0;j<sequences.size();j++){
+		if (sequences.at(j).get_id() ==  keep_seqs->at(i).get_id()){
+		    keep_seqs->at(i).set_sequence(sequences.at(j).get_sequence());
+		    keep_rc->at(i) = false;
+		}
+	    }
+	    cout << "shrunk size: "<< keep_seqs->at(i).get_id() << endl;
 	}
+    }
 }
 
 vector<string> SQLiteConstructor::get_final_children(string inname_id){
@@ -1482,18 +1325,18 @@ vector<string> SQLiteConstructor::get_final_children(string inname_id){
 }
 
 void SQLiteConstructor::get_seqs_for_names(string inname_id, vector<DBSeq> * seqs, vector<bool> * rcs, vector<DBSeq> * temp_seqs, vector<bool> * temp_rc){
-	vector<string> final_ids;
-	final_ids = get_final_children(inname_id);
-	for(unsigned int i=0;i<seqs->size();i++){
-		//string tid = seqs->at(i).get_tax_id();
-		string tid = seqs->at(i).get_ncbi_taxid();
-		int mycount = 0;
-		mycount = (int) count (final_ids.begin(),final_ids.end(), tid);
-		if(mycount > 0){
-			temp_seqs->push_back(seqs->at(i));
-			temp_rc->push_back(rcs->at(i));
-		}
+    vector<string> final_ids;
+    final_ids = get_final_children(inname_id);
+    for(unsigned int i=0;i<seqs->size();i++){
+	//string tid = seqs->at(i).get_tax_id();
+	string tid = seqs->at(i).get_ncbi_taxid();
+	int mycount = 0;
+	mycount = (int) count (final_ids.begin(),final_ids.end(), tid);
+	if(mycount > 0){
+	    temp_seqs->push_back(seqs->at(i));
+	    temp_rc->push_back(rcs->at(i));
 	}
+    }
 }
 
 void SQLiteConstructor::make_mafft_multiple_alignment(vector<DBSeq> * inseqs,vector<bool> * rcs){
@@ -1516,7 +1359,7 @@ void SQLiteConstructor::make_mafft_multiple_alignment(vector<DBSeq> * inseqs,vec
 
 	//make alignment
 	//const char * cmd = "mafft --thread 2 --auto TEMPFILES/tempfile > TEMPFILES/outfile";
-	string cmd = "mafft --thread " + to_string(numthreads);
+	string cmd = "mafft --thread " + to_string(omp_get_num_threads());
 	cmd += " --auto TEMPFILES/tempfile > TEMPFILES/outfile";
 	cout << "aligning" << endl;
 	FILE *fp = popen(cmd.c_str(), "r" );
@@ -1884,4 +1727,109 @@ void SQLiteConstructor::add_seqs_from_file_to_dbseqs_vector(string filename,vect
 	keep_seqs->push_back(tseq);
 	keep_rc->push_back(false);
     }
+}
+
+
+/*
+ * things that are basically deprecated but keeping them just in case
+ */
+
+void SQLiteConstructor::get_same_seqs_pthreads_SWPS3(vector<DBSeq> seqs,  vector<DBSeq> * keep_seqs, vector<bool> * keep_rc){
+    //vector<DBSeq> keep_seqs;
+    //vector<DBSeq> keep_rc;
+
+    /*
+     * begin the parallelization here
+     */
+    //split the seqs into the num of threads
+    //vector<Same_seq_pthread_storage> storage;
+
+    struct SWPS3_thread_data thread_data_array[numthreads];
+
+    for (int i=0;i<numthreads; i++){
+	vector <DBSeq> st_seqs;
+	if((i+1) < numthreads){
+	    for(unsigned int j=(i*(seqs.size()/numthreads));j<((seqs.size()/numthreads))*(i+1);j++){
+		//for(int j=(i*(seqs.size()/numthreads));j<100;j++){
+		st_seqs.push_back(seqs[j]);
+	    }
+	}else{//last one
+	    for(unsigned int j=(i*(seqs.size()/numthreads));j<seqs.size();j++){
+		//for(int j=(i*(seqs.size()/numthreads));j<100;j++){
+		st_seqs.push_back(seqs[j]);
+	    }
+	}
+	cout << "splitting: " << st_seqs.size() << endl;
+	//Same_seq_pthread_storage temp (st_seqs,coverage,identity);
+	//storage.push_back(temp);
+	thread_data_array[i].thread_id = i;
+	thread_data_array[i].seqs = st_seqs;
+	thread_data_array[i].identity = identity;
+	thread_data_array[i].reports = 100;
+	thread_data_array[i].known_seqs = known_seqs;
+	vector<DBSeq> keep_seqs1;
+	vector<bool> keep_rc1;
+	thread_data_array[i].keep_seqs = keep_seqs1;
+	thread_data_array[i].keep_rc = keep_rc1;
+	map<string,double> lose_seqs1;
+	vector<bool> lose_rc1;
+	map<string,double> keep_seq_scores1;
+	thread_data_array[i].lose_seqs = lose_seqs1;
+	thread_data_array[i].lose_rc = lose_rc1;
+	thread_data_array[i].keep_seq_scores = keep_seq_scores1;
+    }
+    pthread_t threads[numthreads];
+    void *status;
+    int rc;
+    pthread_attr_t attr;
+    pthread_attr_init(&attr);
+    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+    for(int i=0; i <numthreads; i++){
+	cout << "thread: " << i <<endl;
+	rc = pthread_create(&threads[i], &attr, SWPS3_Same_seq_pthread_go, (void *) &thread_data_array[i]);
+	if (rc){
+	    printf("ERROR; return code from pthread_create() is %d\n", rc);
+	    exit(-1);
+	}
+    }
+    pthread_attr_destroy(&attr);
+    for(int i=0;i<numthreads; i++){
+	cout << "joining: " << i << endl;
+	pthread_join( threads[i], &status);
+	if (rc){
+	    printf("ERROR; return code from pthread_join() is %d\n", rc);
+	    exit(-1);
+	}
+	printf("Completed join with thread %d status= %ld\n",i, (long)status);
+    }
+    /*
+     * bring em back and combine for keep_seqs and keep_rc
+     */
+
+    for (int i=0;i<numthreads; i++){
+	for(int j=0;j<thread_data_array[i].keep_seqs.size();j++){
+	    keep_seqs->push_back(thread_data_array[i].keep_seqs[j]);
+	    keep_rc->push_back(thread_data_array[i].keep_rc[j]);
+	}
+    }
+
+    //logging file for sequences that don't make it
+    ofstream loggingfile;
+    loggingfile.open("seq_bad_scores.log",ios::out);
+    for(int i=0;i<numthreads;i++){
+	map<string,double>::iterator it;
+	for(it = thread_data_array[i].lose_seqs.begin();it != thread_data_array[i].lose_seqs.end();it++){
+	    loggingfile << (*it).first << "\t" << (*it).second << endl;
+	}	
+    }
+    loggingfile.close();
+    loggingfile.open("seq_good_scores.log",ios::out);
+    for(int i=0;i<numthreads;i++){
+	map<string,double>::iterator it;
+	for(it = thread_data_array[i].keep_seq_scores.begin();it != thread_data_array[i].keep_seq_scores.end();it++){
+	    loggingfile << (*it).first << "\t" << (*it).second << endl;
+	}	
+    }
+    loggingfile.close();
+    //end the logging
 }
