@@ -1,5 +1,5 @@
 CC = g++
-CFLAGS = -msse3 -DSSE2 -O3 -g -w -Wall
+CFLAGS = -msse3 -DSSE2 -O3 -g -w -Wall -fopenmp
 
 CPP_SRCS += \
 sequence.cpp \
@@ -81,7 +81,7 @@ utils.d
 %.o: ./%.cpp
 	$(CC) $(CFLAGS)  -L../deps/linux/ -c -fmessage-length=0 -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -o"$@" "$<"
 
-LIBS := -lm -lsqlitewrapped -lsqlite3
+LIBS := -lm -lsqlitewrapped -lsqlite3 -fopenmp
 
 RM := rm -rf
 

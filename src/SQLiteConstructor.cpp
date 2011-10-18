@@ -256,7 +256,8 @@ void SQLiteConstructor::run(){
     //get_same_seqs(startseqs, keep_seqs, keep_rc);
     //get_same_seqs_pthreads(startseqs, keep_seqs, keep_rc);
 
-    get_same_seqs_pthreads_SWPS3(startseqs, keep_seqs, keep_rc);
+    //get_same_seqs_pthreads_SWPS3(startseqs, keep_seqs, keep_rc);
+    get_same_seqs_openmp_SWPS3(startseqs,keep_seqs,keep_rc);
     cout << "blasted: "<< keep_seqs->size() << endl;
     for(int i=0;i<keep_rc->size();i++){
 	cout << keep_rc->at(i);
@@ -965,6 +966,109 @@ void SQLiteConstructor::get_same_seqs_pthreads(vector<DBSeq> seqs,  vector<DBSeq
 }
 
 void SQLiteConstructor::get_same_seqs_pthreads_SWPS3(vector<DBSeq> seqs,  vector<DBSeq> * keep_seqs, vector<bool> * keep_rc){
+    //vector<DBSeq> keep_seqs;
+    //vector<DBSeq> keep_rc;
+
+    /*
+     * begin the parallelization here
+     */
+    //split the seqs into the num of threads
+    //vector<Same_seq_pthread_storage> storage;
+
+    struct SWPS3_thread_data thread_data_array[numthreads];
+
+    for (int i=0;i<numthreads; i++){
+	vector <DBSeq> st_seqs;
+	if((i+1) < numthreads){
+	    for(unsigned int j=(i*(seqs.size()/numthreads));j<((seqs.size()/numthreads))*(i+1);j++){
+		//for(int j=(i*(seqs.size()/numthreads));j<100;j++){
+		st_seqs.push_back(seqs[j]);
+	    }
+	}else{//last one
+	    for(unsigned int j=(i*(seqs.size()/numthreads));j<seqs.size();j++){
+		//for(int j=(i*(seqs.size()/numthreads));j<100;j++){
+		st_seqs.push_back(seqs[j]);
+	    }
+	}
+	cout << "splitting: " << st_seqs.size() << endl;
+	//Same_seq_pthread_storage temp (st_seqs,coverage,identity);
+	//storage.push_back(temp);
+	thread_data_array[i].thread_id = i;
+	thread_data_array[i].seqs = st_seqs;
+	thread_data_array[i].identity = identity;
+	thread_data_array[i].reports = 100;
+	thread_data_array[i].known_seqs = known_seqs;
+	vector<DBSeq> keep_seqs1;
+	vector<bool> keep_rc1;
+	thread_data_array[i].keep_seqs = keep_seqs1;
+	thread_data_array[i].keep_rc = keep_rc1;
+	map<string,double> lose_seqs1;
+	vector<bool> lose_rc1;
+	map<string,double> keep_seq_scores1;
+	thread_data_array[i].lose_seqs = lose_seqs1;
+	thread_data_array[i].lose_rc = lose_rc1;
+	thread_data_array[i].keep_seq_scores = keep_seq_scores1;
+    }
+    pthread_t threads[numthreads];
+    void *status;
+    int rc;
+    pthread_attr_t attr;
+    pthread_attr_init(&attr);
+    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+    for(int i=0; i <numthreads; i++){
+	cout << "thread: " << i <<endl;
+	rc = pthread_create(&threads[i], &attr, SWPS3_Same_seq_pthread_go, (void *) &thread_data_array[i]);
+	if (rc){
+	    printf("ERROR; return code from pthread_create() is %d\n", rc);
+	    exit(-1);
+	}
+    }
+    pthread_attr_destroy(&attr);
+    for(int i=0;i<numthreads; i++){
+	cout << "joining: " << i << endl;
+	pthread_join( threads[i], &status);
+	if (rc){
+	    printf("ERROR; return code from pthread_join() is %d\n", rc);
+	    exit(-1);
+	}
+	printf("Completed join with thread %d status= %ld\n",i, (long)status);
+    }
+    /*
+     * bring em back and combine for keep_seqs and keep_rc
+     */
+
+    for (int i=0;i<numthreads; i++){
+	for(int j=0;j<thread_data_array[i].keep_seqs.size();j++){
+	    keep_seqs->push_back(thread_data_array[i].keep_seqs[j]);
+	    keep_rc->push_back(thread_data_array[i].keep_rc[j]);
+	}
+    }
+
+    //logging file for sequences that don't make it
+    ofstream loggingfile;
+    loggingfile.open("seq_bad_scores.log",ios::out);
+    for(int i=0;i<numthreads;i++){
+	map<string,double>::iterator it;
+	for(it = thread_data_array[i].lose_seqs.begin();it != thread_data_array[i].lose_seqs.end();it++){
+	    loggingfile << (*it).first << "\t" << (*it).second << endl;
+	}	
+    }
+    loggingfile.close();
+    loggingfile.open("seq_good_scores.log",ios::out);
+    for(int i=0;i<numthreads;i++){
+	map<string,double>::iterator it;
+	for(it = thread_data_array[i].keep_seq_scores.begin();it != thread_data_array[i].keep_seq_scores.end();it++){
+	    loggingfile << (*it).first << "\t" << (*it).second << endl;
+	}	
+    }
+    loggingfile.close();
+    //end the logging
+}
+
+/*
+ * OPENMP version
+ */
+void SQLiteConstructor::get_same_seqs_openmp_SWPS3(vector<DBSeq> seqs,  vector<DBSeq> * keep_seqs, vector<bool> * keep_rc){
     //vector<DBSeq> keep_seqs;
     //vector<DBSeq> keep_rc;
 
