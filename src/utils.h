@@ -30,7 +30,10 @@
 
 using namespace std;
 
+#include "sequence.h"
 #include "DBSeq.h"
+#include "SWPS3_matrix.h"
+
 template <class T>
 inline std::string to_string (const T& t);
 void Tokenize(const string& str, vector<string>& tokens,const string& delimiters = " ");
@@ -43,5 +46,12 @@ void combine_ITS(vector<DBSeq> * seqs);
 void splitstring(string str, string seperater, string &first, string &second);
 void fix_bad_chars(string & tfilen);
 void fix_bad_chars_for_seq_names(string & tfilen);
+
+typedef int8_t * SBMatrix;
+//took out the const
+int get_swps3_score_and_rc_cstyle(SBMatrix mat, Sequence * inseq1, Sequence * inseq2);
+
 vector<string> query_mask(string url);
+
+
 #endif

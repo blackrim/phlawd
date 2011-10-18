@@ -16,12 +16,10 @@ SQLiteDBController.cpp \
 SWPS3_DynProgr_scalar.cpp \
 SWPS3_DynProgr_sse_byte.cpp \
 SWPS3_DynProgr_sse_short.cpp \
-SWPS3_Same_seq_pthread.cpp \
 SWPS3_debug.cpp \
 SWPS3_fasta.cpp \
 SWPS3_matrix.cpp \
 SWPS3_swps3.cpp \
-Same_seq_pthread.cpp \
 SmithWatermanGotoh.cpp \
 main.cpp \
 utils.cpp 
@@ -41,12 +39,10 @@ SQLiteDBController.o \
 SWPS3_DynProgr_scalar.o \
 SWPS3_DynProgr_sse_byte.o \
 SWPS3_DynProgr_sse_short.o \
-SWPS3_Same_seq_pthread.o \
 SWPS3_debug.o \
 SWPS3_fasta.o \
 SWPS3_matrix.o \
 SWPS3_swps3.o \
-Same_seq_pthread.o \
 SmithWatermanGotoh.o \
 main.o \
 utils.o 
@@ -66,12 +62,10 @@ SQLiteDBController.d \
 SWPS3_DynProgr_scalar.d \
 SWPS3_DynProgr_sse_byte.d \
 SWPS3_DynProgr_sse_short.d \
-SWPS3_Same_seq_pthread.d \
 SWPS3_debug.d \
 SWPS3_fasta.d \
 SWPS3_matrix.d \
 SWPS3_swps3.d \
-Same_seq_pthread.d \
 SmithWatermanGotoh.d \
 main.d \
 utils.d 
@@ -93,7 +87,7 @@ all: PHLAWD
 # Tool invocations
 PHLAWD: $(OBJS)
 	@echo 'Building target: $@'
-	$(CC) -msse3 -DSSE2 -L../deps/linux -o "PHLAWD" $(OBJS) $(LIBS) -lpthread
+	$(CC) -msse3 -DSSE2 -L../deps/linux -o "PHLAWD" $(OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
