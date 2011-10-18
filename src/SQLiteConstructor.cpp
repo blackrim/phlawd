@@ -1001,6 +1001,12 @@ void SQLiteConstructor::get_same_seqs_pthreads_SWPS3(vector<DBSeq> seqs,  vector
 	vector<bool> keep_rc1;
 	thread_data_array[i].keep_seqs = keep_seqs1;
 	thread_data_array[i].keep_rc = keep_rc1;
+	map<string,double> lose_seqs1;
+	vector<bool> lose_rc1;
+	map<string,double> keep_seq_scores1;
+	thread_data_array[i].lose_seqs = lose_seqs1;
+	thread_data_array[i].lose_rc = lose_rc1;
+	thread_data_array[i].keep_seq_scores = keep_seq_scores1;
     }
     pthread_t threads[numthreads];
     void *status;
@@ -1029,13 +1035,33 @@ void SQLiteConstructor::get_same_seqs_pthreads_SWPS3(vector<DBSeq> seqs,  vector
     /*
      * bring em back and combine for keep_seqs and keep_rc
      */
+
     for (int i=0;i<numthreads; i++){
 	for(int j=0;j<thread_data_array[i].keep_seqs.size();j++){
 	    keep_seqs->push_back(thread_data_array[i].keep_seqs[j]);
 	    keep_rc->push_back(thread_data_array[i].keep_rc[j]);
 	}
-
     }
+
+    //logging file for sequences that don't make it
+    ofstream loggingfile;
+    loggingfile.open("seq_bad_scores.log",ios::out);
+    for(int i=0;i<numthreads;i++){
+	map<string,double>::iterator it;
+	for(it = thread_data_array[i].lose_seqs.begin();it != thread_data_array[i].lose_seqs.end();it++){
+	    loggingfile << (*it).first << "\t" << (*it).second << endl;
+	}	
+    }
+    loggingfile.close();
+    loggingfile.open("seq_good_scores.log",ios::out);
+    for(int i=0;i<numthreads;i++){
+	map<string,double>::iterator it;
+	for(it = thread_data_array[i].keep_seq_scores.begin();it != thread_data_array[i].keep_seq_scores.end();it++){
+	    loggingfile << (*it).first << "\t" << (*it).second << endl;
+	}	
+    }
+    loggingfile.close();
+    //end the logging
 }
 
 void SQLiteConstructor::remove_duplicates(vector<DBSeq> * keep_seqs, vector<bool> * keep_rc){

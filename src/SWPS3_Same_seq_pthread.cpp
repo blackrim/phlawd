@@ -30,6 +30,7 @@
 #include <cstdio>
 #include <string>
 #include <vector>
+#include <map>
 #include <iostream>
 #include <stdio.h>
 #include <limits>
@@ -51,6 +52,9 @@ void * SWPS3_Same_seq_pthread_go(void *threadarg){
 	vector<DBSeq> seqs;
 	vector<DBSeq> keep_seqs;
 	vector<bool> keep_rc;
+	map<string,double> lose_seqs;
+	vector<bool> lose_rc;
+	map<string,double> keep_seq_scores;
 	int reports;
 	double identity;
 	vector<Sequence> * known_seqs;
@@ -58,6 +62,9 @@ void * SWPS3_Same_seq_pthread_go(void *threadarg){
 	seqs = my_data->seqs;
 	keep_seqs = my_data->keep_seqs;
 	keep_rc = my_data->keep_rc;
+	lose_seqs = my_data->lose_seqs;
+	lose_rc = my_data->lose_rc;
+	keep_seq_scores = my_data->keep_seq_scores;
 	reports = my_data->reports;
 	identity = my_data->identity;
 	known_seqs = my_data->known_seqs;
@@ -85,7 +92,7 @@ void * SWPS3_Same_seq_pthread_go(void *threadarg){
 			seqs[i].perm_reverse_complement();
 			int retrc = get_swps3_score_and_rc_cstyle(mat,&known_seqs->at(j), &seqs[i]);
 			seqs[i].perm_reverse_complement();
-			//cout << ret << " " << retrc << " " << scores[j] << " " <<  tsc << endl;
+			cout << ret << " " << retrc << " " << scores[j] << " " <<  tsc << endl;
 			if(retrc > ret){
 				trc = true;
 				tsc = double(retrc)/double(scores[j]);
@@ -98,9 +105,16 @@ void * SWPS3_Same_seq_pthread_go(void *threadarg){
 		if (maxide >= identity){
 			keep_seqs.push_back(seqs[i]);
 			keep_rc.push_back(rc);
+			keep_seq_scores[seqs[i].get_id()] = maxide;
+		}else{
+		    lose_seqs[seqs[i].get_id()] = maxide;
+		    lose_rc.push_back(rc);
 		}
 	}
 	my_data->keep_seqs = keep_seqs;
 	my_data->keep_rc = keep_rc;
+	my_data->lose_seqs = lose_seqs;
+	my_data->lose_rc = lose_rc;
+	my_data->keep_seq_scores = keep_seq_scores;
 }
 

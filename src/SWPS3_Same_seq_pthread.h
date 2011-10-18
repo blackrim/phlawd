@@ -26,6 +26,7 @@
 #define _SWPS3_SAME_SEQ_PTHREAD_H_
 
 #include <string>
+#include <map>
 #include <vector>
 #include <stdint.h>
 
@@ -40,6 +41,9 @@ struct SWPS3_thread_data{
 	vector<DBSeq> seqs;
 	vector<DBSeq> keep_seqs;
 	vector<bool> keep_rc;
+    map<string,double> lose_seqs;
+    vector<bool> lose_rc;
+    map<string,double> keep_seq_scores;
 	int reports;
 	double coverage;
 	double identity;

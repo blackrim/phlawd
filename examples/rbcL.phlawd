@@ -1,4 +1,5 @@
-clade = campanulids
+clade = Dipsacales
+#clade = campanulids
 #clade = Asterales
 search = rbcL
 gene = rbcL2
@@ -7,12 +8,12 @@ coverage = 0.4
 identity = 0.3
 db = /home/smitty/Desktop/pln.update.db
 knownfile = rbcL.keep
-numthreads = 12
+numthreads = 1
 #listfile = include
 #excludelistfile = exclude
-listfile = include_wild
+#listfile = include_wild
 #containshigher
-containswild
+#containswild
 #excludegilistfile = ex_gi
 #gbmask = http://127.0.0.1:8000/gbmask/mask/dump_mask
 #updateDB
