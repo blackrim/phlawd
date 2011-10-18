@@ -48,6 +48,7 @@ using namespace std;
 
 #include "utils.h"
 
+#include "omp.h" 
 #include "libsqlitewrapped.h"
 
 #include "SQLiteProfiler.h"
@@ -329,6 +330,7 @@ void SQLiteProfiler::run(){
 	    map<string,string> numnames;
 	    map<string,string> namesnum;
 	    vector< vector<double> > numlist;
+	    //TODO: add incomplete user guide tree
 	    if(flag == true){
 		cout << "user guide tree" << endl;
 		Tree * tree = read_user_guide_tree(guiname);

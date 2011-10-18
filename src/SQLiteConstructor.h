@@ -64,6 +64,7 @@ private:
     bool updateDB;
     bool updateFILE;
     string updatef;
+    bool ncbi_saturation;
     vector<Sequence> * known_seqs;
     vector<DBSeq> use_only_names_from_file(vector<DBSeq> seqs);
     DBSeq add_higher_taxa(string taxon_id,vector<DBSeq> seqs);

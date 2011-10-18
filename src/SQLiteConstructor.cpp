@@ -91,6 +91,7 @@ SQLiteConstructor::SQLiteConstructor(string cn, vector <string> searchstr, strin
     }
     known_seqs = new vector<Sequence>();
     seqReader.readFile(known_seq_filen, *known_seqs);
+    ncbi_saturation = true;
 }
 
 /*
@@ -872,7 +873,7 @@ void SQLiteConstructor::remove_duplicates_SWPS3(vector<DBSeq> * keep_seqs){
     vector<int> remove;
 //#pragma omp parallel for shared(remove)
     for(unsigned int i=0;i<unique_ids.size();i++){
-	mycount = 0;
+	int mycount = 0;
 	mycount = (int) count (ids.begin(),ids.end(), unique_ids[i]);
 	if(mycount > 1){
 	    vector<int> tremove;
@@ -1161,29 +1162,29 @@ double SQLiteConstructor::calculate_MAD_quicktree(){
 }
 
 double SQLiteConstructor::calculate_MAD_quicktree_sample(vector<DBSeq> * inseqs){
-	srand ( time(NULL) );
-	vector<int> rands;
-	for(int i=0;i<1000;i++){
-		int n = rand() % inseqs->size();
-		bool x = false;
-		for(int j=0;j<rands.size();j++){
-			if(n == rands[j]){
-				x = true;
-			}continue;
-		}
-		if(x == true){
-			i--;
-		}else{
-			rands.push_back(n);
-		}
+    srand ( time(NULL) );
+    vector<int> rands;
+    for(int i=0;i<1000;i++){
+	int n = rand() % inseqs->size();
+	bool x = false;
+	for(int j=0;j<rands.size();j++){
+	    if(n == rands[j]){
+		x = true;
+	    }continue;
 	}
-	sort(rands.begin(),rands.end());
-	vector<DBSeq> tseqs;
-	for(int i=0;i<1000;i++){
-		tseqs.push_back(inseqs->at(rands[i]));
+	if(x == true){
+	    i--;
+	}else{
+	    rands.push_back(n);
 	}
-	make_mafft_multiple_alignment(&tseqs);
-	return calculate_MAD_quicktree();
+    }
+    sort(rands.begin(),rands.end());
+    vector<DBSeq> tseqs;
+    for(int i=0;i<1000;i++){
+	tseqs.push_back(inseqs->at(rands[i]));
+    }
+    make_mafft_multiple_alignment(&tseqs);
+    return calculate_MAD_quicktree();
 }
 
 /*
@@ -1249,6 +1250,7 @@ void SQLiteConstructor::saturation_tests(vector<string> name_ids, vector<string>
 	    double mad;
 	    if(temp_seqs->size() > 2){
 		if (temp_seqs->size() < 3000){
+		    //TODO: add input tree for mafft
 		    make_mafft_multiple_alignment(temp_seqs);
 		    mad = calculate_MAD_quicktree();
 		}else if(temp_seqs->size() < 10000){
@@ -1257,7 +1259,7 @@ void SQLiteConstructor::saturation_tests(vector<string> name_ids, vector<string>
 		    for (int i=0;i<10;i++)
 			mad = mad + (calculate_MAD_quicktree_sample(temp_seqs)/10.0);
 		    mad = mad * 2; //make sure is conservative
-		}else{
+		}else{//if it is really big
 		    mad = mad_cutoff + 1;//make sure it gets broken up
 		}
 	    }else{
@@ -1284,39 +1286,43 @@ void SQLiteConstructor::saturation_tests(vector<string> name_ids, vector<string>
 		string fn1 = gene_name;
 		fn1 += "/" + name;
 		seqwriter1.writeFileFromVector(fn1,sc1);
-		//SQLITE database storing
+		//TODO: SQLITE database storing
 
 	    }
 	    //if mad scores are bad push the children into names
-	    else{
-		vector<string>child_ids;
-		Database conn(db);
-		string sql = "SELECT ncbi_id FROM taxonomy WHERE parent_ncbi_id = ";
-		sql += name_id;
-		sql += " and name_class = 'scientific name';";
-		Query query(conn);
-		query.get_result(sql);
-		//StoreQueryResult R = query.store();
-		while(query.fetch_row()){
-		    string sql2 = "SELECT name,name_class FROM taxonomy WHERE ncbi_id = ";
-		    string resstr = to_string(query.getval());
-		    sql2 += resstr;
-		    sql2 += " and name_class = 'scientific name';";
-		    Query query2(conn);
-		    query2.get_result(sql2);
-		    //StoreQueryResult R2 = query2.store();
-		    while(query2.fetch_row()){
-			string tn = query2.getstr();
-			string cln = query2.getstr();
-			if(cln.find("scientific")!=string::npos && tn.find("environmental")==string::npos && cln.find("environmental")==string::npos){
-			    string tid = resstr;
-			    name_ids.push_back(tid);
-			    names.push_back(tn);
+	    else{//this is the NCBI way, need too allow the tree way as well
+		if (ncbi_saturation == true){
+		    vector<string>child_ids;
+		    Database conn(db);
+		    string sql = "SELECT ncbi_id FROM taxonomy WHERE parent_ncbi_id = ";
+		    sql += name_id;
+		    sql += " and name_class = 'scientific name';";
+		    Query query(conn);
+		    query.get_result(sql);
+		    //StoreQueryResult R = query.store();
+		    while(query.fetch_row()){
+			string sql2 = "SELECT name,name_class FROM taxonomy WHERE ncbi_id = ";
+			string resstr = to_string(query.getval());
+			sql2 += resstr;
+			sql2 += " and name_class = 'scientific name';";
+			Query query2(conn);
+			query2.get_result(sql2);
+			//StoreQueryResult R2 = query2.store();
+			while(query2.fetch_row()){
+			    string tn = query2.getstr();
+			    string cln = query2.getstr();
+			    if(cln.find("scientific")!=string::npos && tn.find("environmental")==string::npos && cln.find("environmental")==string::npos){
+				string tid = resstr;
+				name_ids.push_back(tid);
+				names.push_back(tn);
+			    }
 			}
+			query2.free_result();
 		    }
-		    query2.free_result();
+		    query.free_result();
+		}else{//TODO: using a user tree, can be incomplete
+
 		}
-		query.free_result();
 	    }
 	}
 	delete (temp_seqs);
