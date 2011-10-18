@@ -35,10 +35,8 @@ using namespace std;
 #include "SmithWatermanGotoh.h"
 
 #include "sequence.h"
-
+#include "omp.h"
 #include "SWPS3_matrix.h"
-#include "SWPS3_Same_seq_pthread.h"
-
 
 int main(int argc, char* argv[]){
     if(argc != 3){
@@ -188,6 +186,7 @@ int main(int argc, char* argv[]){
 		SQLiteConstructor * a;
 		a = new SQLiteConstructor(clade, search,gene,mad,coverage,identity,db,knownfile,useITS, numthreads,automated,updateDB,updatef);
 		cout << "number of threads: " << a->get_numthreads() << endl;
+		omp_set_num_threads(a->get_numthreads());
 		cout << "clade name: " << a->get_cladename() << endl;
 		for(int i=0;i<a->get_search().size(); i++){
 		    cout << "search: " << a->get_search()[i] << endl;

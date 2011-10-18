@@ -242,7 +242,7 @@ void SQLiteConstructor::run(){
 
     //use blast to idenify seqs and rc
     vector<DBSeq> * keep_seqs = new vector<DBSeq>();
-    vector<bool> * keep_rc = new vector<bool>();
+    //vector<bool> * keep_rc = new vector<bool>();
 
     /*
      * not sure where ITS should go, but maybe before blasting
@@ -254,28 +254,20 @@ void SQLiteConstructor::run(){
 	combine_ITS(&startseqs);
 	cout << "after ITS " << startseqs.size() << endl;
     }
-
-    //get_same_seqs(startseqs, keep_seqs, keep_rc);
-    //get_same_seqs_pthreads(startseqs, keep_seqs, keep_rc);
-
-    //get_same_seqs_pthreads_SWPS3(startseqs, keep_seqs, keep_rc);
-    get_same_seqs_openmp_SWPS3(startseqs,keep_seqs,keep_rc);
+    
+    /*
+     * comparing the sequences
+     */
+    get_same_seqs_openmp_SWPS3(startseqs,keep_seqs);
     cout << "blasted: "<< keep_seqs->size() << endl;
-    for(int i=0;i<keep_rc->size();i++){
-	cout << keep_rc->at(i);
-    }cout << endl;
 
     //remove duplicate names
-    //remove_duplicates(keep_seqs, keep_rc);
-    remove_duplicates_SWPS3(keep_seqs, keep_rc);
+    remove_duplicates_SWPS3(keep_seqs);
     cout << "dups: "<< keep_seqs->size() << endl;
-    for(int i=0;i<keep_rc->size();i++){
-	cout << keep_rc->at(i);
-    }cout << endl;
     /*
      * reduce genome sequences
      */
-    reduce_genomes(keep_seqs, keep_rc);
+    reduce_genomes(keep_seqs);
 	
     //add the updatedb code here
     //get the list of files and record the higher taxa name and 
@@ -292,7 +284,6 @@ void SQLiteConstructor::run(){
 	}
 	for(int j=0;j<toremove.size();j++){
 	    keep_seqs->erase(keep_seqs->begin()+toremove[toremove.size()-(j+1)]);
-	    keep_rc->erase(keep_rc->begin()+toremove[toremove.size()-(j+1)]);
 	}
 	//end the program if there is nothing to update
 	if(keep_seqs->size() == 0 ){
@@ -341,7 +332,7 @@ void SQLiteConstructor::run(){
 			sname_ids.push_back(t_id);
 			snames.push_back(file_names[i]);
 			//add the sequences from the file into keep_seqs , this should be easier when moving to sqlite
-			add_seqs_from_file_to_dbseqs_vector(file_names[i],keep_seqs,keep_rc,stored_seqs);
+			add_seqs_from_file_to_dbseqs_vector(file_names[i],keep_seqs,stored_seqs);
 			string nfilename = gene_name+"/"+file_names[i];
 			remove(nfilename.c_str());
 		    }
@@ -355,19 +346,18 @@ void SQLiteConstructor::run(){
     if (updateDB == true) {
 	//using the snames as the list of clade names
 	//using the snames_ids as the list of ncbi_taxon_ids
-	saturation_tests(sname_ids, snames, keep_seqs, keep_rc);
+	saturation_tests(sname_ids, snames, keep_seqs);
     }else{
 	write_gi_numbers(keep_seqs);
 	gifile.close();
 	sname_ids.push_back(sname_id);
 	snames.push_back(clade_name);
-	saturation_tests(sname_ids, snames, keep_seqs, keep_rc);
+	saturation_tests(sname_ids, snames, keep_seqs);
     }
 
     logfile.close();
     delete known_seqs;
     delete keep_seqs;
-    delete keep_rc;
 }
 
 string SQLiteConstructor::get_cladename(){
@@ -638,8 +628,7 @@ DBSeq SQLiteConstructor::add_higher_taxa(string taxon_id,vector<DBSeq> seqs){
 	 * now get the best sequence in the set
 	 */
 	vector<DBSeq> * keep_seqs2 = new vector<DBSeq>();
-	vector<bool> * keep_rc2 = new vector<bool>();
-	get_same_seqs_openmp_SWPS3(seqs_fn2,keep_seqs2,keep_rc2);
+	get_same_seqs_openmp_SWPS3(seqs_fn2,keep_seqs2);
 	//take keep_seqs and the known_seqs and get the distances and get the best
 	vector<int> scores;
 	SBMatrix mat = swps3_readSBMatrix( "EDNAFULL" );
@@ -668,7 +657,6 @@ DBSeq SQLiteConstructor::add_higher_taxa(string taxon_id,vector<DBSeq> seqs){
 		    }
 		    if (tsc > maxiden){
 			maxiden = tsc;
-			rc = trc;
 		    }
 		    //cout << tsc << endl;
 		}
@@ -687,7 +675,6 @@ DBSeq SQLiteConstructor::add_higher_taxa(string taxon_id,vector<DBSeq> seqs){
 	    logfile << "ncbi: " << bestseq.get_ncbi_taxid() << "\n";
 	    logfile << "descr: " << bestseq.get_descr() << "\n";
 	    delete keep_seqs2;
-	    delete keep_rc2;
 
 	    /*
 	     * return the best sequence
@@ -800,7 +787,7 @@ vector <DBSeq> SQLiteConstructor::include_gis_from_file(vector<DBSeq> seqs){
 /*
  * OPENMP version
  */
-void SQLiteConstructor::get_same_seqs_openmp_SWPS3(vector<DBSeq> & seqs,  vector<DBSeq> * keep_seqs, vector<bool> * keep_rc){
+void SQLiteConstructor::get_same_seqs_openmp_SWPS3(vector<DBSeq> & seqs,  vector<DBSeq> * keep_seqs){
     vector<int> known_scores;
     SBMatrix mat = swps3_readSBMatrix( "EDNAFULL" );
     //SBMatrix mat = swps3_get_premade_SBMatrix( "EDNAFULL" );
@@ -816,9 +803,9 @@ void SQLiteConstructor::get_same_seqs_openmp_SWPS3(vector<DBSeq> & seqs,  vector
 	    bool trc = false;
 	    int ret = get_swps3_score_and_rc_cstyle(mat,&known_seqs->at(j), &seqs[i]);
 	    double tsc = double(ret)/double(known_scores[j]);
-	    seqs[i].perm_reverse_complement();
+	    seqs[i].perm_reverse_complement();//make reverse complement
 	    int retrc = get_swps3_score_and_rc_cstyle(mat,&known_seqs->at(j), &seqs[i]);
-	    seqs[i].perm_reverse_complement();
+	    seqs[i].perm_reverse_complement();//make it back to original
 	    //cout <<i << " " << j << " " << ret << " " << retrc << " " << known_scores[j] << " " <<  tsc << endl;
 	    if(retrc > ret){
 		trc = true;
@@ -831,16 +818,18 @@ void SQLiteConstructor::get_same_seqs_openmp_SWPS3(vector<DBSeq> & seqs,  vector
 	}
 	if (maxide >= identity){
 	    keep_seqs_rc_map[&seqs[i]] = rc;
+	    //with this we don't have to keep track of rc anymore unless we want to
+	    if (rc == true)
+		seqs[i].perm_reverse_complement();//the sequence is suppose to be reverse complement
 	}
     }
     map<DBSeq*,bool>::iterator it;
     for(it = keep_seqs_rc_map.begin(); it != keep_seqs_rc_map.end(); it++){
 	keep_seqs->push_back(*(*it).first);
-	keep_rc->push_back((*it).second);
     }
 }
 
-void SQLiteConstructor::remove_duplicates_SWPS3(vector<DBSeq> * keep_seqs, vector<bool> * keep_rc){
+void SQLiteConstructor::remove_duplicates_SWPS3(vector<DBSeq> * keep_seqs){
     vector<string> ids;
     vector<string> unique_ids;
     int mycount;
@@ -881,7 +870,7 @@ void SQLiteConstructor::remove_duplicates_SWPS3(vector<DBSeq> * keep_seqs, vecto
     }
 
     vector<int> remove;
-#pragma omp parallel for shared(remove)
+//#pragma omp parallel for shared(remove)
     for(unsigned int i=0;i<unique_ids.size();i++){
 	mycount = 0;
 	mycount = (int) count (ids.begin(),ids.end(), unique_ids[i]);
@@ -898,22 +887,11 @@ void SQLiteConstructor::remove_duplicates_SWPS3(vector<DBSeq> * keep_seqs, vecto
 	    for (int j=0;j<tremove.size();j++){
 		DBSeq tseq = keep_seqs->at(tremove[j]);
 		double maxiden = 0;
-		bool rc = false;
 		for (int j=0;j<known_seqs->size();j++){
-		    bool trc = false;
 		    int ret = get_swps3_score_and_rc_cstyle(mat,&known_seqs->at(j), & tseq);
 		    double tsc = double(ret)/double(scores[j]);
-		    Sequence tseqrc;
-		    tseqrc.set_id(tseq.get_id());
-		    tseqrc.set_sequence(tseq.reverse_complement());
-		    int retrc = get_swps3_score_and_rc_cstyle(mat,&known_seqs->at(j), &tseqrc);
-		    if(retrc > ret){
-			trc = true;
-			tsc = double(retrc)/double(scores[j]);
-		    }
 		    if (tsc > maxiden){
 			maxiden = tsc;
-			rc = trc;
 		    }
 		}
 		if (maxiden >= bestiden){
@@ -932,12 +910,9 @@ void SQLiteConstructor::remove_duplicates_SWPS3(vector<DBSeq> * keep_seqs, vecto
     for(unsigned int i=0;i<remove.size();i++){
 	keep_seqs->erase(keep_seqs->begin()+remove[i]);
     }
-    for(unsigned int i=0;i<remove.size();i++){
-	keep_rc->erase(keep_rc->begin()+remove[i]);
-    }
 }
 
-void SQLiteConstructor::reduce_genomes(vector<DBSeq> * keep_seqs, vector<bool> * keep_rc){
+void SQLiteConstructor::reduce_genomes(vector<DBSeq> * keep_seqs){
     /*
      * get the best score for each known seq
      */
@@ -951,23 +926,12 @@ void SQLiteConstructor::reduce_genomes(vector<DBSeq> * keep_seqs, vector<bool> *
 	    cout << "shrinking a genome: "<< keep_seqs->at(i).get_id() << endl;
 	    DBSeq tseq = keep_seqs->at(i);
 	    double maxiden = 0;
-	    bool rc = false;
 	    int maxknown = 0;
 	    for (int j=0;j<known_seqs->size();j++){
-		bool trc = false;
 		int ret = get_swps3_score_and_rc_cstyle(mat,&known_seqs->at(j), & tseq);
 		double tsc = double(ret)/double(scores[j]);
-		Sequence tseqrc;
-		tseqrc.set_id(tseq.get_id());
-		tseqrc.set_sequence(tseq.reverse_complement());
-		int retrc = get_swps3_score_and_rc_cstyle(mat,&known_seqs->at(j), &tseqrc);
-		if(retrc > ret){
-		    trc = true;
-		    tsc = double(retrc)/double(scores[j]);
-		}
 		if (tsc > maxiden){
 		    maxiden = tsc;
-		    rc = trc;
 		    maxknown = j;
 		}
 	    }
@@ -977,14 +941,7 @@ void SQLiteConstructor::reduce_genomes(vector<DBSeq> * keep_seqs, vector<bool> *
 	    const string tempfile = "TEMPFILES/genome_shrink";
 	    vector<Sequence> sc1; 
 	    FastaUtil seqwriter;
-	    if(keep_rc->at(i) == false)
-		sc1.push_back(keep_seqs->at(i));
-	    else{
-		Sequence tseqrc;
-		tseqrc.set_id(keep_seqs->at(i).get_id());
-		tseqrc.set_sequence(keep_seqs->at(i).reverse_complement());
-		sc1.push_back(tseqrc);
-	    }
+	    sc1.push_back(keep_seqs->at(i));
 	    //for (int j=0;j<known_seqs->size();j++){
 	    sc1.push_back(known_seqs->at(maxknown));
 	    //}
@@ -1014,7 +971,6 @@ void SQLiteConstructor::reduce_genomes(vector<DBSeq> * keep_seqs, vector<bool> *
 	    for (int j=0;j<sequences.size();j++){
 		if (sequences.at(j).get_id() ==  keep_seqs->at(i).get_id()){
 		    keep_seqs->at(i).set_sequence(sequences.at(j).get_sequence());
-		    keep_rc->at(i) = false;
 		}
 	    }
 	    cout << "shrunk size: "<< keep_seqs->at(i).get_id() << endl;
@@ -1074,7 +1030,7 @@ vector<string> SQLiteConstructor::get_final_children(string inname_id){
     return allids;
 }
 
-void SQLiteConstructor::get_seqs_for_names(string inname_id, vector<DBSeq> * seqs, vector<bool> * rcs, vector<DBSeq> * temp_seqs, vector<bool> * temp_rc){
+void SQLiteConstructor::get_seqs_for_names(string inname_id, vector<DBSeq> * seqs, vector<DBSeq> * temp_seqs){
     vector<string> final_ids;
     final_ids = get_final_children(inname_id);
     for(unsigned int i=0;i<seqs->size();i++){
@@ -1084,32 +1040,23 @@ void SQLiteConstructor::get_seqs_for_names(string inname_id, vector<DBSeq> * seq
 	mycount = (int) count (final_ids.begin(),final_ids.end(), tid);
 	if(mycount > 0){
 	    temp_seqs->push_back(seqs->at(i));
-	    temp_rc->push_back(rcs->at(i));
 	}
     }
 }
 
-void SQLiteConstructor::make_mafft_multiple_alignment(vector<DBSeq> * inseqs,vector<bool> * rcs){
+void SQLiteConstructor::make_mafft_multiple_alignment(vector<DBSeq> * inseqs){
     //make file
     vector<double> retvalues;
     FastaUtil seqwriter1;
     vector<Sequence> sc1;
     for(unsigned int i=0;i<inseqs->size();i++){
-	if(rcs->at(i) == false){
-	    sc1.push_back(inseqs->at(i));
-	}else{
-	    Sequence tseqrc;
-	    tseqrc.set_id(inseqs->at(i).get_id());
-	    tseqrc.set_sequence(inseqs->at(i).reverse_complement());
-	    sc1.push_back(tseqrc);
-	}
+	sc1.push_back(inseqs->at(i));
     }
     const string fn1 = "TEMPFILES/tempfile";
     seqwriter1.writeFileFromVector(fn1,sc1);
 
     //make alignment
-    //const char * cmd = "mafft --thread 2 --auto TEMPFILES/tempfile > TEMPFILES/outfile";
-    string cmd = "mafft --thread " + to_string(omp_get_num_threads());
+    string cmd = "mafft --thread " + to_string(omp_get_max_threads());
     cmd += " --auto TEMPFILES/tempfile > TEMPFILES/outfile";
     cout << "aligning" << endl;
     FILE *fp = popen(cmd.c_str(), "r" );
@@ -1213,7 +1160,7 @@ double SQLiteConstructor::calculate_MAD_quicktree(){
     return 1.4826*(median(all_meds));
 }
 
-double SQLiteConstructor::calculate_MAD_quicktree_sample(vector<DBSeq> * inseqs,vector<bool> * rcs){
+double SQLiteConstructor::calculate_MAD_quicktree_sample(vector<DBSeq> * inseqs){
 	srand ( time(NULL) );
 	vector<int> rands;
 	for(int i=0;i<1000;i++){
@@ -1232,12 +1179,10 @@ double SQLiteConstructor::calculate_MAD_quicktree_sample(vector<DBSeq> * inseqs,
 	}
 	sort(rands.begin(),rands.end());
 	vector<DBSeq> tseqs;
-	vector<bool> trcs;
 	for(int i=0;i<1000;i++){
 		tseqs.push_back(inseqs->at(rands[i]));
-		trcs.push_back(rcs->at(rands[i]));
 	}
-	make_mafft_multiple_alignment(&tseqs,&trcs);
+	make_mafft_multiple_alignment(&tseqs);
 	return calculate_MAD_quicktree();
 }
 
@@ -1250,7 +1195,7 @@ double SQLiteConstructor::calculate_MAD_quicktree_sample(vector<DBSeq> * inseqs,
  * in the vectors
  */
 void SQLiteConstructor::saturation_tests(vector<string> name_ids, vector<string> names, 
-	vector<DBSeq> * keep_seqs, vector<bool> * keep_rc){
+	vector<DBSeq> * keep_seqs){
 
 //void SQLiteConstructor::saturation_tests(string name_id, vector<DBSeq> * keep_seqs, vector<bool> * keep_rc){
 //	vector<string> name_ids;
@@ -1259,17 +1204,9 @@ void SQLiteConstructor::saturation_tests(vector<string> name_ids, vector<string>
 //	names.push_back(clade_name);
 
     vector<DBSeq> orphan_seqs;
-    vector<bool> orphan_seqs_rc;
     vector<Sequence> allseqs; 
     for(int i=0;i<keep_seqs->size();i++){
-	if(keep_rc->at(i) == false){
-	    allseqs.push_back(keep_seqs->at(i));
-	}else{
-	    Sequence tseqrc;
-	    tseqrc.set_id(keep_seqs->at(i).get_id());
-	    tseqrc.set_sequence(keep_seqs->at(i).reverse_complement());
-	    allseqs.push_back(tseqrc);
-	}
+	allseqs.push_back(keep_seqs->at(i));
     }
 
     string name;
@@ -1280,9 +1217,8 @@ void SQLiteConstructor::saturation_tests(vector<string> name_ids, vector<string>
 	name = names.back();
 	names.pop_back();
 	vector<DBSeq> * temp_seqs = new vector<DBSeq>();
-	vector<bool> * temp_rcs = new vector<bool>();
 	temp_seqs->empty();
-	get_seqs_for_names(name_id,keep_seqs,keep_rc,temp_seqs,temp_rcs);
+	get_seqs_for_names(name_id,keep_seqs,temp_seqs);
 	if(temp_seqs->size() == 1){
 	    /*
 	     * use to make an orphan but rather just make a singleton file
@@ -1301,14 +1237,7 @@ void SQLiteConstructor::saturation_tests(vector<string> name_ids, vector<string>
 		    }
 		}
 		allseqs.erase(allseqs.begin()+eraseint);
-		if(temp_rcs->at(i) == false)
-		    sc1.push_back(temp_seqs->at(i));
-		else{
-		    Sequence tseqrc;
-		    tseqrc.set_id(temp_seqs->at(i).get_id());
-		    tseqrc.set_sequence(temp_seqs->at(i).reverse_complement());
-		    sc1.push_back(tseqrc);
-		}
+		sc1.push_back(temp_seqs->at(i));
 	    }
 	    string fn1 = gene_name;
 	    fn1 += "/" + name;
@@ -1319,17 +1248,14 @@ void SQLiteConstructor::saturation_tests(vector<string> name_ids, vector<string>
 	    cout << name << " " << temp_seqs->size() << endl;
 	    double mad;
 	    if(temp_seqs->size() > 2){
-		//PAU"diversity: "P
 		if (temp_seqs->size() < 3000){
-		    make_mafft_multiple_alignment(temp_seqs,temp_rcs);
-		    //mad = calculate_MAD_PAUP();
+		    make_mafft_multiple_alignment(temp_seqs);
 		    mad = calculate_MAD_quicktree();
 		}else if(temp_seqs->size() < 10000){
 		    //need to make this happen 10 tens and average
 		    mad = 0;
 		    for (int i=0;i<10;i++)
-			//mad = mad + (calculate_MAD_PAUP_sample(temp_seqs,temp_rcs)/10.0);
-			mad = mad + (calculate_MAD_quicktree_sample(temp_seqs,temp_rcs)/10.0);
+			mad = mad + (calculate_MAD_quicktree_sample(temp_seqs)/10.0);
 		    mad = mad * 2; //make sure is conservative
 		}else{
 		    mad = mad_cutoff + 1;//make sure it gets broken up
@@ -1353,14 +1279,7 @@ void SQLiteConstructor::saturation_tests(vector<string> name_ids, vector<string>
 			}
 		    }
 		    allseqs.erase(allseqs.begin()+eraseint);
-		    if(temp_rcs->at(i) == false){
-			sc1.push_back(temp_seqs->at(i));
-		    }else{
-			Sequence tseqrc;
-			tseqrc.set_id(temp_seqs->at(i).get_id());
-			tseqrc.set_sequence(temp_seqs->at(i).reverse_complement());
-			sc1.push_back(tseqrc);
-		    }
+		    sc1.push_back(temp_seqs->at(i));
 		}
 		string fn1 = gene_name;
 		fn1 += "/" + name;
@@ -1401,7 +1320,6 @@ void SQLiteConstructor::saturation_tests(vector<string> name_ids, vector<string>
 	    }
 	}
 	delete (temp_seqs);
-	delete (temp_rcs);
     }
     /*
      * deal with the singletons
@@ -1456,7 +1374,7 @@ void SQLiteConstructor::write_gi_numbers(vector<DBSeq> * dbs){
  *
  * all the sequences need to be in the database for this to work
  */
-void SQLiteConstructor::add_seqs_from_file_to_dbseqs_vector(string filename,vector<DBSeq> * keep_seqs, vector<bool> * keep_rc,map<string,string> & taxgimap){
+void SQLiteConstructor::add_seqs_from_file_to_dbseqs_vector(string filename,vector<DBSeq> * keep_seqs,map<string,string> & taxgimap){
     FastaUtil fu;
     vector<Sequence> tseqs;
     fu.readFile(gene_name+"/"+filename,tseqs);
@@ -1475,6 +1393,7 @@ void SQLiteConstructor::add_seqs_from_file_to_dbseqs_vector(string filename,vect
 	query3.free_result();
 	DBSeq tseq(tseqs[i].get_id(), tseqs[i].get_sequence(), acc, ncbi, tseqs[i].get_id(), " ", descr);
 	keep_seqs->push_back(tseq);
-	keep_rc->push_back(false);
     }
 }
+
+
