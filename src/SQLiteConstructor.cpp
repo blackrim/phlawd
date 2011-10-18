@@ -1339,7 +1339,7 @@ void SQLiteConstructor::saturation_tests(vector<string> name_ids, vector<string>
 	while(query.fetch_row()){
 	    string tn = query.getstr();
 	    string cln = query.getstr();
-	    if(cln.find("scientific")!=string::npos && tn.find("environmental")==string::npos && cln.find("environmental")==string::npos){
+	    if((cln.find("scientific")!=string::npos) && tn.find("environmental")==string::npos && cln.find("environmental")==string::npos){
 		string tid = allseqs.at(i).get_id();
 		name = tn;
 	    }

@@ -214,7 +214,8 @@ void SQLiteProfiler::prelimalign(){
 		pclose( fp );
 	    }else{
 		cout << file_names[i] << endl;
-		string cmd = "mafft --thread 2 --auto ";
+		string cmd = "mafft --thread "+to_string(omp_get_max_threads());
+		cmd += " --auto ";
 		cmd += gene_name+"/";
 		//cmd += file_names[i];//fix spaces here
 		string tfilen = file_names[i];
@@ -265,7 +266,8 @@ void SQLiteProfiler::prelimalign(){
 		pclose( fp );
 	    }else{
 		cout << updatedfiles[i] << endl;
-		string cmd = "mafft --thread 2 --auto ";
+		string cmd = "mafft --thread "+to_string(omp_get_max_threads());
+		cmd += " --auto ";
 		cmd += gene_name+"/";
 		string tfilen = updatedfiles[i];
 		fix_bad_chars(tfilen);
