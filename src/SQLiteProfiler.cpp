@@ -678,7 +678,7 @@ void SQLiteProfiler::profile(map<string,string> numnames,map<string,string> name
     ofstream ofs(recordname.c_str());
     bool muscle = true;
     vector<string> profile_files;
-    map<string,int> profile_files_dict;
+    map<string,string> profile_files_dict;
     int profile_files_count = 0;
     vector<string> newnames(file_names.begin(),file_names.end());
     string last_profile_file; //for changing to FINAL.aln
@@ -712,8 +712,8 @@ void SQLiteProfiler::profile(map<string,string> numnames,map<string,string> name
 		secondfile = shortestnamestwo->at(0);
 	    }
 	    profile_files.push_back(firstfile+"__"+secondfile);
-	    profile_files_dict.insert( pair<string,int>(firstfile+"__"+secondfile,profile_files_count) );
-	    ofs << profile_files_count << "," << firstfile+"++"+secondfile << endl;
+	    profile_files_dict.insert( pair<string,string>(firstfile+"__"+secondfile,"PROFILE_"+to_string(profile_files_count)) );
+	    ofs << "PROFILE_"+to_string(profile_files_count) << "," << firstfile+"++"+secondfile << endl;
 	    if(muscle == false){
 		//if already == True:
 		//	os.system("mafft-linsi --seed "+directory+str(profile_files_dict[secondfile])+" "+directory+firstfile+" > "+directory+str(profile_files_dict[firstfile+"__"+secondfile]))
@@ -886,8 +886,8 @@ void SQLiteProfiler::profile(map<string,string> numnames,map<string,string> name
 		}
 		secondfile = bestsn;
 		profile_files.push_back(firstfile+"__"+secondfile);
-		profile_files_dict.insert( pair<string,int>(firstfile+"__"+secondfile,profile_files_count) );
-		ofs << profile_files_count << "," << firstfile+"++"+secondfile << endl;
+		profile_files_dict.insert( pair<string,string>(firstfile+"__"+secondfile,"PROFILE_"+to_string(profile_files_count)) );
+		ofs << "PROFILE_"+to_string(profile_files_count) << "," << firstfile+"++"+secondfile << endl;
 		string cmd = "cp ";
 		cmd += profilefoldername;
 		string tfilen = firstfile;
@@ -923,8 +923,8 @@ void SQLiteProfiler::profile(map<string,string> numnames,map<string,string> name
 		it = find (profile_files.begin(), profile_files.end(), secondfile);
 		profile_files.erase(it);
 		profile_files.push_back(firstfile+"__"+secondfile);
-		profile_files_dict.insert( pair<string,int>(firstfile+"__"+secondfile,profile_files_count) );
-		ofs << profile_files_count << "," << firstfile+"++"+secondfile << endl;
+		profile_files_dict.insert( pair<string,string>(firstfile+"__"+secondfile,"PROFILE_"+to_string(profile_files_count)) );
+		ofs << "PROFILE_"+to_string(profile_files_count) << "," << firstfile+"++"+secondfile << endl;
 		if (muscle == false){
 		    //	os.system("mafft-linsi --seed "+directory+str(profile_files_dict[secondfile])+" "+directory+firstfile+" > "+directory+str(profile_files_dict[firstfile+"__"+secondfile]))
 		}else{
@@ -1006,8 +1006,8 @@ void SQLiteProfiler::profile(map<string,string> numnames,map<string,string> name
 	profile_files.erase(it);
 
 	profile_files.push_back(firstfile+"__"+secondfile);
-	profile_files_dict.insert( pair<string,int>(firstfile+"__"+secondfile,profile_files_count) );
-	ofs << profile_files_count << "," << firstfile+"++"+secondfile <<endl;
+	profile_files_dict.insert( pair<string,string>(firstfile+"__"+secondfile,"PROFILE_"+to_string(profile_files_count)) );
+	ofs <<"PROFILE_"+ to_string(profile_files_count) << "," << firstfile+"++"+secondfile <<endl;
 	if (muscle == false){
 	    //	os.system("mafft-linsi --seed "+directory+str(profile_files_dict[secondfile])+" "+directory+firstfile+" > "+directory+str(profile_files_dict[firstfile+"__"+secondfile]))
 	}else{

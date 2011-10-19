@@ -1519,11 +1519,18 @@ void SQLiteConstructor::saturation_tests(vector<string> name_ids, vector<string>
      * used 
      */
     cout << "leftovers: " << allseqs.size() << endl;
-    /*for(int i=0;i<allseqs.size();i++){
-	Database conn(db);
-	vector<Sequence> sc1; 
-	sc1.push_back(allseqs.at(i));
-	string name;
+
+    /*
+     * TODO: allow for option of not having leftovers, 
+     * if NCBI taxa are all that is wanted, and they are wanted to be 
+     * clean
+     */
+    cout << "picking where leftovers should go" << endl;
+    FastaUtil fu;
+    for (int i=0;i<allseqs.size();i++){
+	//can add something here that says if only NCBI, if no name then skip
+	//beginning of the code is here
+	/*string name;
 	string sql = "SELECT name,name_class FROM taxonomy WHERE ncbi_id = ";
 	sql += allseqs.at(i).get_id();
 	cout <<"-"<<allseqs.at(i).get_id()<<endl;
@@ -1538,21 +1545,7 @@ void SQLiteConstructor::saturation_tests(vector<string> name_ids, vector<string>
 		name = tn;
 	    }
 	}
-	query.free_result();
-	cout << name << endl;
-	FastaUtil seqwriter1;
-	string fn1 = gene_name;
-	fn1 += "/" + name;
-	seqwriter1.writeFileFromVector(fn1,sc1);
-    }*/
-    /*
-     * TODO: allow for option of not having leftovers, 
-     * if NCBI taxa are all that is wanted, and they are wanted to be 
-     * clean
-     */
-    cout << "picking where leftovers should go" << endl;
-    FastaUtil fu;
-    for (int i=0;i<allseqs.size();i++){
+	query.free_result();*/
 	int bestscore = 0;
 	int bestind = 0;
 	for(int j=0;j<seq_set_filenames.size();j++){
