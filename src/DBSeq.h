@@ -33,22 +33,22 @@ using namespace std;
 
 class DBSeq:
 public Sequence {
-	private:
-		string accession;
-		string ncbi_taxid;
-		string tax_id;
-		string descr;
-		string gi;
+private:
+    string accession;
+    string ncbi_taxid;
+    string tax_id;
+    string descr;
+    string gi;
 
-	public:
-		DBSeq(const string & name, const string & sequence,
-			string acc, string gi, string ncbi_t_id, string t_id, string desc);
-		string get_accession();
-		string get_gi();
-		string get_ncbi_taxid();
-		string get_tax_id();
-		string get_descr();
-		bool operator==(const DBSeq &other) const;
+public:
+    DBSeq(const string & name, const string & sequence,
+	  string acc, string gi, string ncbi_t_id, string t_id, string desc);
+    string get_accession();
+    string get_gi();
+    string get_ncbi_taxid();
+    string get_tax_id();
+    string get_descr();
+    bool operator==(const DBSeq &other) const;
 
 };
 

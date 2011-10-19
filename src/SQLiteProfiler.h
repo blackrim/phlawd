@@ -45,7 +45,8 @@ class SQLiteProfiler{
 		bool use_orphan;
 		bool automated;
 		bool updatedb;
-		Tree * read_user_guide_tree(string filen);
+		Tree * userguidetree;
+		bool usertree;
 		void get_children(string in_id, vector<string> * in_ids, vector<string> * in_keepids);
 		vector<string> get_final_children(string id);
 		int count_seqs(string dirc, string file_name);
@@ -53,7 +54,7 @@ class SQLiteProfiler{
 		vector<string> get_left_right_children(string id);
 		void create_distances(string clade_name, vector<string> names,map<string,string> * numnames,
 				map<string,string>* namesnum, vector< vector<double> > * numlist);
-		void create_distances(vector<string> names,Tree * tree,map<string,string> * numnames
+		void create_distances_user_tree(vector<string> names,map<string,string> * numnames
 				,map<string,string> * namesnum, vector< vector<double> > * numlist);
 		void get_shortest_distance_with_dicts(vector<string> names,map<string,string> numnames,map<string,string> namesnum,
 				vector< vector<double> > numlist, string * shortestnameone, vector<string> * shortestnametwo);
@@ -80,6 +81,7 @@ class SQLiteProfiler{
 		SQLiteProfiler(string gn, string cn, string dbs, bool autom,bool updb);
 		void prelimalign();
 		void run();
+		void set_user_guide_tree(Tree * tree);
 };
 
 #endif /* MQPROFILER_H_ */

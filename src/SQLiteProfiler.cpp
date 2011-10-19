@@ -53,6 +53,8 @@ using namespace std;
 
 #include "SQLiteProfiler.h"
 
+#define SIXES 666666
+
 template <class T>
 inline std::string to_string (const T& t)
 {
@@ -68,9 +70,11 @@ SQLiteProfiler::SQLiteProfiler(string gn, string cn, string dbs,bool autom,bool 
     db = dbs;
     automated = autom;
     updatedb = updb;
+    usertree = false;
     profilefoldername = gene_name+"_PROFILE/";
 }
 
+//TODO: add the ability to have the usertree inform these alignments
 void SQLiteProfiler::prelimalign(){
     // if temp directory doesn't exist
     mkdir(profilefoldername.c_str(),S_IRWXU | S_IRWXG | S_IROTH | S_IWOTH);
@@ -292,6 +296,9 @@ void SQLiteProfiler::prelimalign(){
     }
 }
 
+/*
+ * TODO: probably better to have a operating system independent one
+ */
 int SQLiteProfiler::count_seqs(string dirc, string file_name){
     string cmd = "grep -c \\> ";
     cmd += dirc+"/";
@@ -310,31 +317,24 @@ int SQLiteProfiler::count_seqs(string dirc, string file_name){
     return intReturn;
 }
 
+void SQLiteProfiler::set_user_guide_tree(Tree * tree){
+    usertree = true;
+    userguidetree = tree;
+}
+
 void SQLiteProfiler::run(){
     if(updatedb == false){//standard
 	file_names = vector<string>();
 	cout << "getting file names" << endl;
 	getdir(profilefoldername.c_str(),file_names);
 	if(file_names.size() > 1){
-	    //get guide tree
-	    //if the guide tree is not there, then use the ncbi tree
-	    string guiname = gene_name+".guide";
-	    bool flag = false;
-	    fstream fin;
-	    fin.open(guiname.c_str(),ios::in);
-	    if( fin.is_open() ){
-		flag=true;
-	    }
-	    fin.close();
-	    //end test for guide tree
 	    map<string,string> numnames;
 	    map<string,string> namesnum;
 	    vector< vector<double> > numlist;
-	    //TODO: add incomplete user guide tree
-	    if(flag == true){
+	    //TODO: make sure that this works with update , incomplete user guide tree
+	    if(usertree == true){
 		cout << "user guide tree" << endl;
-		Tree * tree = read_user_guide_tree(guiname);
-		create_distances(file_names,tree,&numnames,&namesnum,&numlist);
+		create_distances_user_tree(file_names,&numnames,&namesnum,&numlist);
 	    }else{//use ncbi tree
 		cout << "ncbi guide tree" << endl;
 		create_distances(cladename,file_names,&numnames,&namesnum,&numlist);
@@ -379,39 +379,6 @@ string SQLiteProfiler::get_profilekey_value(string profile_string){
 		return profile_string;
 	}
 	return match_string;
-}
-
-Tree * SQLiteProfiler::read_user_guide_tree(string filen){
-    TreeReader nw;
-    ifstream infile2(filen.c_str());
-    vector<string> lines;
-    string line;
-    while (getline(infile2, line)){
-	lines.push_back(line);
-    }
-    infile2.close();
-
-    Tree * tree = nw.readTree(lines[0]);
-    vector<string> orphans;
-    for(int i=0;i<file_names.size();i++){
-	try{
-	    tree->getExternalNode(file_names[i])->getName();
-	}catch(int e){
-	    orphans.push_back(file_names[i]);
-	    use_orphan = true;
-	}
-    }
-    string orphfilename = profilefoldername+"orphan";
-    ofstream myfile(orphfilename.c_str());
-    for(int i=0;i<orphans.size();i++){
-	ifstream tfile (orphans[i].c_str());
-	string line;
-	while(getline(tfile,line)){
-	    myfile << line; // make sure it adds the \n
-	}
-    }
-    myfile.close();
-    return tree;
 }
 
 void SQLiteProfiler::get_children(string in_id, vector<string> * in_ids, vector<string> * in_keepids){
@@ -564,66 +531,33 @@ void SQLiteProfiler::create_distances(string clade_name, vector<string> names,ma
     for(int i=0;i<names.size();i++){
 	Database conn(db);
 	sql = "SELECT ncbi_id FROM taxonomy WHERE name = '"+names[i]+"' and name_class = 'scientific name';";
-	//cout << sql << endl;
 	Query query2(conn);
 	query2.get_result(sql);
-//		StoreQueryResult R = query2.store();
 	string nameid = get_right_one(allids, query2);
 	sql = "SELECT parent_ncbi_id FROM taxonomy WHERE ncbi_id = "+nameid+" and name_class = 'scientific name';";
 	Query query4(conn);
 	query4.get_result(sql);
-//		StoreQueryResult R2 = query4.store();
 	string parentid = get_right_one(allids,query4);
 	vector<string> route;
 	while(parentid != cladeid){
-	    //cout << "loop" << endl;
 	    route.push_back(parentid);
-	    cout << "nameid " << nameid << endl;
-	    cout << "parentid1 " << parentid << endl;
+//	    cout << "nameid " << nameid << endl;
+//	    cout << "parentid1 " << parentid << endl;
 	    nameid = parentid;
 	    sql = "SELECT parent_ncbi_id FROM taxonomy WHERE ncbi_id = "+nameid+" and name_class = 'scientific name';";
 	    //cout << sql << endl;
 	    Query query5(conn);
 	    query5.get_result(sql);
-//			StoreQueryResult R3 = query5.store();
 	    parentid = get_right_one(allids,query5);
-	    //cout << "parentid2 " << parentid << endl;
 	}
 	route.push_back(parentid);
-	/*
-	 * add using the left right for the route
-	 *
-	 string left,right;
-	 sql = "SELECT left_value,right_value FROM taxon WHERE taxon.taxon_id = "+nameid;
-	 Query query5 = conn.query(sql);
-	 StoreQueryResult R3 = query5.store();
-	 left = R3[0][0].c_str();
-	 right = R3[0][1].c_str();
 
-	 vector<string> route;
-	 sql = "SELECT taxon.taxon_id FROM taxon WHERE left_value < "+left;
-	 sql += "AND right_value > ";
-	 sql += right;
-	 sql+= "AND left_value >= ";
-	 sql+= cladeleft;
-	 sql+= "AND right_value <=  ";
-	 sql += claderight;
-	 sql += "ORDER BY left_value DESC;";
-	 Query query4 = conn.query(sql);
-	 StoreQueryResult R2 = query4.store();
-	 for(int j=0;j<R2.size();j++){
-	 route.push_back(R2[j][0].c_str());
-	 }
-	 *
-	 * end add
-	 */
 	vector<double> tdistance;
 	for(int j=0;j<names.size();j++){
 	    if(j!=i){
 		sql = "SELECT ncbi_id FROM taxonomy WHERE name = '"+names[j]+"'  and name_class = 'scientific name';";
 		Query query5(conn);
 		query5.get_result(sql);
-//				StoreQueryResult R3 = query5.store();
 		string jnameid = get_right_one(allids,query5);
 		double distance = 0;
 		while((int)count(route.begin(),route.end(),jnameid) == 0){
@@ -631,7 +565,6 @@ void SQLiteProfiler::create_distances(string clade_name, vector<string> names,ma
 		    sql = "SELECT parent_ncbi_id FROM taxonomy WHERE ncbi_id = "+jnameid+" and name_class = 'scientific name';";
 		    Query query6(conn);
 		    query6.get_result(sql);
-//					StoreQueryResult R4 = query6.store();
 		    jnameid = get_right_one(allids,query6);
 		}
 		for(int k=0;k<route.size();k++){
@@ -640,7 +573,7 @@ void SQLiteProfiler::create_distances(string clade_name, vector<string> names,ma
 		}
 		tdistance.push_back(distance);
 	    }else{
-		tdistance.push_back(666666);
+		tdistance.push_back(SIXES);
 	    }
 	}
 	std::ostringstream stm;
@@ -650,28 +583,33 @@ void SQLiteProfiler::create_distances(string clade_name, vector<string> names,ma
 	numlist->push_back(tdistance);
 	cout << "distances complete: "<< names[i] << endl;
     }
-    //distances = list(tdistance)
 }
 
 //user tree one
-void SQLiteProfiler::create_distances(vector<string> names,Tree * tree,map<string,string> * numnames
+void SQLiteProfiler::create_distances_user_tree(vector<string> file_names,map<string,string> * numnames
 		,map<string,string> * namesnum, vector< vector<double> > * numlist){
-    for(int i=0;i<names.size();i++){
-	Node * nd1 = tree->getExternalNode(names[i]);
+    //get the list of nodes for which distances are required
+    vector<Node *> nodesfordist;
+    for(int i=0;i<file_names.size();i++){
+	for(int j=0;j<userguidetree->getNodeCount();j++){
+	    if (userguidetree->getNode(j)->getName()==file_names[i])
+		nodesfordist.push_back(userguidetree->getNode(j));
+	}
+    }
+    for(int i=0;i<nodesfordist.size();i++){
 	vector<double> tdistance;
-	for(int j=0;j<names.size();j++){
+	for(int j=0;j<nodesfordist.size();j++){
 	    if (i == j){
-		tdistance.push_back(666666);
+		tdistance.push_back(SIXES);
 	    }else{
-		Node * nd2 = tree->getExternalNode(names[j]);
-		double distance = get_distance_between_two_nodes(tree,nd1,nd2);
+		double distance = get_distance_between_two_nodes(userguidetree,nodesfordist[i],nodesfordist[j]);
 		tdistance.push_back(distance);
 	    }
 	}
 	std::ostringstream stm;
 	stm << i;
-	numnames->insert( pair<string,string>(stm.str(),names[i]) );
-	namesnum->insert( pair<string,string>(names[i],stm.str()) );
+	numnames->insert( pair<string,string>(stm.str(),nodesfordist[i]->getName()) );
+	namesnum->insert( pair<string,string>(nodesfordist[i]->getName(),stm.str()) );
 	numlist->push_back(tdistance);
     }
 }
@@ -691,7 +629,7 @@ void SQLiteProfiler::get_shortest_distance_with_dicts(vector<string> names, map<
 	for(int j=0;j<file_names.size();j++){
 	    string nameid2 = namesnum[file_names[j]];
 	    double distance = tdistance[atoi(nameid2.c_str())];
-	    if(distance < shortestdistance && distance != 666666){
+	    if(distance < shortestdistance && distance != SIXES){
 		shortestdistance = distance;
 		*shortestnameone = names[i];
 		keepD = true;
@@ -704,7 +642,7 @@ void SQLiteProfiler::get_shortest_distance_with_dicts(vector<string> names, map<
     shortestnametwo->clear();
     for(int j=0;j<file_names.size();j++){
 	//int ct = (int) count(shortestnametwo->begin(),shortestnametwo->end(),file_names[j]);
-	if(distances[j]==shortestdistance && distances[j]!=666666){
+	if(distances[j]==shortestdistance && distances[j]!=SIXES){
 	    shortestnametwo->push_back(file_names[j]);
 	    cout << "f " <<file_names[j]<<endl;
 	}

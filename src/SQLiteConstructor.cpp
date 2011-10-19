@@ -48,7 +48,8 @@ using namespace std;
 
 #include "libsqlitewrapped.h"
 
-
+#include "tree.h"
+#include "tree_reader.h"
 #include "sequence.h"
 #include "fasta_util.h"
 
@@ -121,6 +122,73 @@ void SQLiteConstructor::set_exclude_gi_from_file(string filename){
 void SQLiteConstructor::set_include_gi_from_file(string filename){
     includegifromfile = true;
     include_gi_filename = filename;
+}
+
+void SQLiteConstructor::set_user_guide_tree(string filename){
+    usertree = true;
+    usertreefile = filename;
+    //read the tree here
+    TreeReader nw;
+    ifstream infile2(filename.c_str());
+    if (!infile2){
+	cerr <<"user guide tree: "<<filename<< " doesn't exist"<<endl;
+	exit(0);
+    }
+    vector<string> lines;
+    string line;
+    while(getline(infile2,line)){
+	lines.push_back(line);
+    }
+    infile2.close();
+    userguidetree = nw.readTree(lines[0]);
+    cout << "read user guide tree with : "<<userguidetree->getExternalNodeCount() << " tips"<<endl;
+    //need to number the internal nodes so that they can be used for the run 
+    int count = 0;
+    for(int i=0;i<userguidetree->getInternalNodeCount();i++){
+	userguidetree->getInternalNode(i)->setName(to_string(count));
+	count +=1;
+    }
+    //maybe get all the tip names
+    //procedure would be to 
+    //get the ncbi taxa for each of these
+    //associating that information with each of the tip nodes as comment
+    Database conn(db);
+    //need to make this faster
+    for (int i=0;i<userguidetree->getExternalNodeCount();i++){
+	string tname = userguidetree->getExternalNode(i)->getName();
+	//search for the name in the database
+	string sql = "SELECT ncbi_id FROM taxonomy WHERE edited_name LIKE '%"+tname+"%'";
+	Query query(conn);
+	query.get_result(sql);
+	int count1 = 0;
+	bool nameset = false;
+	string nameval;
+	while(query.fetch_row()){
+	    nameset = true;
+	    nameval = to_string(query.getval());
+	    count1+=1;
+	}
+	query.free_result();
+	if (count1 == 0){
+	    sql = "SELECT ncbi_id FROM taxonomy WHERE ncbi_id LIKE '%"+tname+"%'";
+	    Query query2(conn);
+	    query2.get_result(sql);
+	    while(query2.fetch_row()){
+		nameset = true;
+		nameval = to_string(query.getval());
+	    }
+	    query2.free_result();
+	}
+	if (nameset==true){
+	    userguidetree->getExternalNode(i)->setComment(nameval);
+	    cout << tname << "="<<nameval<<endl;
+	}else{
+	    cerr <<tname << " is not in the ncbi database as a number or name"<<endl; 
+	}
+    }
+    //TODO: change the ncbisaturation here
+    ncbi_saturation = false;
+
 }
 
 void SQLiteConstructor::run(){
@@ -275,7 +343,7 @@ void SQLiteConstructor::run(){
     //add the additional sequences to the right hierarchy
     vector<string> sname_ids;
     vector<string> snames;
-    if(updateDB == true){
+    if(updateDB == true && usertree == false){
 	vector<int> toremove;
 	for(int j=0;j<keep_seqs->size();j++){
 	    if(stored_seqs.count(keep_seqs->at(j).get_ncbi_taxid()) > 0){
@@ -341,6 +409,8 @@ void SQLiteConstructor::run(){
 		}
 	    }
 	}
+    }else if (updateDB == true && usertree == true){
+
     }
 
     //saturation tests
@@ -982,8 +1052,7 @@ void SQLiteConstructor::reduce_genomes(vector<DBSeq> * keep_seqs){
 vector<string> SQLiteConstructor::get_final_children(string inname_id){
     vector<string> ids;
     ids.push_back(inname_id);
-    vector<string>	keepids;
-
+    vector<string> keepids;
     Database conn(db);
     //testing if tip
     bool tip = true;
@@ -1031,11 +1100,22 @@ vector<string> SQLiteConstructor::get_final_children(string inname_id){
     return allids;
 }
 
+/*
+ * getting the final ncbi_ids for the children originating at a node
+ */
+vector<string> SQLiteConstructor::get_final_children_node(Node * node){
+    vector<string> allids;
+    vector<Node *> leaves = node->get_leaves();
+    for (int i=0;i<leaves.size();i++){
+	allids.push_back(leaves[i]->getComment());
+    }
+    return allids;
+}
+
 void SQLiteConstructor::get_seqs_for_names(string inname_id, vector<DBSeq> * seqs, vector<DBSeq> * temp_seqs){
     vector<string> final_ids;
     final_ids = get_final_children(inname_id);
     for(unsigned int i=0;i<seqs->size();i++){
-	//string tid = seqs->at(i).get_tax_id();
 	string tid = seqs->at(i).get_ncbi_taxid();
 	int mycount = 0;
 	mycount = (int) count (final_ids.begin(),final_ids.end(), tid);
@@ -1044,6 +1124,23 @@ void SQLiteConstructor::get_seqs_for_names(string inname_id, vector<DBSeq> * seq
 	}
     }
 }
+
+/* for userguidetree
+ * this is intended to retrieve all the seqs that are contained below a node
+ */
+void SQLiteConstructor::get_seqs_for_nodes(Node * node, vector<DBSeq> * seqs, vector<DBSeq> * temp_seqs){
+    vector<string> final_ids;
+    final_ids = get_final_children_node(node);
+    for(unsigned int i=0;i<seqs->size();i++){
+	string tid = seqs->at(i).get_ncbi_taxid();
+	int mycount = 0;
+	mycount = (int) count (final_ids.begin(),final_ids.end(), tid);
+	if(mycount > 0){
+	    temp_seqs->push_back(seqs->at(i));
+	}
+    }
+}
+
 
 void SQLiteConstructor::make_mafft_multiple_alignment(vector<DBSeq> * inseqs){
     //make file
@@ -1067,10 +1164,6 @@ void SQLiteConstructor::make_mafft_multiple_alignment(vector<DBSeq> * inseqs){
     }
     pclose( fp );
 }
-/*
- * should replace paup
- * delete paup when done testing
- */
 
 double SQLiteConstructor::calculate_MAD_quicktree(){
     const char * phcmd = "phyutility -concat -in TEMPFILES/outfile -out TEMPFILES/outfile.nex";
@@ -1198,79 +1291,32 @@ double SQLiteConstructor::calculate_MAD_quicktree_sample(vector<DBSeq> * inseqs)
 void SQLiteConstructor::saturation_tests(vector<string> name_ids, vector<string> names, 
 	vector<DBSeq> * keep_seqs){
 
-//void SQLiteConstructor::saturation_tests(string name_id, vector<DBSeq> * keep_seqs, vector<bool> * keep_rc){
-//	vector<string> name_ids;
-//	vector<string> names;
-//	name_ids.push_back(name_id);
-//	names.push_back(clade_name);
-
-    vector<DBSeq> orphan_seqs;
     vector<Sequence> allseqs; 
     for(int i=0;i<keep_seqs->size();i++){
 	allseqs.push_back(keep_seqs->at(i));
     }
+    
+    vector<string> seq_set_filenames;//here they will be not node names but numbers
 
-    string name;
-    string name_id;
-    while(!names.empty()){
-	name_id = name_ids.back();
-	name_ids.pop_back();
-	name = names.back();
-	names.pop_back();
-	vector<DBSeq> * temp_seqs = new vector<DBSeq>();
-	temp_seqs->empty();
-	get_seqs_for_names(name_id,keep_seqs,temp_seqs);
-	if(temp_seqs->size() == 1){
-	    /*
-	     * use to make an orphan but rather just make a singleton file
-	     */
-	    cout << name << " " << temp_seqs->size() << endl;
-	    //make file
-	    FastaUtil seqwriter1;
-	    vector<Sequence> sc1;
-	    for(int i=0;i<temp_seqs->size();i++){
-		//need to implement a better way, but this is it for now
-		int eraseint=0;
-		for(int zz=0;zz<allseqs.size();zz++){
-		    if (temp_seqs->at(i).get_id() == allseqs[zz].get_id()){
-			eraseint = zz;
-			break;
-		    }
-		}
-		allseqs.erase(allseqs.begin()+eraseint);
-		sc1.push_back(temp_seqs->at(i));
-	    }
-	    string fn1 = gene_name;
-	    fn1 += "/" + name;
-	    seqwriter1.writeFileFromVector(fn1,sc1);
-	}else if (temp_seqs->size() == 0){
-	    continue;
-	}else{
-	    cout << name << " " << temp_seqs->size() << endl;
-	    double mad;
-	    if(temp_seqs->size() > 2){
-		if (temp_seqs->size() < 3000){
-		    //TODO: add input tree for mafft
-		    make_mafft_multiple_alignment(temp_seqs);
-		    mad = calculate_MAD_quicktree();
-		}else if(temp_seqs->size() < 10000){
-		    //need to make this happen 10 tens and average
-		    mad = 0;
-		    for (int i=0;i<10;i++)
-			mad = mad + (calculate_MAD_quicktree_sample(temp_seqs)/10.0);
-		    mad = mad * 2; //make sure is conservative
-		}else{//if it is really big
-		    mad = mad_cutoff + 1;//make sure it gets broken up
-		}
-	    }else{
-		mad = 0;
-	    }
-	    cout << "mad: "<<mad << endl;
-	    //if mad scores are good, store result
-	    //write to file and to sqlite database
-	    if (mad <= mad_cutoff){
+    if(ncbi_saturation == true){
+	string name;
+	string name_id;
+	while(!names.empty()){
+	    name_id = name_ids.back();
+	    name_ids.pop_back();
+	    name = names.back();
+	    names.pop_back();
+	    vector<DBSeq> * temp_seqs = new vector<DBSeq>();
+	    temp_seqs->empty();
+	    get_seqs_for_names(name_id,keep_seqs,temp_seqs);
+	    if(temp_seqs->size() == 1){
+		/*
+		 * use to make an orphan but rather just make a singleton file
+		 */
+		cout << name << " " << temp_seqs->size() << endl;
+		//make file
 		FastaUtil seqwriter1;
-		vector<Sequence> sc1; 
+		vector<Sequence> sc1;
 		for(int i=0;i<temp_seqs->size();i++){
 		    //need to implement a better way, but this is it for now
 		    int eraseint=0;
@@ -1286,12 +1332,55 @@ void SQLiteConstructor::saturation_tests(vector<string> name_ids, vector<string>
 		string fn1 = gene_name;
 		fn1 += "/" + name;
 		seqwriter1.writeFileFromVector(fn1,sc1);
-		//TODO: SQLITE database storing
-
-	    }
-	    //if mad scores are bad push the children into names
-	    else{//this is the NCBI way, need too allow the tree way as well
-		if (ncbi_saturation == true){
+		seq_set_filenames.push_back(fn1);
+	    }else if (temp_seqs->size() == 0){
+		continue;
+	    }else{
+		cout << name << " " << temp_seqs->size() << endl;
+		double mad;
+		if(temp_seqs->size() > 2){
+		    if (temp_seqs->size() < 3000){
+			//TODO: add input tree for mafft
+			make_mafft_multiple_alignment(temp_seqs);
+			mad = calculate_MAD_quicktree();
+		    }else if(temp_seqs->size() < 10000){
+			//need to make this happen 10 tens and average
+			mad = 0;
+			for (int i=0;i<10;i++)
+			    mad = mad + (calculate_MAD_quicktree_sample(temp_seqs)/10.0);
+			mad = mad * 2; //make sure is conservative
+		    }else{//if it is really big
+			mad = mad_cutoff + 1;//make sure it gets broken up
+		    }
+		}else{
+		    mad = 0;
+		}
+		cout << "mad: "<<mad << endl;
+		//if mad scores are good, store result
+		//write to file and to sqlite database
+		if (mad <= mad_cutoff){
+		    FastaUtil seqwriter1;
+		    vector<Sequence> sc1; 
+		    for(int i=0;i<temp_seqs->size();i++){
+			//need to implement a better way, but this is it for now
+			int eraseint=0;
+			for(int zz=0;zz<allseqs.size();zz++){
+			    if (temp_seqs->at(i).get_id() == allseqs[zz].get_id()){
+				eraseint = zz;
+				break;
+			    }
+			}
+			allseqs.erase(allseqs.begin()+eraseint);
+			sc1.push_back(temp_seqs->at(i));
+		    }
+		    string fn1 = gene_name;
+		    fn1 += "/" + name;
+		    seqwriter1.writeFileFromVector(fn1,sc1);
+		    seq_set_filenames.push_back(fn1);
+		    //TODO: SQLITE database storing
+		}
+		//if mad scores are bad push the children into names
+		else{
 		    vector<string>child_ids;
 		    Database conn(db);
 		    string sql = "SELECT ncbi_id FROM taxonomy WHERE parent_ncbi_id = ";
@@ -1320,18 +1409,117 @@ void SQLiteConstructor::saturation_tests(vector<string> name_ids, vector<string>
 			query2.free_result();
 		    }
 		    query.free_result();
-		}else{//TODO: using a user tree, can be incomplete
-
 		}
 	    }
+	    delete (temp_seqs);
 	}
-	delete (temp_seqs);
+    }else{//user guide tree
+	/*
+	 * The idea here is to use the tree structure as the guide for the alignment and the 
+	 * breaking up of the groups. So the steps are
+	 *
+	 * 1) the stack is nodes
+	 * 2) pop a node off and get all the seqs that are in that 
+	 * 3) do everything, if there is saturation push the children in there
+	 * 3a) as part of the do everything bit, the mafft alignments should be recieving the node
+	 *     as a guide tree for the alignment
+	 */
+	//for now ignoring the names that are sent because it is just the root, for update it should be the nodes
+	vector<Node *> nodes;
+	nodes.push_back(userguidetree->getRoot());//this is different for update
+	while(!nodes.empty()){
+	    Node * curnode = nodes.back();
+	    nodes.pop_back();
+	    vector<DBSeq> * temp_seqs = new vector<DBSeq>();
+	    temp_seqs->empty();
+	    get_seqs_for_nodes(curnode,keep_seqs,temp_seqs);
+	    if(temp_seqs->size() == 1){//just one sequence in the group
+		cout << curnode->getName() << " " << temp_seqs->size() << endl;
+		//make file
+		FastaUtil seqwriter1;
+		vector<Sequence> sc1;
+		for(int i=0;i<temp_seqs->size();i++){
+		    //need to implement a better way, but this is it for now
+		    int eraseint=0;
+		    for(int zz=0;zz<allseqs.size();zz++){
+			if (temp_seqs->at(i).get_id() == allseqs[zz].get_id()){
+			    eraseint = zz;
+			    break;
+			}
+		    }
+		    allseqs.erase(allseqs.begin()+eraseint);
+		    sc1.push_back(temp_seqs->at(i));
+		}
+		string fn1 = gene_name;
+		fn1 += "/" + curnode->getName();
+		seqwriter1.writeFileFromVector(fn1,sc1);
+		seq_set_filenames.push_back(fn1);
+	    }else if (temp_seqs->size() == 0){
+		continue;
+	    }else{
+		cout << curnode->getName() << " " << temp_seqs->size() << endl;
+		double mad;
+		if(temp_seqs->size() > 2){
+		    if (temp_seqs->size() < 3000){
+			//TODO: add input tree for mafft
+			make_mafft_multiple_alignment(temp_seqs);
+			mad = calculate_MAD_quicktree();
+		    }else if(temp_seqs->size() < 10000){
+			//need to make this happen 10 tens and average
+			mad = 0;
+			for (int i=0;i<10;i++)
+			    mad = mad + (calculate_MAD_quicktree_sample(temp_seqs)/10.0);
+			mad = mad * 2; //make sure is conservative
+		    }else{//if it is really big
+			mad = mad_cutoff + 1;//make sure it gets broken up
+		    }
+		}else{
+		    mad = 0;
+		}
+		cout << "mad: "<<mad << endl;
+		//if mad scores are good, store result
+		//write to file and to sqlite database
+		if (mad <= mad_cutoff){
+		    FastaUtil seqwriter1;
+		    vector<Sequence> sc1; 
+		    for(int i=0;i<temp_seqs->size();i++){
+			//need to implement a better way, but this is it for now
+			int eraseint=0;
+			for(int zz=0;zz<allseqs.size();zz++){
+			    if (temp_seqs->at(i).get_id() == allseqs[zz].get_id()){
+				eraseint = zz;
+				break;
+			    }
+			}
+			allseqs.erase(allseqs.begin()+eraseint);
+			sc1.push_back(temp_seqs->at(i));
+		    }
+		    string fn1 = gene_name;
+		    fn1 += "/" + curnode->getName();
+		    seqwriter1.writeFileFromVector(fn1,sc1);
+		    seq_set_filenames.push_back(fn1);
+		    //TODO: SQLITE database storing
+		}
+		//if mad scores are bad push the children into names
+		else{
+		    //need to get the children
+		    for(int i=0;i<curnode->getChildCount();i++){
+			nodes.push_back(curnode->getChild(i));
+		    }
+		}
+	    }
+	    delete (temp_seqs);
+	}
     }
     /*
      * deal with the singletons
+     *
+     * singletons should be sequences that either don't have any data in the 
+     * tree that is input or in the ncbi database if that is the tree to be 
+     * used 
      */
     cout << "leftovers: " << allseqs.size() << endl;
-    for(int i=0;i<allseqs.size();i++){
+    /*for(int i=0;i<allseqs.size();i++){
 	Database conn(db);
 	vector<Sequence> sc1; 
 	sc1.push_back(allseqs.at(i));
@@ -1356,8 +1544,62 @@ void SQLiteConstructor::saturation_tests(vector<string> name_ids, vector<string>
 	string fn1 = gene_name;
 	fn1 += "/" + name;
 	seqwriter1.writeFileFromVector(fn1,sc1);
+    }*/
+    /*
+     * TODO: allow for option of not having leftovers, 
+     * if NCBI taxa are all that is wanted, and they are wanted to be 
+     * clean
+     */
+    cout << "picking where leftovers should go" << endl;
+    FastaUtil fu;
+    for (int i=0;i<allseqs.size();i++){
+	int bestscore = 0;
+	int bestind = 0;
+	for(int j=0;j<seq_set_filenames.size();j++){
+	    //read in the file into a vector of seqs
+	    vector<Sequence> tempseqs;
+	    fu.readFile(seq_set_filenames[j],tempseqs);
+	    int tscore = get_single_to_group_seq_score(allseqs[i],tempseqs);
+	    if (tscore > bestscore){
+		bestind = j;
+	    }
+	}
+	vector<Sequence> finalseqs;
+	fu.readFile(seq_set_filenames[bestind],finalseqs);
+	finalseqs.push_back(allseqs[i]);
+	//delete the file
+	remove(seq_set_filenames[bestind].c_str());
+	//write the file out again
+	fu.writeFileFromVector(seq_set_filenames[bestind],finalseqs);
     }
 }
+
+/*
+ * comparing a sequences to a group of sequences and returning the best score
+ * 
+ * this can be helpful when deciding with which group a sequence goes
+ *
+ * ASSUMPTIONS: the sequences are all pointing the right direction
+ */
+int SQLiteConstructor::get_single_to_group_seq_score(Sequence & inseq,vector<Sequence> & ginseqs){
+    vector<int> scores;
+    SBMatrix mat = swps3_readSBMatrix( "EDNAFULL" );
+    for (int i=0;i<ginseqs.size();i++){
+	double maxide = 0;
+	int ret = swps3_maxscores(mat, &inseq,&ginseqs[i]);
+	double tsc = double(ret);
+	//cout <<i << " " << j << " " << ret << " " << retrc << " " << known_scores[j] << " " <<  tsc << endl;
+	if (std::numeric_limits<double>::infinity() != tsc){
+	    scores.push_back(tsc);
+	}
+    }
+    int maxide=0;
+    for(int i=0;i<scores.size();i++){
+	if(scores[i]>maxide)
+	    maxide = scores[i];
+    }
+}
+
 
 /*
  * this stores the gi numbers for reference
@@ -1403,3 +1645,6 @@ void SQLiteConstructor::add_seqs_from_file_to_dbseqs_vector(string filename,vect
 }
 
 
+Tree * SQLiteConstructor::get_user_guide_tree_obj(){
+    return userguidetree;
+}

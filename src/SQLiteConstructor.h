@@ -35,6 +35,8 @@ using namespace std;
 #include "sequence.h"
 
 #include "DBSeq.h"
+#include "tree.h"
+#include "node.h"
 
 class SQLiteConstructor {
 private:
@@ -65,6 +67,9 @@ private:
     bool updateFILE;
     string updatef;
     bool ncbi_saturation;
+    bool usertree;
+    string usertreefile;
+    Tree * userguidetree;
     vector<Sequence> * known_seqs;
     vector<DBSeq> use_only_names_from_file(vector<DBSeq> seqs);
     DBSeq add_higher_taxa(string taxon_id,vector<DBSeq> seqs);
@@ -77,11 +82,14 @@ private:
     void remove_duplicates_SWPS3(vector<DBSeq> * keep_seqs);
     void reduce_genomes(vector<DBSeq> * keep_seqs);
     void get_seqs_for_names(string name_id, vector<DBSeq> * seqs, vector<DBSeq> * temp_seqs);
+    void get_seqs_for_nodes(Node * node, vector<DBSeq> * seqs, vector<DBSeq> * temp_seqs);
     vector<string> get_final_children(string name_id);
+    vector<string> get_final_children_node(Node * node);
     void make_mafft_multiple_alignment(vector<DBSeq> * inseqs);
     double calculate_MAD_quicktree();
     double calculate_MAD_quicktree_sample(vector<DBSeq> * inseqs);
     void saturation_tests(vector<string> name_ids, vector<string> names, vector<DBSeq> * keep_seqs);
+    int get_single_to_group_seq_score(Sequence & inseq,vector<Sequence> & ginseqs);
     void write_gi_numbers(vector<DBSeq> *);
     void add_seqs_from_file_to_dbseqs_vector(string filename,vector<DBSeq> * keep_seqs, map<string,string> & taxgimap);
 public:
@@ -94,6 +102,7 @@ public:
     void set_exclude_names_from_file(string filename);
     void set_exclude_gi_from_file(string filename);
     void set_include_gi_from_file(string filename);
+    void set_user_guide_tree(string filename);
     void run();
     string get_cladename();
     vector <string> get_search();
@@ -102,6 +111,7 @@ public:
     double get_coverage();
     double get_identity();
     int get_numthreads();
+    Tree * get_user_guide_tree_obj();
 };
 
 

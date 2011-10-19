@@ -34,13 +34,14 @@ using namespace std;
 #include "SQLiteDBController.h"
 #include "SmithWatermanGotoh.h"
 
+#include "tree.h"
 #include "sequence.h"
 #include "omp.h"
 #include "SWPS3_matrix.h"
 
 int main(int argc, char* argv[]){
     if(argc != 3){
-	cout << "PHLAWD 2.0a" << endl;
+	cout << "PHLAWD 3.0a" << endl;
 	cout << "you need more arguments." << endl;
 	cout << "usage: PHLAWD task configfile" << endl;
 	cout << "possible tasks include:" << endl;
@@ -109,6 +110,9 @@ int main(int argc, char* argv[]){
 	    bool updateFILE = false;
 	    string updatef = "";
 	    string maskurl = "";
+	    bool usertree = false;//guide tree
+	    string usertreefile = "";//guide tree
+	    Tree * usertreeobj;
 	    //read file
 	    ifstream ifs(argv[2]);
 	    string line;
@@ -176,6 +180,10 @@ int main(int argc, char* argv[]){
 		    updatef = tokens[1];
 		    cout << "updateFILE" << endl;
 		    cout << "updated file " << updatef << endl;
+		}else if(!strcmp(tokens[0].c_str(), "userguidetree")){
+		    usertree = true;
+		    usertreefile = tokens[1];
+		    cout << "user guide treefile: "<< usertreefile <<endl;
 		}
 	    }
 	    ifs.close();
@@ -219,7 +227,14 @@ int main(int argc, char* argv[]){
 		    cout << "using ITS mode: true" << endl;
 		    cout << "warning: highly experimental" << endl;
 		}
+		if(usertree == true){
+		    cout << "using user guide tree: "<< usertreefile <<endl;
+		    a->set_user_guide_tree(usertreefile);
+		}
 		a->run();
+		if(usertree == true){
+		    usertreeobj = a->get_user_guide_tree_obj();
+		}
 		delete(a);
 	    }
 	    /*
@@ -229,6 +244,9 @@ int main(int argc, char* argv[]){
 		SQLiteProfiler * b;
 		b = new SQLiteProfiler(gene,clade,db,automated,updateDB);
 		b->prelimalign();
+		if(usertree == true && asse == true){
+		    b->set_user_guide_tree(usertreeobj);
+		}
 		b->run();
 		delete(b);
 	    }
