@@ -343,7 +343,7 @@ void SQLiteConstructor::run(){
     //add the additional sequences to the right hierarchy
     vector<string> sname_ids;
     vector<string> snames;
-    if(updateDB == true && usertree == false){
+    if(updateDB == true){
 	vector<int> toremove;
 	for(int j=0;j<keep_seqs->size();j++){
 	    if(stored_seqs.count(keep_seqs->at(j).get_ncbi_taxid()) > 0){
@@ -364,53 +364,77 @@ void SQLiteConstructor::run(){
 	for(int j=0;j<keep_seqs->size();j++){
 	    cout << "adding: " << keep_seqs->at(j).get_ncbi_taxid() << endl;
 	}
-	//add the write gi numbers before add the rest of the seqs are added to keep_seqs
+	//add the right gi numbers before add the rest of the seqs are added to keep_seqs
 	write_gi_numbers(keep_seqs);
 	gifile.close();
 	//check files for existing taxonomic break down as it will generally be 
 	//these seperations or more fine
 	vector<string> file_names;
 	getdir(gene_name,file_names);
-	for (unsigned int i = 0;i < file_names.size();i++){
-	    string sql = "SELECT ncbi_id,left_value,right_value FROM taxonomy WHERE name = '"+file_names[i]+"';";
-	    Query query(conn);
-	    query.get_result(sql);
-	    string t_id; string l_id; string r_id;
-	    while(query.fetch_row()){
-		t_id = query.getstr();
-		l_id = query.getstr();
-		r_id = query.getstr();
-	    }
-	    if (t_id.size() == 0){
-		cout << "There is an error getting the id for " << file_names[i] << endl;
-		exit(0);
-	    }
-	    for(unsigned int j = 0; j < keep_seqs->size(); j++){
-		//start here, need to get the higher taxon
-		sql = "SELECT left_value,right_value FROM taxonomy WHERE ncbi_id = '"+keep_seqs->at(j).get_ncbi_taxid()+"';";
-		Query query2(conn);
-		query2.get_result(sql);
-		string lefttid;
-		string righttid;
-		while(query2.fetch_row()){
-		    lefttid = query2.getstr();
-		    righttid = query2.getstr();
+	if(usertree == false){
+	    for (unsigned int i = 0;i < file_names.size();i++){
+		string sql = "SELECT ncbi_id,left_value,right_value FROM taxonomy WHERE name = '"+file_names[i]+"';";
+		Query query(conn);
+		query.get_result(sql);
+		string t_id; string l_id; string r_id;
+		while(query.fetch_row()){
+		    t_id = query.getstr();
+		    l_id = query.getstr();
+		    r_id = query.getstr();
 		}
-		if (lefttid > l_id && righttid < r_id){
-		    if ((int) count(sname_ids.begin(),sname_ids.end(),t_id) == 0){
-			sname_ids.push_back(t_id);
-			snames.push_back(file_names[i]);
-			//add the sequences from the file into keep_seqs , this should be easier when moving to sqlite
-			add_seqs_from_file_to_dbseqs_vector(file_names[i],keep_seqs,stored_seqs);
-			string nfilename = gene_name+"/"+file_names[i];
-			remove(nfilename.c_str());
+		if (t_id.size() == 0){
+		    cout << "There is an error getting the id for " << file_names[i] << endl;
+		    exit(0);
+		}
+		for(unsigned int j = 0; j < keep_seqs->size(); j++){
+		    //start here, need to get the higher taxon
+		    sql = "SELECT left_value,right_value FROM taxonomy WHERE ncbi_id = '"+keep_seqs->at(j).get_ncbi_taxid()+"';";
+		    Query query2(conn);
+		    query2.get_result(sql);
+		    string lefttid;
+		    string righttid;
+		    while(query2.fetch_row()){
+			lefttid = query2.getstr();
+			righttid = query2.getstr();
 		    }
-		    break;
+		    if (lefttid > l_id && righttid < r_id){
+			if ((int) count(sname_ids.begin(),sname_ids.end(),t_id) == 0){
+			    sname_ids.push_back(t_id);
+			    snames.push_back(file_names[i]);
+			    //add the sequences from the file into keep_seqs , this should be easier when moving to sqlite
+			    add_seqs_from_file_to_dbseqs_vector(file_names[i],keep_seqs,stored_seqs);
+			    string nfilename = gene_name+"/"+file_names[i];
+			    remove(nfilename.c_str());
+			}
+			break;
+		    }
+		}
+	    }
+	}else{//usertree == true
+	    //can do seq similarity, tree building distance, or ncbi
+	    //going to try ncbi first
+	    //basically going to ask what are the ncbi taxa in each, if parent id of any of these is the same
+	    //going to test seq similarity and take best, if fails, then will just add to singletons
+	    FastaUtil fu;
+	    for(unsigned int i=0;i<keep_seqs->size();i++){
+		int bestind;
+		int bestscore=0;
+		bool istherebest = false;//TODO: add this functionality
+		for(unsigned int j=0;j<file_names.size();j++){
+		    vector<Sequence> tempseqs;
+		    fu.readFile(file_names[j],tempseqs);
+		    int tscore = get_single_to_group_seq_score(keep_seqs->at(i),tempseqs);
+		    if (tscore > bestscore)
+			bestind = j;
+		}
+		if ((int) count(snames.begin(),snames.end(),file_names[bestind]) == 0){
+		    snames.push_back(file_names[bestind]); //need to redo this file
+		    add_seqs_from_file_to_dbseqs_vector(file_names[bestind],keep_seqs,stored_seqs);
+		    string nfilename = gene_name+"/"+file_names[bestind];
+		    remove(nfilename.c_str());
 		}
 	    }
 	}
-    }else if (updateDB == true && usertree == true){
-
     }
 
     //saturation tests
@@ -1426,7 +1450,24 @@ void SQLiteConstructor::saturation_tests(vector<string> name_ids, vector<string>
 	 */
 	//for now ignoring the names that are sent because it is just the root, for update it should be the nodes
 	vector<Node *> nodes;
-	nodes.push_back(userguidetree->getRoot());//this is different for update
+	if (updateDB == true){
+	    for(int i=0;i<names.size();i++){
+		bool found = false;
+		for(int j=0;j<userguidetree->getNodeCount();j++){
+		    if (userguidetree->getNode(j)->getName()==names[i]){
+			nodes.push_back(userguidetree->getNode(j));
+			found = true;
+			break;
+		    }
+		}
+		if (found == false){
+		    cerr << "problem updating and finding this node : "<<names[i]<<endl;
+		    exit(0);
+		}
+	    }
+	}else{
+	    nodes.push_back(userguidetree->getRoot());//this is different for update
+	}
 	while(!nodes.empty()){
 	    Node * curnode = nodes.back();
 	    nodes.pop_back();
@@ -1524,6 +1565,7 @@ void SQLiteConstructor::saturation_tests(vector<string> name_ids, vector<string>
      * TODO: allow for option of not having leftovers, 
      * if NCBI taxa are all that is wanted, and they are wanted to be 
      * clean
+     * TODO: if it is a really bad match, should just output it by itself
      */
     cout << "picking where leftovers should go" << endl;
     FastaUtil fu;
