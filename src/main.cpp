@@ -234,6 +234,8 @@ int main(int argc, char* argv[]){
 		a->run();
 		if(usertree == true){
 		    usertreeobj = a->get_user_guide_tree_obj();
+		    if (usertreeobj == NULL)//can happen if little overlap between tree and dataset
+			usertree = false;
 		}
 		delete(a);
 	    }

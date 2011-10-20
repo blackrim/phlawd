@@ -41,6 +41,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <limits>
+#include <set>
 
 using namespace std;
 
@@ -124,6 +125,10 @@ void SQLiteConstructor::set_include_gi_from_file(string filename){
     include_gi_filename = filename;
 }
 
+/*
+ * if the user guide tree covers less than 50% of the taxa, falling back
+ * on NCBI
+ */
 void SQLiteConstructor::set_user_guide_tree(string filename){
     usertree = true;
     usertreefile = filename;
@@ -148,7 +153,6 @@ void SQLiteConstructor::set_user_guide_tree(string filename){
 	userguidetree->getInternalNode(i)->setName(to_string(count));
 	count +=1;
     }
-    //maybe get all the tip names
     //procedure would be to 
     //get the ncbi taxa for each of these
     //associating that information with each of the tip nodes as comment
@@ -177,7 +181,6 @@ void SQLiteConstructor::set_user_guide_tree(string filename){
 	    cerr <<tname << " is not in the ncbi database as a number or name"<<endl; 
 	}
     }
-    //TODO: change the ncbisaturation here
     ncbi_saturation = false;
 
 }
@@ -304,7 +307,6 @@ void SQLiteConstructor::run(){
 
     //use blast to idenify seqs and rc
     vector<DBSeq> * keep_seqs = new vector<DBSeq>();
-    //vector<bool> * keep_rc = new vector<bool>();
 
     /*
      * not sure where ITS should go, but maybe before blasting
@@ -326,9 +328,18 @@ void SQLiteConstructor::run(){
     //remove duplicate names
     remove_duplicates_SWPS3(keep_seqs);
     cout << "dups: "<< keep_seqs->size() << endl;
-    /*
-     * reduce genome sequences
-     */
+    //if userguidetree overlaps with less than a certain percentage, usertree = false
+    if(usertree = true){
+	double overlap = get_usertree_keepseq_overlap(keep_seqs);
+	if (overlap < 0.5){
+	    usertree = false;
+	    userguidetree = NULL;
+	    cerr << "user guide has only "<< overlap<< " overlap so exiting"<<endl;
+	    cout << "comment userguidetree with # in the config file to skip"<<endl;
+	    exit(0);
+	}
+    }
+    //reduce genome sequences
     reduce_genomes(keep_seqs);
 	
     //add the updatedb code here
@@ -1734,6 +1745,18 @@ void SQLiteConstructor::add_seqs_from_file_to_dbseqs_vector(string filename,vect
     }
 }
 
+double SQLiteConstructor::get_usertree_keepseq_overlap(vector<DBSeq> * keep_seqs){
+    set<string> tree_names;
+    for(int i=0;i<userguidetree->getExternalNodeCount();i++){
+	tree_names.insert(userguidetree->getExternalNode(i)->getComment());
+    }
+    double ccount = 0;
+    for(int i=0;i<keep_seqs->size();i++){
+	if(tree_names.count(keep_seqs->at(i).get_ncbi_taxid())==1)
+	    ccount+=1;
+    }
+    return ccount/(double)keep_seqs->size();
+}
 
 Tree * SQLiteConstructor::get_user_guide_tree_obj(){
     return userguidetree;

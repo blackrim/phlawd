@@ -79,6 +79,7 @@ private:
     void first_seq_search_for_gene_left_right(vector<vector<string> >  &);
     vector<DBSeq> first_get_seqs_for_name_use_left_right(int name_id, vector<vector<string> > & results);
     void get_same_seqs_openmp_SWPS3(vector<DBSeq> & seqs,  vector<DBSeq> * keep_seqs);
+    double get_usertree_keepseq_overlap(vector<DBSeq> * keep_seqs);
     void remove_duplicates_SWPS3(vector<DBSeq> * keep_seqs);
     void reduce_genomes(vector<DBSeq> * keep_seqs);
     void get_seqs_for_names(string name_id, vector<DBSeq> * seqs, vector<DBSeq> * temp_seqs);
