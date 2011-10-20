@@ -203,6 +203,8 @@ void SQLiteConstructor::run(){
 		first = false;
 		continue;
 	    }
+	    if(line.size() < 2)
+		continue;
 	    vector<string> searchtokens;
 	    Tokenize(line,searchtokens, "\t");
 	    for(int j=0;j<searchtokens.size();j++){
@@ -413,10 +415,13 @@ void SQLiteConstructor::run(){
 	    //basic idea is to take the whole set of sequence names and see if the mrca of the names in a file include any seqs outside of that clade
 	    //storedseqs are the seqs from before
 	    FastaUtil fu;
+	    map<Node *,string> rename_nodes;//this should allow for renaming
+            //the file_names left over are all the ones that need to be redone
 	    for(int j=0;j<file_names.size();j++){
 		bool test = true;
 		vector<Sequence> tempseqs;
-		fu.readFile(file_names[j],tempseqs);
+		fu.readFile(gene_name+"/"+file_names[j],tempseqs);
+		//TODO: if one seq need to just delete
 		vector<string> mrca_names;
 		for(int i=0;i<tempseqs.size();i++){
 		    mrca_names.push_back(tempseqs[i].get_id());
@@ -434,13 +439,8 @@ void SQLiteConstructor::run(){
 		    }
 		}
 		if (test == true){
-		    //need to change the other filename
-		    /*for(int k=0;k<userguidetree->getNodeCount();k++){
-			if (userguidetree->getNode(testind)==file_names[j])
-			    
-		    }*/
 		    tmrca->setName(file_names[j]);
-		    
+		    rename_nodes[tmrca] = file_names[j];
 		}else{
 		    add_seqs_from_file_to_dbseqs_vector(file_names[j],keep_seqs,stored_seqs);
 		    remove(file_names[j].c_str());
@@ -473,6 +473,18 @@ void SQLiteConstructor::run(){
 		    }
 		}
 	    }else{
+		//rename the nodes with the remaped , the others can be random
+		int ccount =0;
+		for(int i=0;i<userguidetree->getInternalNodeCount();i++){
+		    if(rename_nodes.count(userguidetree->getInternalNode(i))==1){
+			userguidetree->getInternalNode(i)->setName(rename_nodes[userguidetree->getInternalNode(i)]);
+		    }else{
+			while((int)count(file_names.begin(),file_names.end(),to_string(ccount))>0){
+			    ccount += 1;
+			}
+			userguidetree->getInternalNode(i)->setName(to_string(ccount));
+		    }
+		}
 		//setup for restart
 		snames.push_back(userguidetree->getRoot()->getName());
 	    }
