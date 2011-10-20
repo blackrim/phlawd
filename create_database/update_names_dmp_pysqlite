@@ -46,6 +46,7 @@ if __name__ == "__main__":
 		ednm = ednm.replace(".","_")
 		ednm = ednm.replace("&","_")
 		ednm = ednm.replace(",","_")
+		ednm = ednm.replace(" ","_")
 		#print(cmdin)
 		try:
 			#test for whether it is already in there

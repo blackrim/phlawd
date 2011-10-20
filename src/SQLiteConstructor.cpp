@@ -154,10 +154,11 @@ void SQLiteConstructor::set_user_guide_tree(string filename){
     //associating that information with each of the tip nodes as comment
     Database conn(db);
     //need to make this faster
+    cout << "matching user guide tree names: "<<userguidetree->getExternalNodeCount() << endl;
     for (int i=0;i<userguidetree->getExternalNodeCount();i++){
 	string tname = userguidetree->getExternalNode(i)->getName();
 	//search for the name in the database
-	string sql = "SELECT ncbi_id FROM taxonomy WHERE edited_name LIKE '%"+tname+"%'";
+	string sql = "SELECT ncbi_id FROM taxonomy WHERE edited_name = '"+tname+"' OR ncbi_id = '"+tname+"';";
 	Query query(conn);
 	query.get_result(sql);
 	int count1 = 0;
@@ -169,19 +170,9 @@ void SQLiteConstructor::set_user_guide_tree(string filename){
 	    count1+=1;
 	}
 	query.free_result();
-	if (count1 == 0){
-	    sql = "SELECT ncbi_id FROM taxonomy WHERE ncbi_id LIKE '%"+tname+"%'";
-	    Query query2(conn);
-	    query2.get_result(sql);
-	    while(query2.fetch_row()){
-		nameset = true;
-		nameval = to_string(query.getval());
-	    }
-	    query2.free_result();
-	}
 	if (nameset==true){
 	    userguidetree->getExternalNode(i)->setComment(nameval);
-	    cout << tname << "="<<nameval<<endl;
+	    //cout << tname << "="<<nameval<<endl;
 	}else{
 	    cerr <<tname << " is not in the ncbi database as a number or name"<<endl; 
 	}
@@ -415,24 +406,75 @@ void SQLiteConstructor::run(){
 	    //going to try ncbi first
 	    //basically going to ask what are the ncbi taxa in each, if parent id of any of these is the same
 	    //going to test seq similarity and take best, if fails, then will just add to singletons
+
+	    //need to check if the tree is the same as the previous
+	    //if the nodes are then I can rename the new tree nodes to those
+	    vector<string> rem_files;
+	    //basic idea is to take the whole set of sequence names and see if the mrca of the names in a file include any seqs outside of that clade
+	    //storedseqs are the seqs from before
 	    FastaUtil fu;
-	    for(unsigned int i=0;i<keep_seqs->size();i++){
-		int bestind;
-		int bestscore=0;
-		bool istherebest = false;//TODO: add this functionality
-		for(unsigned int j=0;j<file_names.size();j++){
-		    vector<Sequence> tempseqs;
-		    fu.readFile(file_names[j],tempseqs);
-		    int tscore = get_single_to_group_seq_score(keep_seqs->at(i),tempseqs);
-		    if (tscore > bestscore)
-			bestind = j;
+	    for(int j=0;j<file_names.size();j++){
+		bool test = true;
+		vector<Sequence> tempseqs;
+		fu.readFile(file_names[j],tempseqs);
+		vector<string> mrca_names;
+		for(int i=0;i<tempseqs.size();i++){
+		    mrca_names.push_back(tempseqs[i].get_id());
 		}
-		if ((int) count(snames.begin(),snames.end(),file_names[bestind]) == 0){
-		    snames.push_back(file_names[bestind]); //need to redo this file
-		    add_seqs_from_file_to_dbseqs_vector(file_names[bestind],keep_seqs,stored_seqs);
-		    string nfilename = gene_name+"/"+file_names[bestind];
-		    remove(nfilename.c_str());
+		Node * tmrca = userguidetree->getMRCA(mrca_names);
+		if(tmrca == NULL){
+		    test = false;
+		}else{
+		    vector<Node *> leaves=tmrca->get_leaves();
+		    for(int i=0;i<leaves.size();i++){
+			if((int)count(mrca_names.begin(),mrca_names.end(),leaves[i]->getComment())==0 && stored_seqs.count(leaves[i]->getComment())>0){
+			    test = false;
+			    break;
+			}
+		    }
 		}
+		if (test == true){
+		    //need to change the other filename
+		    /*for(int k=0;k<userguidetree->getNodeCount();k++){
+			if (userguidetree->getNode(testind)==file_names[j])
+			    
+		    }*/
+		    tmrca->setName(file_names[j]);
+		    
+		}else{
+		    add_seqs_from_file_to_dbseqs_vector(file_names[j],keep_seqs,stored_seqs);
+		    remove(file_names[j].c_str());
+		    rem_files.push_back(file_names[j]);
+		}
+	    }
+	    //remove 
+	    for(int i=0;i<rem_files.size();i++){
+		vector<string>::iterator it;
+		it = find(file_names.begin(), file_names.end(),rem_files[i]);
+		file_names.erase(it);
+	    }
+	    
+	    if (file_names.size()>0){//explode is just a redo
+		for(unsigned int i=0;i<keep_seqs->size();i++){
+		    int bestind;
+		    int bestscore=0;
+		    for(unsigned int j=0;j<file_names.size();j++){
+			vector<Sequence> tempseqs;
+			fu.readFile(file_names[j],tempseqs);
+			int tscore = get_single_to_group_seq_score(keep_seqs->at(i),tempseqs);
+			if (tscore > bestscore)
+			    bestind = j;
+		    }
+		    if ((int) count(snames.begin(),snames.end(),file_names[bestind]) == 0){
+			snames.push_back(file_names[bestind]); //need to redo this file
+			add_seqs_from_file_to_dbseqs_vector(file_names[bestind],keep_seqs,stored_seqs);
+			string nfilename = gene_name+"/"+file_names[bestind];
+			remove(nfilename.c_str());
+		    }
+		}
+	    }else{
+		//setup for restart
+		snames.push_back(userguidetree->getRoot()->getName());
 	    }
 	}
     }

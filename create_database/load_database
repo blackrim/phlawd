@@ -23,6 +23,7 @@ if __name__ == "__main__":
 	curup.execute("create table taxonomy (id INTEGER PRIMARY KEY,ncbi_id INTEGER,name VARCHAR(255),name_class VARCHAR(32),node_rank VARCHAR(32),parent_ncbi_id INTEGER,edited_name VARCHAR(255),left_value INTEGER,right_value INTEGER);")
 	curup.execute("CREATE INDEX taxonomy_left_values on taxonomy(left_value);")
 	curup.execute("CREATE INDEX taxonomy_name on taxonomy(name);")
+	curup.execute("CREATE INDEX taxonomy_edited_name on taxonomy(edited_name);")
 	curup.execute("CREATE INDEX taxonomy_ncbi_id_index on taxonomy(ncbi_id);")
 	curup.execute("CREATE INDEX taxonomy_parent_ncbi_id_index on taxonomy(parent_ncbi_id);")
 	curup.execute("CREATE INDEX taxonomy_right_values on taxonomy(right_value);")

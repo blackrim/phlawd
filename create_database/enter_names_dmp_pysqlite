@@ -47,6 +47,7 @@ if __name__ == "__main__":
 		ednm = ednm.replace(".","_")
 		ednm = ednm.replace("&","_")
 		ednm = ednm.replace(",","_")
+		ednm = ednm.replace(" ","_")
 		#print(cmdin)
 		try:
 			cur.execute("insert into taxonomy (ncbi_id,name,name_class,node_rank,parent_ncbi_id,edited_name) values (?,?,?,?,?,?);",(gin,nm,nm_c,rank[gin],pid[gin],ednm))
