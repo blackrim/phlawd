@@ -29,13 +29,14 @@ using namespace std;
 #include "DBSeq.h"
 
 DBSeq::DBSeq(const string & name, const string & sequence,
-	string acc, string gin, string ncbi_t_id, string t_id, string desc)
+	     string acc, string gin, string ncbi_t_id, string t_id, string desc, string ed_name)
 		: Sequence(name, sequence){
 	accession = acc;
 	gi = gin;
 	ncbi_taxid = ncbi_t_id;
 	tax_id = t_id;
 	descr = desc;
+	edited_name = ed_name;
 }
 
 string DBSeq::get_accession(){
@@ -56,6 +57,10 @@ string DBSeq::get_tax_id(){
 
 string DBSeq::get_descr(){
 	return descr;
+}
+
+string DBSeq::get_edited_name(){
+    return edited_name;
 }
 
 bool DBSeq::operator==(const DBSeq &other) const{

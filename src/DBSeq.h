@@ -39,15 +39,17 @@ private:
     string tax_id;
     string descr;
     string gi;
+    string edited_name;
 
 public:
     DBSeq(const string & name, const string & sequence,
-	  string acc, string gi, string ncbi_t_id, string t_id, string desc);
+	  string acc, string gi, string ncbi_t_id, string t_id, string desc, string ed_name);
     string get_accession();
     string get_gi();
     string get_ncbi_taxid();
     string get_tax_id();
     string get_descr();
+    string get_edited_name();
     bool operator==(const DBSeq &other) const;
 
 };

@@ -1335,8 +1335,10 @@ void SQLiteProfiler::rename_final_alignment(string which){
 		Tokenize(line, tokens, del);
 		if(tokens.size() >= 1){
 		    db_to_ncbi[tokens[0]] = tokens[1];
-		    string astr = get_name_from_tax_id(tokens[0]);
-		    fix_bad_chars_for_seq_names(astr);
+		    //changing to reading the edited names from the table
+		    //string astr = get_name_from_tax_id(tokens[0]);
+		    //fix_bad_chars_for_seq_names(astr);
+		    string astr = tokens[2];
 		    db_to_name[tokens[0]] = astr;
 		}
 	    }else{

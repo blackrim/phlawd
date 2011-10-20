@@ -6,7 +6,7 @@ gene = rbcL2
 mad = 0.0007
 coverage = 0.4
 identity = 0.2
-db = /home/smitty/Desktop/pln.182.db
+db = /home/smitty/Desktop/pln.update.db
 knownfile = rbcL.keep
 numthreads = 12
 #listfile = includefile
@@ -18,4 +18,4 @@ numthreads = 12
 #gbmask = http://127.0.0.1:8000/gbmask/mask/dump_mask
 #updateDB
 #updateFILE = rbcl.mine
-userguidetree = rbcL.phy.rn.tre
+userguidetree = rbcL.phy.tre

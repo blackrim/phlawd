@@ -216,7 +216,7 @@ void SQLiteConstructor::run(){
     }else{
 	gifile.open(gin.c_str(),fstream::out);
 	//gifile << "tax_id\tncbi_tax_id\tgi_number" << endl;
-	gifile << "ncbi_tax_id\tgi_number" << endl;
+	gifile << "ncbi_tax_id\tgi_number\tedited_name" << endl;
     }
     //end the gi reading
 
@@ -581,23 +581,16 @@ vector<DBSeq> SQLiteConstructor::first_get_seqs_for_name_use_left_right
     for (int i =0 ; i < results.size(); i++){
 	string ncbi = results[i][1];
 	string taxid = "";
-	sql = "SELECT id,left_value,right_value FROM taxonomy WHERE ncbi_id = "+ncbi+" and name_class = 'scientific name';";
+	string edname;
+	sql = "SELECT id,left_value,right_value,edited_name FROM taxonomy WHERE ncbi_id = "+ncbi+" and name_class = 'scientific name';";
 	Query query2(conn);
 	query2.get_result(sql);
 	while(query2.fetch_row()){
 	    taxid = query2.getval();
 	    left_value = query2.getval();
 	    right_value = query2.getval();
+	    edname = query2.getstr();
 	}
-/*
-  StoreQueryResult temp1R = query2.store();
-  try{
-  left_value = temp1R[0][6];
-  right_value = temp1R[0][7];
-  }catch(mysqlpp::BadConversion E){
-  cout << "some sort of taxa [left/right] error (SQLiteConstructor line:267 -- taxon.taxon_id " << taxid <<")" << endl;
-  }
-*/
 	query2.free_result();
 	if (left_value > left_value_name && right_value < right_value_name){
 	    bioentid = results[i][0];
@@ -612,7 +605,7 @@ vector<DBSeq> SQLiteConstructor::first_get_seqs_for_name_use_left_right
 		sequ = query3.getstr();
 	    }
 	    query3.free_result();
-	    DBSeq tseq(ncbi, sequ, acc, gi,ncbi, taxid, descr);
+	    DBSeq tseq(ncbi, sequ, acc, gi,ncbi, taxid, descr,edname);
 	    seqs.push_back(tseq);
 	}
     }
@@ -1687,7 +1680,8 @@ void SQLiteConstructor::write_gi_numbers(vector<DBSeq> * dbs){
 	//gifile << dbs->at(i).get_tax_id() << "\t"; //don't need this anymore
 	gifile << dbs->at(i).get_ncbi_taxid() << "\t";
 	//gifile << dbs->at(i).get_accession() << endl;
-	gifile << dbs->at(i).get_gi() << endl;
+	gifile << dbs->at(i).get_gi() << "\t";
+	gifile << dbs->at(i).get_edited_name()<<endl;
     }
 }
 
@@ -1716,7 +1710,14 @@ void SQLiteConstructor::add_seqs_from_file_to_dbseqs_vector(string filename,vect
 	    descr = query3.getstr();
 	}
 	query3.free_result();
-	DBSeq tseq(tseqs[i].get_id(), tseqs[i].get_sequence(), acc, ncbi, tseqs[i].get_id(), " ", descr);
+	sql = "SELECT edited_name FROM taxonomy WHERE ncbi_id = "+tseqs[i].get_id()+";";
+	Query query4(conn);
+	query4.get_result(sql);
+	string edname;
+	while(query4.fetch_row()){
+	    edname = query4.getstr();
+	}
+	DBSeq tseq(tseqs[i].get_id(), tseqs[i].get_sequence(), acc, ncbi, tseqs[i].get_id(), " ", descr,edname);
 	keep_seqs->push_back(tseq);
     }
 }
