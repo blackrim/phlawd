@@ -113,6 +113,8 @@ int main(int argc, char* argv[]){
 	    bool usertree = false;//guide tree
 	    string usertreefile = "";//guide tree
 	    Tree * usertreeobj;
+	    bool userfasta = false;
+	    string userfastafile = "";
 	    //read file
 	    ifstream ifs(argv[2]);
 	    string line;
@@ -184,6 +186,10 @@ int main(int argc, char* argv[]){
 		    usertree = true;
 		    usertreefile = tokens[1];
 		    cout << "user guide treefile: "<< usertreefile <<endl;
+		}else if(!strcmp(tokens[0].c_str(), "userfasta")){
+		    userfasta = true;
+		    userfastafile = tokens[1];
+		    cout << "user fasta file: "<<userfastafile <<endl;
 		}
 	    }
 	    ifs.close();
@@ -231,6 +237,11 @@ int main(int argc, char* argv[]){
 		    cout << "using user guide tree: "<< usertreefile <<endl;
 		    a->set_user_guide_tree(usertreefile);
 		}
+		if(userfasta == true){
+		    cout << "using user fasta file: "<< userfastafile << endl;
+		    a->set_user_fasta_file(userfastafile);
+		}
+		exit(0);
 		a->run();
 		if(usertree == true){
 		    usertreeobj = a->get_user_guide_tree_obj();

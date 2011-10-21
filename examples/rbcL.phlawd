@@ -19,3 +19,4 @@ numthreads = 12
 #updateDB
 #updateFILE = rbcl.mine
 userguidetree = rbcL.phy.rn.tre
+userfasta = rbcL.keep

@@ -16,16 +16,8 @@ using namespace std;
 
 Sequence::Sequence():id(),seq(),aligned(){}
 
-Sequence::Sequence(string _id, string _seq, bool _aligned){
-	id = _id;
-	seq = _seq;
-	aligned = _aligned;
-}
-Sequence::Sequence(string _id, string _seq){
-	id = _id;
-	seq = _seq;
-	aligned = false;
-}
+Sequence::Sequence(string _id, string _seq, bool _aligned):id(_id),seq(_seq),aligned(_aligned),name(""),comment(""){}
+Sequence::Sequence(string _id, string _seq):id(_id),seq(_seq),aligned(false),name(""),comment(""){}
 
 bool Sequence::is_aligned(){
 	return aligned;
@@ -39,6 +31,14 @@ string Sequence::get_id(){
 	return id;
 }
 
+string Sequence::get_name(){
+    return name;
+}
+
+string Sequence::get_comment(){
+    return comment;
+}
+
 void Sequence::set_sequence(string _seq){
 	seq = _seq;
 }
@@ -49,6 +49,14 @@ void Sequence::set_id(string _id){
 
 void Sequence::set_aligned(bool _aligned){
 	aligned = _aligned;
+}
+
+void Sequence::set_name(string _name){
+    name = _name;
+}
+
+void Sequence::set_comment(string _comment){
+    comment = _comment;
 }
 
 //this one is private

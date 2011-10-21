@@ -70,6 +70,9 @@ private:
     bool usertree;
     string usertreefile;
     Tree * userguidetree;
+    bool userfasta;
+    string userfastafile;
+    vector<Sequence> * user_seqs;
     vector<Sequence> * known_seqs;
     vector<DBSeq> use_only_names_from_file(vector<DBSeq> seqs);
     DBSeq add_higher_taxa(string taxon_id,vector<DBSeq> seqs);
@@ -104,6 +107,7 @@ public:
     void set_exclude_gi_from_file(string filename);
     void set_include_gi_from_file(string filename);
     void set_user_guide_tree(string filename);
+    void set_user_fasta_file(string filename);
     void run();
     string get_cladename();
     vector <string> get_search();

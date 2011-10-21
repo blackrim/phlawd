@@ -185,6 +185,27 @@ void SQLiteConstructor::set_user_guide_tree(string filename){
 
 }
 
+void SQLiteConstructor::set_user_fasta_file(string filename){
+    userfasta = true;
+    userfastafile = filename;
+    FastaUtil fu;
+    user_seqs = new vector<Sequence>();
+    cout <<"reading user fasta file: "<<userfastafile <<endl;
+    fu.readFile(userfastafile, *user_seqs);
+    cout << "successfully read " << user_seqs->size()<< " user seqs"<<endl;
+    //need to edit the names if there aren't already changed
+    //should go into the log
+    for (int i=0;i<user_seqs->size();i++){
+	string tstring (user_seqs->at(i).get_id());
+	fix_bad_chars_for_seq_names(tstring);
+	cout <<tstring<<endl;
+	cout <<"changing "<< user_seqs->at(i).get_id()<<" -> "<< tstring << endl;
+	user_seqs->at(i).set_id(tstring);
+    }
+    //if the ids can be found in the database, this will go ahead and make that link
+    //this should be able to link to the genedb eventually as well
+}
+
 void SQLiteConstructor::run(){
     string logn = gene_name;
     logn.append(".log");
@@ -1630,6 +1651,7 @@ void SQLiteConstructor::saturation_tests(vector<string> name_ids, vector<string>
 	string sql = "SELECT name FROM taxonomy WHERE ncbi_id = ";
 	sql += allseqs.at(i).get_id();
 	cout <<"-"<<allseqs.at(i).get_id()<<endl;
+	Database conn(db);
 	Query query(conn);
 	query.get_result(sql);
 	bool exists=false;
