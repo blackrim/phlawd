@@ -192,8 +192,6 @@ void SQLiteConstructor::run(){
     string gin = gene_name;
     gin.append(".gi");
     //updatedb code
-    //need to store the existing sequences if there are any
-    //TODO: skip the test below for taxa that are already in the file -- add to the exclude names file maybe
     map<string,string> stored_seqs;
     write_EDNAFILE();//if it doesn't exist
     if(updateDB == true){
@@ -1620,50 +1618,45 @@ void SQLiteConstructor::saturation_tests(vector<string> name_ids, vector<string>
     cout << "leftovers: " << allseqs.size() << endl;
 
     /*
-     * TODO: allow for option of not having leftovers, 
      * if NCBI taxa are all that is wanted, and they are wanted to be 
      * clean
-     * TODO: if it is a really bad match, should just output it by itself
      */
     cout << "picking where leftovers should go" << endl;
     FastaUtil fu;
     for (int i=0;i<allseqs.size();i++){
 	//can add something here that says if only NCBI, if no name then skip
-	//beginning of the code is here
-	/*string name;
-	string sql = "SELECT name,name_class FROM taxonomy WHERE ncbi_id = ";
+	//checking to make sure that the seqs are in NCBI or that they are in user seqs
+	string name;
+	string sql = "SELECT name FROM taxonomy WHERE ncbi_id = ";
 	sql += allseqs.at(i).get_id();
 	cout <<"-"<<allseqs.at(i).get_id()<<endl;
 	Query query(conn);
 	query.get_result(sql);
-	//StoreQueryResult R = query.store();
+	bool exists=false;
 	while(query.fetch_row()){
-	    string tn = query.getstr();
-	    string cln = query.getstr();
-	    if((cln.find("scientific")!=string::npos) && tn.find("environmental")==string::npos && cln.find("environmental")==string::npos){
-		string tid = allseqs.at(i).get_id();
-		name = tn;
-	    }
+	    exists=true;
 	}
-	query.free_result();*/
-	int bestscore = 0;
-	int bestind = 0;
-	for(int j=0;j<seq_set_filenames.size();j++){
-	    //read in the file into a vector of seqs
-	    vector<Sequence> tempseqs;
-	    fu.readFile(seq_set_filenames[j],tempseqs);
-	    int tscore = get_single_to_group_seq_score(allseqs[i],tempseqs);
-	    if (tscore > bestscore){
-		bestind = j;
+	query.free_result();
+	if (exists==true){
+	    int bestscore = 0;
+	    int bestind = 0;
+	    for(int j=0;j<seq_set_filenames.size();j++){
+		//read in the file into a vector of seqs
+		vector<Sequence> tempseqs;
+		fu.readFile(seq_set_filenames[j],tempseqs);
+		int tscore = get_single_to_group_seq_score(allseqs[i],tempseqs);
+		if (tscore > bestscore){
+		    bestind = j;
+		}
 	    }
+	    vector<Sequence> finalseqs;
+	    fu.readFile(seq_set_filenames[bestind],finalseqs);
+	    finalseqs.push_back(allseqs[i]);
+	    //delete the file
+	    remove(seq_set_filenames[bestind].c_str());
+	    //write the file out again
+	    fu.writeFileFromVector(seq_set_filenames[bestind],finalseqs);
 	}
-	vector<Sequence> finalseqs;
-	fu.readFile(seq_set_filenames[bestind],finalseqs);
-	finalseqs.push_back(allseqs[i]);
-	//delete the file
-	remove(seq_set_filenames[bestind].c_str());
-	//write the file out again
-	fu.writeFileFromVector(seq_set_filenames[bestind],finalseqs);
     }
 }
 
