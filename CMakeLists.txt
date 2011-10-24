@@ -30,28 +30,4 @@ IMPROVED_FIND_LIBRARY(LIBS bpp-utils Utils/Clonable.h)
 IMPROVED_FIND_LIBRARY(LIBS bpp-phyl Phyl/Node.h)
 pkg_search_module(SQLITE3 REQUIRED sqlite3)
 
-set (PHLAWD_SOURCES
-	DBSeq.cpp
-	SQLiteDBController.cpp
-	SQLiteConstructor.cpp
-	SQLiteProfiler.cpp
-	SQLiteTreeNameConvertor.cpp
-	SWPS3_DynProgr_scalar.cpp
-	SWPS3_DynProgr_sse_byte.cpp
-	SWPS3_DynProgr_sse_short.cpp
-	SWPS3_Same_seq_pthread.cpp
-	SWPS3_debug.cpp
-	SWPS3_fasta.cpp
-	SWPS3_matrix.cpp
-	SWPS3_swps3.cpp
-	Same_seq_pthread.cpp
-	SmithWatermanGotoh.cpp
-	main.cpp
-	utils.cpp 
-)
-
-add_definitions(-msse3 -msse2 -msse)
-
-add_executable (phlawd ${PHLAWD_SOURCES})
-
-target_link_libraries(phlawd ${SQLITE3_LDFLAGS} ${LIBS} ${PROJECT_SOURCE_DIR}/deps/linux/libsqlitewrapped.a)
+add_subdirectory(src)
