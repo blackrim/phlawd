@@ -27,3 +27,4 @@ add_definitions(-msse3 -msse2 -msse)
 add_executable (phlawd ${PHLAWD_SOURCES})
 
 target_link_libraries(phlawd ${SQLITE3_LDFLAGS} ${LIBS} ${PROJECT_SOURCE_DIR}/deps/linux/libsqlitewrapped.a)
+

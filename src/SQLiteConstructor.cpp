@@ -1630,6 +1630,7 @@ void SQLiteConstructor::saturation_tests(vector<string> name_ids, vector<string>
 	string sql = "SELECT name FROM taxonomy WHERE ncbi_id = ";
 	sql += allseqs.at(i).get_id();
 	cout <<"-"<<allseqs.at(i).get_id()<<endl;
+	Database conn(db);
 	Query query(conn);
 	query.get_result(sql);
 	bool exists=false;

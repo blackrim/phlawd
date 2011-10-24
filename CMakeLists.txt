@@ -24,10 +24,17 @@ MACRO(IMPROVED_FIND_LIBRARY OUTPUT_LIBS lib_name include_to_find)
   SET(${OUTPUT_LIBS} ${${OUTPUT_LIBS}} ${${lib_name}_LIBRARY})
 ENDMACRO(IMPROVED_FIND_LIBRARY)
 
-IMPROVED_FIND_LIBRARY(LIBS bpp-seq Seq/Sequence.h)
-IMPROVED_FIND_LIBRARY(LIBS bpp-numcalc NumCalc/NumTools.h)
-IMPROVED_FIND_LIBRARY(LIBS bpp-utils Utils/Clonable.h)
-IMPROVED_FIND_LIBRARY(LIBS bpp-phyl Phyl/Node.h)
+#IMPROVED_FIND_LIBRARY(LIBS bpp-seq Seq/Sequence.h)
+#IMPROVED_FIND_LIBRARY(LIBS bpp-numcalc NumCalc/NumTools.h)
+#IMPROVED_FIND_LIBRARY(LIBS bpp-utils Utils/Clonable.h)
+#IMPROVED_FIND_LIBRARY(LIBS bpp-phyl Phyl/Node.h)
 pkg_search_module(SQLITE3 REQUIRED sqlite3)
 
+
+if(CMAKE_COMPILER_IS_GNUCXX)
+    set(CMAKE_CXX_FLAGS "-msse3 -DSSE2 -O3 -g -w -Wall -fopenmp")        ## Optimize
+	set(CCMAKE_CXX_FLAGS "-msse3 -DSSE2 -O3 -g -w -Wall -fopenmp")
+	set(CCMAKE_C_FLAGS " -msse3 -DSSE2 -O3 -g -w -Wall -fopenmp")
+	set(CMAKE_EXE_LINKER_FLAGS "-lgomp")
+endif()
 add_subdirectory(src)
