@@ -157,7 +157,7 @@ void SQLiteConstructor::set_user_guide_tree(string filename){
     //get the ncbi taxa for each of these
     //associating that information with each of the tip nodes as comment
     Database conn(db);
-    //need to make this faster
+    //TODO: need to make this faster
     cout << "matching user guide tree names: "<<userguidetree->getExternalNodeCount() << endl;
     for (int i=0;i<userguidetree->getExternalNodeCount();i++){
 	string tname = userguidetree->getExternalNode(i)->getName();
@@ -181,8 +181,8 @@ void SQLiteConstructor::set_user_guide_tree(string filename){
 	    cerr <<tname << " is not in the ncbi database as a number or name"<<endl; 
 	}
     }
+    //this will change the search to use the user tree instead of the ncbi tree
     ncbi_saturation = false;
-
 }
 
 void SQLiteConstructor::set_user_fasta_file(string filename){
@@ -204,6 +204,42 @@ void SQLiteConstructor::set_user_fasta_file(string filename){
     }
     //if the ids can be found in the database, this will go ahead and make that link
     //this should be able to link to the genedb eventually as well
+    //store the ncbi id in the comments
+    Database conn(db);
+    //TODO: need to make this faster
+    cout << "trying to match sequence names to ncbi name"<< endl;
+    for (int i=0;i<user_seqs->size();i++){
+	string tname = user_seqs->at(i).get_id();
+	//search for the name in the database
+	string sql = "SELECT ncbi_id FROM taxonomy WHERE edited_name = '"+tname+"' OR ncbi_id = '"+tname+"';";
+	Query query(conn);
+	query.get_result(sql);
+	int count1 = 0;
+	bool nameset = false;
+	string nameval;
+	while(query.fetch_row()){
+	    nameset = true;
+	    nameval = to_string(query.getval());
+	    count1+=1;
+	}
+	query.free_result();
+	if (nameset==true){
+	    user_seqs->at(i).set_comment(nameval);
+	    cout << tname << "="<<nameval<<endl;
+	}else{
+	    cerr <<tname << " is not in the ncbi database as a number or name"<<endl; 
+	}
+    }
+    cout << "matching user fasta seqs to user guide tree" << endl;
+    for(int i=0;i<userguidetree->getExternalNodeCount();i++){
+	string tname = userguidetree->getExternalNode(i)->getName();
+	for(int j=0;j<user_seqs->size();j++){
+	    if (tname == user_seqs->at(j).get_id() || tname == user_seqs->at(j).get_comment()){
+		user_fasta_node_map[&(user_seqs->at(j))] = userguidetree->getExternalNode(i);
+	    }
+	}
+    }
+    cout <<"finished reading user fasta file" << endl;
 }
 
 void SQLiteConstructor::run(){
@@ -212,8 +248,10 @@ void SQLiteConstructor::run(){
     logfile.open(logn.c_str());
     string gin = gene_name;
     gin.append(".gi");
+    string uffa = gene_name+".userfasta_"+userfastafile;
     //updatedb code
     map<string,string> stored_seqs;
+    vector<string> stored_user_seqs;
     write_EDNAFILE();//if it doesn't exist
     if(updateDB == true){
 	cout << "processing existing seqs" << endl;
@@ -237,12 +275,36 @@ void SQLiteConstructor::run(){
 	cout << "existing seqs: " << stored_seqs.size() << endl;
 	gifile.close();
 	gifile.open(gin.c_str(),fstream::app | fstream::out);
+	//userfile
+	if (userfasta==true){
+	    cout <<"processing existing user seqs" << endl;
+	    ufafile.open(uffa.c_str(),fstream::in);
+	    bool first = true;
+	    while(getline(ufafile,line)){
+		if (first == true){
+		    first = false;
+		    continue;
+		}
+		if (line.size()<2)
+		    continue;
+		vector<string> searchtokens;
+		Tokenize(line,searchtokens,"\t");
+		for(int j=0;j<searchtokens.size();j++){
+		    TrimSpaces(searchtokens[j]);
+		}
+		stored_user_seqs.push_back(searchtokens[0]);
+	    }
+	    cout << "existing user seqs: "<< stored_user_seqs.size() << endl;
+	    ufafile.close();
+	    ufafile.open(uffa.c_str(),fstream::app | fstream::out);
+	}
     }else{
 	gifile.open(gin.c_str(),fstream::out);
-	//gifile << "tax_id\tncbi_tax_id\tgi_number" << endl;
 	gifile << "ncbi_tax_id\tgi_number\tedited_name" << endl;
+	//output the user fasta seqs
+	ufafile.open(uffa.c_str(),fstream::out);
+	ufafile << "edited_name\tncbi_taxon_id"<<endl;
     }
-    //end the gi reading
 
     // if temp directory doesn't exist
     mkdir("TEMPFILES",S_IRWXU | S_IRWXG | S_IROTH | S_IWOTH);
@@ -268,6 +330,7 @@ void SQLiteConstructor::run(){
     Database conn(db);
     cout << "connected to " << db << endl;
     vector<int> R;
+    //just some edits to use the ncbi ids instead of the names for automated runs
     if (automated == false){
 	Query query(conn);
 	query.get_result("SELECT ncbi_id FROM taxonomy WHERE name = '"+clade_name+"'");

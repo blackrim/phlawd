@@ -27,6 +27,7 @@
 
 #include <string>
 #include <vector>
+#include <map>
 
 using namespace std;
 
@@ -42,6 +43,7 @@ class SQLiteConstructor {
 private:
     ofstream logfile;
     fstream gifile;
+    fstream ufafile;
     string clade_name;
     vector <string> search;
     string gene_name;
@@ -72,6 +74,7 @@ private:
     Tree * userguidetree;
     bool userfasta;
     string userfastafile;
+    map<Sequence*,Node*> user_fasta_node_map; 
     vector<Sequence> * user_seqs;
     vector<Sequence> * known_seqs;
     vector<DBSeq> use_only_names_from_file(vector<DBSeq> seqs);

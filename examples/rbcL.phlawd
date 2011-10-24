@@ -18,5 +18,5 @@ numthreads = 12
 #gbmask = http://127.0.0.1:8000/gbmask/mask/dump_mask
 #updateDB
 #updateFILE = rbcl.mine
-userguidetree = rbcL.phy.rn.tre
-userfasta = rbcL.keep
+#userguidetree = rbcL.phy.rn.tre
+userfasta = rbcL.user
