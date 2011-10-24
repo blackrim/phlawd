@@ -411,7 +411,7 @@ void SQLiteConstructor::run(){
     remove_duplicates_SWPS3(keep_seqs);
     cout << "dups: "<< keep_seqs->size() << endl;
     //if userguidetree overlaps with less than a certain percentage, usertree = false
-    if(usertree = true){
+    if(usertree == true){
 	double overlap = get_usertree_keepseq_overlap(keep_seqs);
 	if (overlap < 0.5){
 	    usertree = false;
