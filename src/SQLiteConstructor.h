@@ -74,6 +74,7 @@ private:
     Tree * userguidetree;
     bool userfasta;
     string userfastafile;
+    bool userskipsearchdb;
     map<Sequence*,Node*> user_fasta_node_map; 
     vector<Sequence> * user_seqs;
     vector<Sequence> * known_seqs;
@@ -89,12 +90,14 @@ private:
     void remove_duplicates_SWPS3(vector<DBSeq> * keep_seqs);
     void reduce_genomes(vector<DBSeq> * keep_seqs);
     void get_seqs_for_names(string name_id, vector<DBSeq> * seqs, vector<DBSeq> * temp_seqs);
+    void get_seqs_for_names_user(string name_id, vector<Sequence> * seqs);
     void get_seqs_for_nodes(Node * node, vector<DBSeq> * seqs, vector<DBSeq> * temp_seqs);
+    void get_seqs_for_user_nodes(Node * node, vector<Sequence> * seqs);
     vector<string> get_final_children(string name_id);
     vector<string> get_final_children_node(Node * node);
-    void make_mafft_multiple_alignment(vector<DBSeq> * inseqs);
+    void make_mafft_multiple_alignment(vector<DBSeq> * inseqs,vector<Sequence> * inseqs2);
     double calculate_MAD_quicktree();
-    double calculate_MAD_quicktree_sample(vector<DBSeq> * inseqs);
+    double calculate_MAD_quicktree_sample(vector<DBSeq> * inseqs, vector<Sequence> * inuserseqs);
     void saturation_tests(vector<string> name_ids, vector<string> names, vector<DBSeq> * keep_seqs);
     int get_single_to_group_seq_score(Sequence & inseq,vector<Sequence> & ginseqs);
     void write_gi_numbers(vector<DBSeq> *);
@@ -109,8 +112,9 @@ public:
     void set_exclude_names_from_file(string filename);
     void set_exclude_gi_from_file(string filename);
     void set_include_gi_from_file(string filename);
-    void set_user_guide_tree(string filename);
-    void set_user_fasta_file(string filename);
+    void set_user_guide_tree(string filename, bool skipcheckdb);
+    void set_user_fasta_file(string filename, bool skipcheckdb);
+    void set_user_skip_search();
     void run();
     string get_cladename();
     vector <string> get_search();

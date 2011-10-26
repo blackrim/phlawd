@@ -115,6 +115,8 @@ int main(int argc, char* argv[]){
 	    Tree * usertreeobj;
 	    bool userfasta = false;
 	    string userfastafile = "";
+	    bool userskipdb = false;
+	    bool userskipsearch = false;
 	    //read file
 	    ifstream ifs(argv[2]);
 	    string line;
@@ -190,6 +192,12 @@ int main(int argc, char* argv[]){
 		    userfasta = true;
 		    userfastafile = tokens[1];
 		    cout << "user fasta file: "<<userfastafile <<endl;
+		}else if(!strcmp(tokens[0].c_str(), "userskipdb")){
+		    userskipdb = true;
+		    cout << "skipping ncbi database check" << endl;
+		}else if(!strcmp(tokens[0].c_str(),"userskipsearch")){
+		    userskipsearch = true;
+		    cout << "skipping ncbi database search all together" << endl;
 		}
 	    }
 	    ifs.close();
@@ -235,13 +243,15 @@ int main(int argc, char* argv[]){
 		}
 		if(usertree == true){
 		    cout << "using user guide tree: "<< usertreefile <<endl;
-		    a->set_user_guide_tree(usertreefile);
+		    a->set_user_guide_tree(usertreefile,userskipdb);
 		}
 		if(userfasta == true){
 		    cout << "using user fasta file: "<< userfastafile << endl;
-		    a->set_user_fasta_file(userfastafile);
+		    a->set_user_fasta_file(userfastafile,userskipdb);
 		}
-		exit(0);
+		if(userskipsearch == true){
+		    a->set_user_skip_search();
+		}
 		a->run();
 		if(usertree == true){
 		    usertreeobj = a->get_user_guide_tree_obj();

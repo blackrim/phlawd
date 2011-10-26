@@ -3,7 +3,7 @@ clade = Dipsacales
 #clade = Asterales
 search = rbcL
 gene = rbcL2
-mad = 0.0007
+mad = 0.01
 coverage = 0.4
 identity = 0.2
 db = /home/smitty/Desktop/pln.182.db
@@ -19,4 +19,4 @@ numthreads = 12
 #updateDB
 #updateFILE = rbcl.mine
 #userguidetree = rbcL.phy.rn.tre
-#userfasta = rbcL.user
+userfasta = rbcL.user
