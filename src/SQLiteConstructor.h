@@ -75,6 +75,7 @@ private:
     bool userfasta;
     string userfastafile;
     bool userskipsearchdb;
+    bool skipdbcheck;
     map<Sequence*,Node*> user_fasta_node_map; 
     vector<Sequence> * user_seqs;
     vector<Sequence> * known_seqs;
@@ -102,7 +103,7 @@ private:
     int get_single_to_group_seq_score(Sequence & inseq,vector<Sequence> & ginseqs);
     void write_gi_numbers(vector<DBSeq> *);
     void write_user_numbers();
-    void add_seqs_from_file_to_dbseqs_vector(string filename,vector<DBSeq> * keep_seqs, map<string,string> & taxgimap);
+    void add_seqs_from_file_to_dbseqs_vector(string filename,vector<DBSeq> * keep_seqs, map<string,string> & taxgimap, vector<string> & taxuservec);
 public:
     SQLiteConstructor(string cn, vector <string> searchstr, string genen,
 		      double mad_cut,double cover, double ident, string dbs,
