@@ -16,7 +16,7 @@ numthreads = 12
 #containswild
 #excludegilistfile = ex_gi
 #gbmask = http://127.0.0.1:8000/gbmask/mask/dump_mask
-#updateDB
+updateDB
 #updateFILE = rbcl.mine
 #userguidetree = rbcL.phy.rn.tre
 userfasta = rbcL.user

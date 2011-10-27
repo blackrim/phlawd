@@ -101,6 +101,7 @@ private:
     void saturation_tests(vector<string> name_ids, vector<string> names, vector<DBSeq> * keep_seqs);
     int get_single_to_group_seq_score(Sequence & inseq,vector<Sequence> & ginseqs);
     void write_gi_numbers(vector<DBSeq> *);
+    void write_user_numbers();
     void add_seqs_from_file_to_dbseqs_vector(string filename,vector<DBSeq> * keep_seqs, map<string,string> & taxgimap);
 public:
     SQLiteConstructor(string cn, vector <string> searchstr, string genen,

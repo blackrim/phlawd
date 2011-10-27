@@ -267,12 +267,10 @@ void SQLiteConstructor::set_user_fasta_file(string filename,bool skipdbcheck){
 }
 
 void SQLiteConstructor::run(){
-    string logn = gene_name;
-    logn.append(".log");
+    string logn = gene_name+".log";
     logfile.open(logn.c_str());
-    string gin = gene_name;
-    gin.append(".gi");
-    string uffa = gene_name+".userfasta_"+userfastafile;
+    string gin = gene_name+".gi";
+    string uffa = gene_name+".userfasta";
     //updatedb code
     map<string,string> stored_seqs;
     vector<string> stored_user_seqs;
@@ -326,8 +324,10 @@ void SQLiteConstructor::run(){
 	gifile.open(gin.c_str(),fstream::out);
 	gifile << "ncbi_tax_id\tgi_number\tedited_name" << endl;
 	//output the user fasta seqs
-	ufafile.open(uffa.c_str(),fstream::out);
-	ufafile << "edited_name\tncbi_taxon_id"<<endl;
+	if(userfasta){
+            ufafile.open(uffa.c_str(),fstream::out);
+	    ufafile << "edited_name\tncbi_taxon_id"<<endl;
+	}
     }
 
     // if temp directory doesn't exist
@@ -620,6 +620,10 @@ void SQLiteConstructor::run(){
     }else{
 	write_gi_numbers(keep_seqs);
 	gifile.close();
+	if(userfasta == true){
+	  write_user_numbers();
+	  ufafile.close();
+	}
 	sname_ids.push_back(sname_id);
 	snames.push_back(clade_name);
 	saturation_tests(sname_ids, snames, keep_seqs);
@@ -1939,7 +1943,16 @@ void SQLiteConstructor::write_gi_numbers(vector<DBSeq> * dbs){
     }
 }
 
-
+/*
+ * this stores the names for the user seqs, mostly this is for updates
+ */
+void SQLiteConstructor::write_user_numbers(){
+  for(int i=0;i<user_seqs->size();i++){
+    ufafile <<user_seqs->at(i).get_id() <<"\t";
+    ufafile << user_seqs->at(i).get_comment()<<"\t";
+    ufafile << endl;
+  }
+}
 
 /*
  * this is primarily used for add the seqs from a file to the dbseq and rc vectors 
