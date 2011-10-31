@@ -45,11 +45,24 @@ Node * Tree::getExternalNode(int num){
 /*
  * could precompute this, check for run time differences
  */
+//added the "user_" vs not "user_"
 Node * Tree::getExternalNode(string name){
 	Node * ret = NULL;
 	for(unsigned int i=0;i<externalNodes.size();i++){
 		if (externalNodes.at(i)->getName() == name)
 			ret = externalNodes.at(i);
+	}
+	//added the "user_" bit
+	if (ret == NULL){
+	  if(name.size()>5){
+	    if (name.substr(0,5)=="user_"){
+	      string tname = name.substr(5,name.size());
+	      for(unsigned int i=0;i<externalNodes.size();i++){
+		if (externalNodes.at(i)->getName() == tname)
+		  ret = externalNodes.at(i);
+	      }  
+	    }
+	  }
 	}
 	return ret;
 }

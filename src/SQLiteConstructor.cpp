@@ -572,6 +572,7 @@ void SQLiteConstructor::run(){
 		fu.readFile(gene_name+"/"+file_names[j],tempseqs);
 		//TODO: if one seq need to just delete
 		vector<string> mrca_names;
+		//need to correct the names for user or not
 		for(int i=0;i<tempseqs.size();i++){
 		    mrca_names.push_back(tempseqs[i].get_id());
 		}
