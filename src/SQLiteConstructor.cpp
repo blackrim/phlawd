@@ -778,6 +778,10 @@ vector<DBSeq> SQLiteConstructor::first_get_seqs_for_name_use_left_right
     return seqs;
 }
 
+/*
+ * this take the literal name from the file so this should be prefiltered
+ * to be something that ncbi will match with the names not the edited names
+ */
 vector<DBSeq> SQLiteConstructor::use_only_names_from_file(vector<DBSeq> seqs){
     Database conn(db);
     vector<string> * taxa =new vector<string>();
