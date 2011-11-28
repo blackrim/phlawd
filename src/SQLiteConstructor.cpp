@@ -95,6 +95,7 @@ SQLiteConstructor::SQLiteConstructor(string cn, vector <string> searchstr, strin
 	updateFILE = false;
     }
     known_seqs = new vector<Sequence>();
+    user_seqs = new vector<Sequence>();
     seqReader.readFile(known_seq_filen, *known_seqs);
     ncbi_saturation = true;
     userskipsearchdb = false;
@@ -208,7 +209,6 @@ void SQLiteConstructor::set_user_fasta_file(string filename,bool skipdbcheck){
     userfasta = true;
     userfastafile = filename;
     FastaUtil fu;
-    user_seqs = new vector<Sequence>();
     cout <<"reading user fasta file: "<<userfastafile <<endl;
     fu.readFile(userfastafile, *user_seqs);
     cout << "successfully read " << user_seqs->size()<< " user seqs"<<endl;
