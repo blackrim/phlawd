@@ -259,7 +259,7 @@ void SQLiteConstructor::set_user_fasta_file(string filename,bool skipdbcheck){
 	int count = 0;
 	for(int i=0;i<userguidetree->getExternalNodeCount();i++){
 	    string tname = userguidetree->getExternalNode(i)->getName();
-	    cout << tname << endl;
+	    //cout << tname << endl;
 	    for(int j=0;j<user_seqs->size();j++){
 	      if (tname == user_seqs->at(j).get_id() || tname == user_seqs->at(j).get_comment() || ("user_"+tname == user_seqs->at(j).get_id()) || ("user_"+tname == user_seqs->at(j).get_comment())){
 		    user_fasta_node_map[&(user_seqs->at(j))] = userguidetree->getExternalNode(i);
@@ -447,6 +447,7 @@ void SQLiteConstructor::run(){
     //if userguidetree overlaps with less than a certain percentage, usertree = false
     if(usertree == true && userskipsearchdb == false){
 	double overlap = get_usertree_keepseq_overlap(keep_seqs);
+	overlap = 0.5;//TODO: take this out
 	if (overlap < 0.5){
 	    usertree = false;
 	    userguidetree = NULL;
@@ -1576,6 +1577,7 @@ double SQLiteConstructor::calculate_MAD_quicktree_sample(vector<DBSeq> * inseqs,
 void SQLiteConstructor::saturation_tests(vector<string> name_ids, vector<string> names, 
 	vector<DBSeq> * keep_seqs){
 
+    cout << "starting saturation" << endl;
     vector<Sequence> allseqs; 
     for(int i=0;i<keep_seqs->size();i++){
 	allseqs.push_back(keep_seqs->at(i));
@@ -1895,8 +1897,8 @@ void SQLiteConstructor::saturation_tests(vector<string> name_ids, vector<string>
      */
     cout << "picking where leftovers should go" << endl;
     //need to determine the seq_set_filenames
-    	vector<string> exist_filenames;
-	getdir(gene_name.c_str(),exist_filenames);
+    vector<string> exist_filenames;
+    getdir(gene_name.c_str(),exist_filenames);
 
     FastaUtil fu;
     for (int i=0;i<allseqs.size();i++){
@@ -1906,7 +1908,7 @@ void SQLiteConstructor::saturation_tests(vector<string> name_ids, vector<string>
 	string sql = "SELECT name FROM taxonomy WHERE ncbi_id = '";
 	sql += allseqs.at(i).get_id();
 	sql += "' or ncbi_id = "+allseqs.at(i).get_comment()+";";
-	cout <<"-"<<allseqs.at(i).get_id()<<endl;
+	cout <<"adding leftover: "<<allseqs.at(i).get_id()<<endl;
 	Database conn(db);
 	Query query(conn);
 	query.get_result(sql);
@@ -2080,6 +2082,7 @@ double SQLiteConstructor::get_usertree_keepseq_overlap(vector<DBSeq> * keep_seqs
     }
     double ccount = 0;
     for(int i=0;i<keep_seqs->size();i++){
+	//need to change this to be hierachical
 	if(tree_names.count(keep_seqs->at(i).get_ncbi_taxid())==1)
 	    ccount+=1;
     }
