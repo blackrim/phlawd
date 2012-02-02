@@ -96,6 +96,7 @@ private:
     void get_seqs_for_user_nodes(Node * node, vector<Sequence> * seqs);
     vector<string> get_final_children(string name_id);
     vector<string> get_final_children_node(Node * node);
+    vector<string> get_final_children_node_hier(Node * node);
     void make_mafft_multiple_alignment(vector<DBSeq> * inseqs,vector<Sequence> * inseqs2);
     double calculate_MAD_quicktree();
     double calculate_MAD_quicktree_sample(vector<DBSeq> * inseqs, vector<Sequence> * inuserseqs);

@@ -20,4 +20,4 @@ numthreads = 12
 #updateFILE = rbcl.mine
 #userguidetree = rbcL.phy.rn.tre
 userguidetree = RAxML_MajorityRuleConsensusTree.MR_rapid_500.rr.tre
-userfasta = rbcL.user
+#userfasta = rbcL.user

@@ -1280,39 +1280,12 @@ void SQLiteConstructor::reduce_genomes(vector<DBSeq> * keep_seqs){
 }
 
 vector<string> SQLiteConstructor::get_final_children(string inname_id){
-    vector<string> ids;
-    ids.push_back(inname_id);
-    vector<string> keepids;
-    Database conn(db);
-    //testing if tip
-    bool tip = true;
-    //end testing
-    while(!ids.empty()){
-	string sql = "SELECT ncbi_id FROM taxonomy WHERE parent_ncbi_id = "+ids.back()+" and name_class='scientific name';";
-	ids.pop_back();
-	Query query(conn);
-	query.get_result(sql);
-	//StoreQueryResult R = query.store();
-	if(query.num_rows() > 0){
-	    tip = false;
-	}
-	while(query.fetch_row()){
-	    string tid = to_string(query.getval());
-	    ids.push_back(tid);
-	    keepids.push_back(tid);
-	}
-	query.free_result();
-    }
-    if (tip == true){
-	keepids.push_back(inname_id);
-    }
-
-    vector<string> allids;
-    vector<string>allnames;
-
-    for(int i=0;i<keepids.size();i++){
-	string sql = "SELECT name,name_class FROM taxonomy WHERE ncbi_id = ";
-	sql += keepids[i];
+    //special case where inname_id is root and id is therefore 1
+    if (inname_id == "1"){
+	cout << "special case as id is root" << endl;
+	Database conn(db);
+	vector<string> allids;
+	string sql = "SELECT name,name_class,ncbi_id FROM taxonomy;";
 	Query query(conn);
 	query.get_result(sql);
 	//StoreQueryResult R = query.store();
@@ -1320,14 +1293,63 @@ vector<string> SQLiteConstructor::get_final_children(string inname_id){
 	    //string tid = R[j][0].c_str();
 	    string tn = query.getstr();
 	    string cln = query.getstr();
+	    string ncbiid = query.getstr();
 	    if(cln.find("scientific")!=string::npos && tn.find("environmental")==string::npos && cln.find("environmental")==string::npos){
-		allids.push_back(keepids[i]); //was taxon id, now ncbi id
-		allnames.push_back(tn);
+		allids.push_back(ncbiid); //was taxon id, now ncbi id
 	    }
 	}
 	query.free_result();
+	return allids;
+    }else{
+	vector<string> ids;
+	ids.push_back(inname_id);
+	vector<string> keepids;
+	Database conn(db);
+	//testing if tip
+	bool tip = true;
+	//end testing
+	while(!ids.empty()){
+	    string sql = "SELECT ncbi_id FROM taxonomy WHERE parent_ncbi_id = "+ids.back()+" and name_class='scientific name';";
+	    ids.pop_back();
+	    Query query(conn);
+	    query.get_result(sql);
+	    //StoreQueryResult R = query.store();
+	    if(query.num_rows() > 0){
+		tip = false;
+	    }
+	    while(query.fetch_row()){
+		string tid = to_string(query.getval());
+		ids.push_back(tid);
+		keepids.push_back(tid);
+	    }
+	    query.free_result();
+	}
+	if (tip == true){
+	    keepids.push_back(inname_id);
+	}
+
+	vector<string> allids;
+	vector<string>allnames;
+
+	for(int i=0;i<keepids.size();i++){
+	    string sql = "SELECT name,name_class FROM taxonomy WHERE ncbi_id = ";
+	    sql += keepids[i];
+	    Query query(conn);
+	    query.get_result(sql);
+	    //StoreQueryResult R = query.store();
+	    while(query.fetch_row()){
+		//string tid = R[j][0].c_str();
+		string tn = query.getstr();
+		string cln = query.getstr();
+		if(cln.find("scientific")!=string::npos && tn.find("environmental")==string::npos && cln.find("environmental")==string::npos){
+		    allids.push_back(keepids[i]); //was taxon id, now ncbi id
+		    allnames.push_back(tn);
+		}
+	    }
+	    query.free_result();
+	}
+	return allids;
     }
-    return allids;
 }
 
 /*
@@ -1338,6 +1360,19 @@ vector<string> SQLiteConstructor::get_final_children_node(Node * node){
     vector<Node *> leaves = node->get_leaves();
     for (int i=0;i<leaves.size();i++){
 	allids.push_back(leaves[i]->getComment());
+    }
+    return allids;
+}
+
+/*
+ * same as get_final_children_node but added the ability to do hierarchical (so the tips in tree may or may not be species)
+ */
+vector<string> SQLiteConstructor::get_final_children_node_hier(Node * node){
+    vector<string> allids;
+    vector<Node *> leaves = node->get_leaves();
+    for(int i=0;i<leaves.size();i++){
+	vector<string> tempids = get_final_children(leaves[i]->getComment());
+	for(int j=0;j<tempids.size();j++){allids.push_back(tempids[j]);};
     }
     return allids;
 }
@@ -1373,7 +1408,8 @@ void SQLiteConstructor::get_seqs_for_names_user(string inname_id, vector<Sequenc
  */
 void SQLiteConstructor::get_seqs_for_nodes(Node * node, vector<DBSeq> * seqs, vector<DBSeq> * temp_seqs){
     vector<string> final_ids;
-    final_ids = get_final_children_node(node);
+    //final_ids = get_final_children_node(node);//TODO: see below
+    final_ids = get_final_children_node_hier(node);//TODO: decide between these two
     for(unsigned int i=0;i<seqs->size();i++){
 	string tid = seqs->at(i).get_ncbi_taxid();
 	int mycount = 0;
