@@ -76,6 +76,8 @@ private:
     string userfastafile;
     bool userskipsearchdb;
     bool skipdbcheck;
+    int main_left; // left value for clade id
+    int main_right; // right value for clade id
     map<Sequence*,Node*> user_fasta_node_map; 
     vector<Sequence> * user_seqs;
     vector<Sequence> * known_seqs;

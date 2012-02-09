@@ -516,7 +516,9 @@ void SQLiteConstructor::run(){
 	getdir(gene_name,file_names);
 	if(usertree == false){
 	    for (unsigned int i = 0;i < file_names.size();i++){
-		string sql = "SELECT ncbi_id,left_value,right_value FROM taxonomy WHERE name = '"+file_names[i]+"';";
+		//string sql = "SELECT ncbi_id,left_value,right_value FROM taxonomy WHERE name = '"+file_names[i]+"';";
+		//changed to ncbi_id
+		string sql = "SELECT ncbi_id,left_value,right_value FROM taxonomy where ncbi_id = "+file_names[i]+";";
 		Query query(conn);
 		query.get_result(sql);
 		string t_id; string l_id; string r_id;
@@ -740,6 +742,8 @@ vector<DBSeq> SQLiteConstructor::first_get_seqs_for_name_use_left_right
     while(query.fetch_row()){
 	left_value_name = query.getval();
 	right_value_name = query.getval();
+	main_left = left_value_name;
+	main_right = right_value_name;
     }
     query.free_result();
     vector <DBSeq> seqs;
@@ -992,15 +996,20 @@ DBSeq SQLiteConstructor::add_higher_taxa(string taxon_id,vector<DBSeq> seqs){
  */
 vector<DBSeq> SQLiteConstructor::exclude_names_from_file(vector<DBSeq> seqs){
     Database conn(db);
-    vector<string> * taxa =new vector<string>();
     vector<string> * taxa_ids =new vector<string>();
     //read file
     ifstream ifs(excludefilename.c_str());
     string line;
     while(getline(ifs,line)){
 	TrimSpaces(line);
-	taxa->push_back(line);
-	string sql = "SELECT ncbi_id FROM taxonomy WHERE name = '"+line+"'";
+	string sql;
+	if (line[0]=='*') { //this indicates a wildcard and will ignore any taxa with this in the name
+	    string trimline = line.substr(1,line.size());
+	    sql = "SELECT ncbi_id FROM taxonomy WHERE left_value > "+int_to_string(main_left)+" AND right_value < "+int_to_string(main_right)+" AND name like '%"+trimline+"%'";
+	}else{
+
+	    sql = "SELECT ncbi_id FROM taxonomy WHERE name = '"+line+"'";
+	}
 	Query query1(conn);
 	query1.get_result(sql);
 	while(query1.fetch_row()){
@@ -1015,14 +1024,12 @@ vector<DBSeq> SQLiteConstructor::exclude_names_from_file(vector<DBSeq> seqs){
     //end read file
     vector<DBSeq> seqs_fn;
     for(int i=0;i<seqs.size();i++){
-	//string taxid = seqs[i].get_tax_id();
 	string taxid = seqs[i].get_ncbi_taxid();
 	int scount = count(taxa_ids->begin(),taxa_ids->end(),taxid);
 	if(scount == 0){
 	    seqs_fn.push_back(seqs[i]);
 	}
     }
-    delete taxa;
     delete taxa_ids;
     return seqs_fn;
 }
@@ -1630,7 +1637,7 @@ void SQLiteConstructor::saturation_tests(vector<string> name_ids, vector<string>
     if(ncbi_saturation == true){
 	string name;
 	string name_id;
-	while(!names.empty()){
+	while(!names.empty() && !allseqs.empty()){
 	    name_id = name_ids.back();
 	    name_ids.pop_back();
 	    name = names.back();
@@ -1645,7 +1652,7 @@ void SQLiteConstructor::saturation_tests(vector<string> name_ids, vector<string>
 		/*
 		 * use to make an orphan but rather just make a singleton file
 		 */
-		cout << name << " " << temp_seqs->size() <<" " << temp_user_seqs->size()<<  endl;
+		cout << name << ": " << name_id << " " << temp_seqs->size() <<" " << temp_user_seqs->size()<<  " " << allseqs.size() << endl;
 		//make file
 		FastaUtil seqwriter1;
 		vector<Sequence> sc1;
@@ -1675,13 +1682,15 @@ void SQLiteConstructor::saturation_tests(vector<string> name_ids, vector<string>
 		    sc1.push_back(temp_user_seqs->at(i));
 		}
 		string fn1 = gene_name;
-		fn1 += "/" + name;
+		//fn1 += "/" + name;
+		//change from name to ncbi 
+		fn1 += "/" + name_id;
 		seqwriter1.writeFileFromVector(fn1,sc1);
 		seq_set_filenames.push_back(fn1);
 	    }else if (temp_seqs->size() + temp_user_seqs->size()== 0){
 		continue;
 	    }else{
-		cout << name << " " << temp_seqs->size() << " "<< temp_user_seqs->size() << endl;
+		cout << name << ": " << name_id << " " << temp_seqs->size() << " "<< temp_user_seqs->size() << endl;
 		double mad;
 		if(temp_seqs->size() + temp_user_seqs->size() > 2){
 		    if (temp_seqs->size() +temp_user_seqs->size() < 3000){
@@ -1732,7 +1741,9 @@ void SQLiteConstructor::saturation_tests(vector<string> name_ids, vector<string>
 			sc1.push_back(temp_user_seqs->at(i));
 		    }
 		    string fn1 = gene_name;
-		    fn1 += "/" + name;
+		    //fn1 += "/" + name;
+                    //change from name to ncbi 
+		    fn1 += "/" + name_id;
 		    seqwriter1.writeFileFromVector(fn1,sc1);
 		    seq_set_filenames.push_back(fn1);
 		    //TODO: SQLITE database storing

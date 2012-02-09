@@ -397,45 +397,66 @@ void SQLiteProfiler::get_children(string in_id, vector<string> * in_ids, vector<
 }
 
 vector<string> SQLiteProfiler::get_final_children(string id){
-    vector<string> ids;
-    ids.push_back(id);
-    vector<string> keepids;
-    //check
-    keepids.push_back(id);
-    while(ids.size()>0){
-	string tid = ids.back();
-	ids.pop_back();
-	get_children(tid,&ids, &keepids);
-	//cout << ids.size() << endl;
-    }
-    vector<string> allids;
-    vector<string> allnames;
-
-    for(int i=0;i<keepids.size();i++){
+    if(id == "1"){
+	cout << "special case as id is root" << endl;
 	Database conn(db);
-	string sql = "SELECT name FROM taxonomy WHERE ncbi_id = "+keepids[i];
-	sql += " and name_class = 'scientific name';";
+	vector<string> allids;
+	string sql = "SELECT name,name_class,ncbi_id FROM taxonomy;";
 	Query query(conn);
 	query.get_result(sql);
 	//StoreQueryResult R = query.store();
 	while(query.fetch_row()){
-	    string name;
-	    string cl;
-	    id = keepids[i];
-	    name = query.getstr();
+	    //string tid = R[j][0].c_str();
+	    string tn = query.getstr();
+	    string cln = query.getstr();
+	    string ncbiid = query.getstr();
+	    if(cln.find("scientific")!=string::npos && tn.find("environmental")==string::npos && cln.find("environmental")==string::npos){
+		allids.push_back(ncbiid); //was taxon id, now ncbi id
+	    }
+	}
+	query.free_result();
+	return allids;
+    }else{
+	vector<string> ids;
+	ids.push_back(id);
+	vector<string> keepids;
+	//check
+	keepids.push_back(id);
+	while(ids.size()>0){
+	    string tid = ids.back();
+	    ids.pop_back();
+	    get_children(tid,&ids, &keepids);
+	    //cout << ids.size() << endl;
+	}
+	vector<string> allids;
+	vector<string> allnames;
+
+	for(int i=0;i<keepids.size();i++){
+	    Database conn(db);
+	    string sql = "SELECT name FROM taxonomy WHERE ncbi_id = "+keepids[i];
+	    sql += " and name_class = 'scientific name';";
+	    Query query(conn);
+	    query.get_result(sql);
+	    //StoreQueryResult R = query.store();
+	    while(query.fetch_row()){
+		string name;
+		string cl;
+		id = keepids[i];
+		name = query.getstr();
 //			cl = R[j][2].c_str();
 //			size_t found1;
 //			found1 = cl.find("environmental");
 //			size_t found2;
 //			found2 = cl.find("scientific");
 //			if(found2!=string::npos && found1==string::npos){
-	    allids.push_back(id);
-	    allnames.push_back(name);
+		allids.push_back(id);
+		allnames.push_back(name);
 //			}
+	    }
 	}
+	allids.push_back(id);
+	return allids;
     }
-    allids.push_back(id);
-    return allids;
 }
 
 /*
@@ -530,7 +551,9 @@ void SQLiteProfiler::create_distances(string clade_name, vector<string> names,ma
     //get the route to the clade name
     for(int i=0;i<names.size();i++){
 	Database conn(db);
-	sql = "SELECT ncbi_id FROM taxonomy WHERE name = '"+names[i]+"' and name_class = 'scientific name';";
+	//sql = "SELECT ncbi_id FROM taxonomy WHERE name = '"+names[i]+"' and name_class = 'scientific name';";
+	//change to ncbi id
+	sql = "SELECT ncbi_id FROM taxonomy WHERE ncbi_id = "+names[i]+";";
 	Query query2(conn);
 	query2.get_result(sql);
 	string nameid = get_right_one(allids, query2);
@@ -555,7 +578,9 @@ void SQLiteProfiler::create_distances(string clade_name, vector<string> names,ma
 	vector<double> tdistance;
 	for(int j=0;j<names.size();j++){
 	    if(j!=i){
-		sql = "SELECT ncbi_id FROM taxonomy WHERE name = '"+names[j]+"'  and name_class = 'scientific name';";
+		//sql = "SELECT ncbi_id FROM taxonomy WHERE name = '"+names[j]+"'  and name_class = 'scientific name';";
+                //change to ncbi id
+		sql = "SELECT ncbi_id FROM taxonomy WHERE ncbi_id = "+names[i]+";";
 		Query query5(conn);
 		query5.get_result(sql);
 		string jnameid = get_right_one(allids,query5);

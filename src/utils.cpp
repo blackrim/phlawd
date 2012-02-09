@@ -280,6 +280,12 @@ void fix_bad_chars_for_seq_names(string & tfilen){
 	}
 }
 
+string int_to_string(int n){
+   stringstream ss;
+   ss << n;
+   return ss.str();
+}
+
 
 //get the swps3 sequence score
 int get_swps3_score_and_rc_cstyle(SBMatrix mat,  Sequence * inseq1, Sequence * inseq2){
