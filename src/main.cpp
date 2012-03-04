@@ -110,6 +110,7 @@ int main(int argc, char* argv[]){
 	    bool updateFILE = false;
 	    string updatef = "";
 	    string maskurl = "";
+	    string genedb;
 	    bool usertree = false;//guide tree
 	    string usertreefile = "";//guide tree
 	    Tree * usertreeobj;
@@ -144,6 +145,7 @@ int main(int argc, char* argv[]){
 		    search = searchtokens;//change to a vector and parse with commas
 		}else if(!strcmp(tokens[0].c_str(), "gene")){
 		    gene = tokens[1];
+		    genedb = tokens[1]+".db";
 		}else if(!strcmp(tokens[0].c_str(), "mad")){
 		    mad = atof(tokens[1].c_str());
 		}else if(!strcmp(tokens[0].c_str(), "coverage")){
@@ -203,10 +205,20 @@ int main(int argc, char* argv[]){
 	    ifs.close();
 	    //sqlite // NEW
 	    cout << "using sqlite" << endl;
+	    /*
+	     * checks before moving forward
+	     */
+	    //checking database
+	    ifstream ifile(db.c_str());
+	    if(!ifile){
+		cerr << "genbank database file: " << db << " doesn't exist" << endl;
+		exit(0);
+	    }
+	    //moving on
 	    if(asse == true){
 		cout << "assembly" << endl;
 		SQLiteConstructor * a;
-		a = new SQLiteConstructor(clade, search,gene,mad,coverage,identity,db,knownfile,useITS, numthreads,automated,updateDB,updatef);
+		a = new SQLiteConstructor(clade, search,gene,genedb,mad,coverage,identity,db,knownfile,useITS, numthreads,automated,updateDB,updatef);
 		cout << "number of threads: " << a->get_numthreads() << endl;
 		omp_set_num_threads(a->get_numthreads());
 		cout << "clade name: " << a->get_cladename() << endl;
@@ -214,6 +226,7 @@ int main(int argc, char* argv[]){
 		    cout << "search: " << a->get_search()[i] << endl;
 		}
 		cout << "gene name: " << a->get_genename() << endl;
+		cout << "gene database: " << a->get_genedb() << endl;
 		cout << "mad cutoff: " << a->get_madcutoff() << endl;
 		cout << "coverage: " << a->get_coverage() << endl;
 		cout << "identity: " << a->get_identity() << endl;

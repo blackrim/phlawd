@@ -38,6 +38,7 @@ using namespace std;
 #include "DBSeq.h"
 #include "tree.h"
 #include "node.h"
+#include "genedb.h"
 
 class SQLiteConstructor {
 private:
@@ -47,6 +48,8 @@ private:
     string clade_name;
     vector <string> search;
     string gene_name;
+    string gene_db_name;
+    GeneDB gene_db;
     double mad_cutoff;
     double coverage;
     double identity;
@@ -108,7 +111,7 @@ private:
     void write_user_numbers();
     void add_seqs_from_file_to_dbseqs_vector(string filename,vector<DBSeq> * keep_seqs, map<string,string> & taxgimap, vector<string> & taxuservec);
 public:
-    SQLiteConstructor(string cn, vector <string> searchstr, string genen,
+    SQLiteConstructor(string cn, vector <string> searchstr, string genen, string genedb,
 		      double mad_cut,double cover, double ident, string dbs,
 		      string known_seq_filen, bool its, int numt,bool autom,
 		      bool updb, string updf);
@@ -124,6 +127,7 @@ public:
     string get_cladename();
     vector <string> get_search();
     string get_genename();
+    string get_genedb();
     double get_madcutoff();
     double get_coverage();
     double get_identity();

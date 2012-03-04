@@ -61,29 +61,23 @@ using namespace std;
 //public
 
 template <class T>
-inline std::string to_string (const T& t)
-{
-std::stringstream ss;
-ss << t;
-return ss.str();
+inline std::string to_string (const T& t){
+    std::stringstream ss;
+    ss << t;
+    return ss.str();
 }
 
-SQLiteConstructor::SQLiteConstructor(string cn, vector <string> searchstr, string genen,
-		double mad_cut,double cover, double ident, string dbs, string known_seq_filen, bool its, int numt,bool autom,
-		bool inupdatedb,string inupdatefile){
-    clade_name=cn;
-    search=searchstr;
-    gene_name = genen;
-    mad_cutoff = mad_cut;
-    coverage = cover;
-    identity=ident;
-    db = dbs;
-    useITS = its;
-    numthreads = numt;
-    automated = autom;
+SQLiteConstructor::SQLiteConstructor(string cn, vector <string> searchstr, string genen, string genedb,
+             double mad_cut,double cover, double ident, string dbs, 
+             string known_seq_filen, bool its, int numt,bool autom,
+             bool inupdatedb, string inupdatefile): clade_name(cn),search(searchstr),
+                      gene_name(genen), gene_db_name(genedb),
+                      mad_cutoff(mad_cut),coverage(cover),
+                      identity(ident),db(dbs),useITS(its),
+                      numthreads(numt),automated(autom),
+                      updateDB(inupdatedb){
     FastaUtil seqReader;
     //added updating seqs from db
-    updateDB = inupdatedb;
     //added updating seqs from file
     if(inupdatefile.length() > 0){
 	updateFILE = true;
@@ -91,6 +85,13 @@ SQLiteConstructor::SQLiteConstructor(string cn, vector <string> searchstr, strin
     }else{
 	updateFILE = false;
     }
+/* gene database work
+    gene_db= GeneDB(gene_db_name);
+    if (updateDB == true)
+	gene_db.initialize(false);
+    else
+	gene_db.initialize(true);
+*/
     known_seqs = new vector<Sequence>();
     user_seqs = new vector<Sequence>();
     seqReader.readFile(known_seq_filen, *known_seqs);
@@ -2007,6 +2008,7 @@ void SQLiteConstructor::saturation_tests(vector<string> name_ids, vector<string>
 	    fu.writeFileFromVector(gene_name+"/"+exist_filenames[bestind],finalseqs);
 	}
     }
+    cout << "finished with sequence processing" << endl;
 }
 
 /*
@@ -2163,4 +2165,8 @@ Tree * SQLiteConstructor::get_user_guide_tree_obj(){
 
 bool SQLiteConstructor::get_updatestatus(){
     return updateDB;
+}
+
+string SQLiteConstructor::get_genedb(){
+    return gene_db_name;
 }

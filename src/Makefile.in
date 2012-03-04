@@ -6,6 +6,7 @@ sequence.cpp \
 tree.cpp \
 tree_reader.cpp \
 node.cpp \
+genedb.cpp \
 tree_utils.cpp \
 fasta_util.cpp \
 DBSeq.cpp \
@@ -29,6 +30,7 @@ sequence.o \
 tree.o \
 tree_reader.o \
 node.o \
+genedb.o \
 tree_utils.o \
 fasta_util.o \
 DBSeq.o \
@@ -52,6 +54,7 @@ sequence.d \
 tree.d \
 tree_reader.d \
 node.d \
+genedb.d \
 tree_utils.d \
 fasta_util.d \
 DBSeq.d \
