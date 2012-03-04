@@ -46,14 +46,11 @@
 using namespace std;
 
 #include "omp.h"
-
 #include "libsqlitewrapped.h"
-
 #include "tree.h"
 #include "tree_reader.h"
 #include "sequence.h"
 #include "fasta_util.h"
-
 #include "SQLiteConstructor.h"
 #include "DBSeq.h"
 #include "utils.h"
