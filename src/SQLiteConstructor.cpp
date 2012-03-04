@@ -272,7 +272,7 @@ void SQLiteConstructor::set_user_fasta_file(string filename,bool skipdbcheck){
     cout <<"finished reading user fasta file" << endl;
 }
 
-void SQLiteConstructor::run(){
+int SQLiteConstructor::run(){
     string logn = gene_name+".log";
     logfile.open(logn.c_str());
     string gin = gene_name+".gi";
@@ -302,6 +302,7 @@ void SQLiteConstructor::run(){
 	}
 	cout << "existing seqs: " << stored_seqs.size() << endl;
 	gifile.close();
+
 	gifile.open(gin.c_str(),fstream::app | fstream::out);
 	//userfile
 	if (userfasta==true){
@@ -419,6 +420,11 @@ void SQLiteConstructor::run(){
 	    startseqs = include_gis_from_file(startseqs);
 	    cout << "after including gis: " << startseqs.size() << endl;
 	}
+
+	if (startseqs.size() == 0){
+	    cout << "there were no seqs left after blast" << endl;
+	    exit(0);
+	}
 	/*
 	 * not sure where ITS should go, but maybe before blasting
 	 * then the blasting statistics can be strict
@@ -507,6 +513,12 @@ void SQLiteConstructor::run(){
 	}
 	if(user_seqs->size() + keep_seqs->size() == 0)
 	  exit(0);
+	//if update is more than 20% then redo run
+	if(user_seqs->size() + keep_seqs->size() >= (stored_seqs.size() * 0.2)){
+	    updateDB = false;
+	    cout << "update more than 20% of original size, redoing the whole thing" << endl;
+	    return 2;
+	}
 	//add the right gi numbers before add the rest of the seqs are added to keep_seqs
 	write_user_numbers();
 	ufafile.close();
@@ -515,6 +527,10 @@ void SQLiteConstructor::run(){
 	vector<string> file_names;
 	getdir(gene_name,file_names);
 	if(usertree == false){
+	    cout << "PRE LIST OF SEQS" << endl;
+	    for(int i=0;i<keep_seqs->size();i++){
+		cout << keep_seqs->at(i).get_ncbi_taxid() << " " << keep_seqs->at(i).get_gi() << endl;
+	    }
 	    for (unsigned int i = 0;i < file_names.size();i++){
 		//string sql = "SELECT ncbi_id,left_value,right_value FROM taxonomy WHERE name = '"+file_names[i]+"';";
 		//changed to ncbi_id
@@ -550,11 +566,18 @@ void SQLiteConstructor::run(){
 			    add_seqs_from_file_to_dbseqs_vector(file_names[i],keep_seqs,stored_seqs,stored_user_seqs);
 			    string nfilename = gene_name+"/"+file_names[i];
 			    remove(nfilename.c_str());
+			    cout << "deleting " << nfilename << endl;
 			}
 			break;
 		    }
 		}
 	    }
+	    cout <<"seqs to process: " << keep_seqs->size() << endl;
+	    cout << "LIST OF SEQS" << endl;
+	    for(int i=0;i<keep_seqs->size();i++){
+		cout << keep_seqs->at(i).get_ncbi_taxid() << " " << keep_seqs->at(i).get_gi() << endl;
+	    }
+//	    exit(0);
 	}else{//usertree == true
 	    //can do seq similarity, tree building distance, or ncbi
 	    //going to try ncbi first
@@ -664,6 +687,7 @@ void SQLiteConstructor::run(){
     logfile.close();
     delete known_seqs;
     delete keep_seqs;
+    return 0;
 }
 
 string SQLiteConstructor::get_cladename(){
@@ -1143,7 +1167,7 @@ void SQLiteConstructor::remove_duplicates_SWPS3(vector<DBSeq> * keep_seqs){
     int mycount;
 
     //uses database taxon ids for dups
-    for(unsigned int i =0; i<keep_seqs->size(); i++){
+    /*for(unsigned int i =0; i<keep_seqs->size(); i++){
 	ids.push_back(keep_seqs->at(i).get_id());
 	mycount = 0;
 	if(unique_ids.size() > 0){
@@ -1152,21 +1176,21 @@ void SQLiteConstructor::remove_duplicates_SWPS3(vector<DBSeq> * keep_seqs){
 	if(mycount == 0){
 	    unique_ids.push_back(keep_seqs->at(i).get_id());
 	}
-    }
+    }*/
 
     //uses NCBI taxon ids for dups
-    /*
-      for(unsigned int i =0; i<keep_seqs->size(); i++){
-      ids.push_back(keep_seqs->at(i).get_ncbi_taxid());
-      mycount = 0;
-      if(unique_ids.size() > 0){
-      mycount = (int) count (unique_ids.begin(),unique_ids.end(), keep_seqs->at(i).get_ncbi_taxid());
-      }
-      if(mycount == 0){
-      unique_ids.push_back(keep_seqs->at(i).get_ncbi_taxid());
-      }
-      }
-    */
+    
+    for(unsigned int i =0; i<keep_seqs->size(); i++){
+	ids.push_back(keep_seqs->at(i).get_ncbi_taxid());
+	mycount = 0;
+	if(unique_ids.size() > 0){
+	    mycount = (int) count (unique_ids.begin(),unique_ids.end(), keep_seqs->at(i).get_ncbi_taxid());
+	}
+	if(mycount == 0){
+	    unique_ids.push_back(keep_seqs->at(i).get_ncbi_taxid());
+	}
+    }
+    
 
     /*
      * get the best score for each known seq
@@ -1178,7 +1202,6 @@ void SQLiteConstructor::remove_duplicates_SWPS3(vector<DBSeq> * keep_seqs){
     }
 
     vector<int> remove;
-//#pragma omp parallel for shared(remove)
     for(unsigned int i=0;i<unique_ids.size();i++){
 	int mycount = 0;
 	mycount = (int) count (ids.begin(),ids.end(), unique_ids[i]);
@@ -2058,65 +2081,66 @@ void SQLiteConstructor::add_seqs_from_file_to_dbseqs_vector(string filename,vect
 	//if it is a user seq
         found = tseqs[i].get_id().find("user_");
         if (found != string::npos){
-	  if(skipdbcheck==false){
-	    Database conn(db);
-	    //TODO: need to make this faster
-	    cout << "trying to match sequence names to ncbi name"<< endl;
-	    string tname = tseqs[i].get_id().substr(5,tseqs[i].get_id().size());
-	    //search for the name in the database
-	    string sql = "SELECT ncbi_id FROM taxonomy WHERE edited_name = '"+tname+"' OR ncbi_id = '"+tname+"';";
-	    Query query(conn);
-	    query.get_result(sql);
-	    int count1 = 0;
-	    bool nameset = false;
-	    string nameval;
-	    while(query.fetch_row()){
-	      nameset = true;
-	      nameval = to_string(query.getval());
-	      count1+=1;
+	    if(skipdbcheck==false){
+		Database conn(db);
+		//TODO: need to make this faster
+		cout << "trying to match sequence names to ncbi name"<< endl;
+		string tname = tseqs[i].get_id().substr(5,tseqs[i].get_id().size());
+		//search for the name in the database
+		string sql = "SELECT ncbi_id FROM taxonomy WHERE edited_name = '"+tname+"' OR ncbi_id = '"+tname+"';";
+		Query query(conn);
+		query.get_result(sql);
+		int count1 = 0;
+		bool nameset = false;
+		string nameval;
+		while(query.fetch_row()){
+		    nameset = true;
+		    nameval = to_string(query.getval());
+		    count1+=1;
+		}
+		query.free_result();
+		if (nameset==true){
+		    user_seqs->at(i).set_comment(nameval);
+		    cout << tname << "="<<nameval<<endl;
+		}else{
+		    cerr <<tname << " is not in the ncbi database as a number or name"<<endl; 
+		}
 	    }
-	    query.free_result();
-	    if (nameset==true){
-	      user_seqs->at(i).set_comment(nameval);
-	      cout << tname << "="<<nameval<<endl;
-	    }else{
-	      cerr <<tname << " is not in the ncbi database as a number or name"<<endl; 
+	    if(usertree == true){
+		cout << "matching user fasta seqs to user guide tree" << endl;
+		int count = 0;
+		for(int i=0;i<userguidetree->getExternalNodeCount();i++){
+		    string tname = userguidetree->getExternalNode(i)->getName();
+		    cout << tname << endl;
+		    if (tname == tseqs[i].get_id() || tname == tseqs[i].get_comment() || ("user_"+tname == tseqs[i].get_id()) || ("user_"+tname == tseqs[i].get_comment())){
+			user_fasta_node_map[&tseqs[i]] = userguidetree->getExternalNode(i);
+			count +=1;
+		    }
+		}
+		cout << "matches: "<<count<< " prop:"<< count/user_seqs->size() << endl;
 	    }
-	  }
-	  if(usertree == true){
-	    cout << "matching user fasta seqs to user guide tree" << endl;
-	    int count = 0;
-	    for(int i=0;i<userguidetree->getExternalNodeCount();i++){
-	      string tname = userguidetree->getExternalNode(i)->getName();
-	      cout << tname << endl;
-	      if (tname == tseqs[i].get_id() || tname == tseqs[i].get_comment() || ("user_"+tname == tseqs[i].get_id()) || ("user_"+tname == tseqs[i].get_comment())){
-		    user_fasta_node_map[&tseqs[i]] = userguidetree->getExternalNode(i);
-		    count +=1;
-	      }
-	    }
-	    cout << "matches: "<<count<< " prop:"<< count/user_seqs->size() << endl;
-	  }
-	  user_seqs->push_back(tseqs[i]);
+	    user_seqs->push_back(tseqs[i]);
 	}else{//it is a dbseq
-	  string ncbi = taxgimap[tseqs[i].get_id()];
-	  string sql = "SELECT accession_id,description FROM sequence WHERE identifier = "+ncbi+";";
-	  Query query3(conn);
-	  query3.get_result(sql);
-	  string descr,acc;
-	  while(query3.fetch_row()){
-	    acc = query3.getstr();
-	    descr = query3.getstr();
-	  }
-	  query3.free_result();
-	  sql = "SELECT edited_name FROM taxonomy WHERE ncbi_id = "+tseqs[i].get_id()+";";
-	  Query query4(conn);
-	  query4.get_result(sql);
-	  string edname;
-	  while(query4.fetch_row()){
-	    edname = query4.getstr();
-	  }
-	  DBSeq tseq(tseqs[i].get_id(), tseqs[i].get_sequence(), acc, ncbi, tseqs[i].get_id(), " ", descr,edname);
-	  keep_seqs->push_back(tseq);
+	    string ncbi = taxgimap[tseqs[i].get_id()];
+	    string sql = "SELECT accession_id,description FROM sequence WHERE identifier = "+ncbi+";";
+	    Query query3(conn);
+	    query3.get_result(sql);
+	    string descr,acc;
+	    while(query3.fetch_row()){
+		acc = query3.getstr();
+		descr = query3.getstr();
+	    }
+	    query3.free_result();
+	    sql = "SELECT edited_name FROM taxonomy WHERE ncbi_id = "+tseqs[i].get_id()+";";
+	    Query query4(conn);
+	    query4.get_result(sql);
+	    string edname;
+	    while(query4.fetch_row()){
+		edname = query4.getstr();
+	    }
+	    DBSeq tseq(tseqs[i].get_id(), tseqs[i].get_sequence(), acc, ncbi, tseqs[i].get_id(), " ", descr,edname);
+	    cout << "adding from file: " << tseq.get_ncbi_taxid() << " -- " << tseq.get_gi() << endl;
+	    keep_seqs->push_back(tseq);
 	}
     }
 }
@@ -2138,4 +2162,8 @@ double SQLiteConstructor::get_usertree_keepseq_overlap(vector<DBSeq> * keep_seqs
 
 Tree * SQLiteConstructor::get_user_guide_tree_obj(){
     return userguidetree;
+}
+
+bool SQLiteConstructor::get_updatestatus(){
+    return updateDB;
 }

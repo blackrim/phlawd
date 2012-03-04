@@ -1,7 +1,7 @@
-clade = Streptophytina
+#clade = Streptophytina
 #clade = campanulids
 #clade = Asterales
-#clade = Dipsacales
+clade = Dipsacales
 search = rbcL
 gene = rbcL2
 mad = 0.005

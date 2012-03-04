@@ -252,12 +252,17 @@ int main(int argc, char* argv[]){
 		if(userskipsearch == true){
 		    a->set_user_skip_search();
 		}
-		a->run();
+		int ret = a->run();
+		if (ret == 2){
+		    updateDB = false; 
+		    a->run();
+		}
 		if(usertree == true){
 		    usertreeobj = a->get_user_guide_tree_obj();
 		    if (usertreeobj == NULL)//can happen if little overlap between tree and dataset
 			usertree = false;
 		}
+		updateDB = a->get_updatestatus(); //if there was an enormous update, it will make sure to note that
 		delete(a);
 	    }
 	    /*

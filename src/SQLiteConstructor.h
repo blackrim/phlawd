@@ -120,7 +120,7 @@ public:
     void set_user_guide_tree(string filename, bool skipcheckdb);
     void set_user_fasta_file(string filename, bool skipcheckdb);
     void set_user_skip_search();
-    void run();
+    int run(); //0 = success, 2 = update>20%
     string get_cladename();
     vector <string> get_search();
     string get_genename();
@@ -128,6 +128,7 @@ public:
     double get_coverage();
     double get_identity();
     int get_numthreads();
+    bool get_updatestatus();
     Tree * get_user_guide_tree_obj();
 };
 
