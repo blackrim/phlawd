@@ -1,6 +1,6 @@
 CC = g++
 CFLAGS = -msse3 -DSSE2 -O3 -g -w -Wall -fopenmp
-
+prefix = /usr/bin/
 CPP_SRCS += \
 sequence.cpp \
 tree.cpp \
@@ -97,3 +97,9 @@ PHLAWD: $(OBJS)
 clean:
 	-$(RM) *.o *.d
 	-@echo ' '
+
+install:
+	install -m 0755 PHLAWD $(prefix)
+	
+uninstall:
+	-rm $(prefix)PHLAWD

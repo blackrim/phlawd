@@ -3,7 +3,7 @@
 #clade = Asterales
 clade = Dipsacales
 search = rbcL
-gene = rbcL2
+gene = rbcL
 mad = 0.005
 coverage = 0.4
 identity = 0.2
