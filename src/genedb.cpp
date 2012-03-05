@@ -4,12 +4,20 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <sstream>
+#include <vector>
 
 #include "genedb.h"
 #include "libsqlitewrapped.h"
 #include "utils.h"
 
 using namespace std;
+
+template <class T>
+inline std::string to_string (const T& t){
+    std::stringstream ss;
+    ss << t;
+    return ss.str();
+}
 
 GeneDB::GeneDB(){}
 
@@ -57,9 +65,9 @@ void GeneDB::initialize(bool overwrite){
 	query.execute("create table sequences(id INTEGER PRIMARY KEY, ncbi_id INTEGER, name VARCHAR(255), sequence TEXT);");
 	query.execute("create index sequences_ncbi_id on sequences(ncbi_id);");
 	query.execute("create index sequences_name on sequences(name);");
-	query.execute("create table user_sequences(id INTEGER PRIMARY KEY, ncbi_id INTEGER, name VARCHAR(255), sequence TEXT);");
-	query.execute("create index user_sequences_ncbi_id on user_sequences(ncbi_id);");
-	query.execute("create index user_sequences_name on user_sequences(name);");
+//	query.execute("create table user_sequences(id INTEGER PRIMARY KEY, ncbi_id INTEGER, name VARCHAR(255), sequence TEXT);");
+//	query.execute("create index user_sequences_ncbi_id on user_sequences(ncbi_id);");
+//	query.execute("create index user_sequences_name on user_sequences(name);");
 	query.execute("create table sequence_alignment_map(id INTEGER PRIMARY KEY, sequence_id INTEGER, alignment_id INTEGER, sequence TEXT);");
 	query.execute("create index sequence_alignment_map_sequence_id sequence_alignment_map(sequence_id);");
 	query.execute("create index sequence_alignment_map_alignment_id sequence_alignment_map(alignment_id);");
@@ -78,7 +86,8 @@ void GeneDB::add_user_seqs_to_db(vector<Sequence> * user_seqs){
     
     sqlite3_exec(conn, "BEGIN TRANSACTION", NULL, NULL, NULL);
     for(int i=0;i<user_seqs->size();i++){
-	string sql = "insert into user_sequences (ncbi_id,name,sequence) values (";
+//	string sql = "insert into user_sequences (ncbi_id,name,sequence) values (";
+	string sql = "insert into sequences (ncbi_id,name,sequence) values (";
 	sql += user_seqs->at(i).get_comment()+",'";
 	sql += user_seqs->at(i).get_id()+"','";
 	sql += user_seqs->at(i).get_sequence()+"');";
@@ -123,32 +132,27 @@ int GeneDB::add_alignment(string filename, vector<DBSeq> * dbseqs, vector<Sequen
     rc = sqlite3_exec(conn, sql.c_str(), 0, 0, 0);
     int alignid = sqlite3_last_insert_rowid(conn);
     sqlite3_exec(conn, "COMMIT TRANSACTION", NULL, NULL, NULL);
-    std::stringstream ss;
-    ss << alignid;
-    string alignids = ss.str();
+    string alignids = to_string(alignid);
     sqlite3_exec(conn, "BEGIN TRANSACTION", NULL, NULL, NULL);
     for(int i=0;i<dbseqs->size();i++){
 	string sql = "insert into sequence_alignment_map (sequence_id, alignment_id,sequence) values (";
-	std::stringstream ss2;
-	ss2 << dbseqs->at(i).get_sqlite_id();
-	string dbsid = ss2.str();
+	string dbsid = to_string(dbseqs->at(i).get_sqlite_id());
 	sql += dbsid+",";
 	sql += alignids+",'";
-	sql += dbseqs->at(i).get_sequence()+"');";
+	sql += dbseqs->at(i).get_aligned_seq()+"');";
 	rc = sqlite3_exec(conn, sql.c_str(), 0, 0, 0);
     }
     for(int i=0;i<userseqs->size();i++){
 	string sql = "insert into sequence_alignment_map (sequence_id, alignment_id,sequence) values (";
-	std::stringstream ss2;
-	ss2 << userseqs->at(i).get_sqlite_id();
-	string dbsid = ss2.str();
+	string dbsid = to_string(userseqs->at(i).get_sqlite_id());
 	sql += dbsid+",";
 	sql += alignids+",'";
-	sql += userseqs->at(i).get_sequence()+"');";
+	sql += userseqs->at(i).get_aligned_seq()+"');";
 	rc = sqlite3_exec(conn, sql.c_str(), 0, 0, 0);
     }
     sqlite3_exec(conn, "COMMIT TRANSACTION", NULL, NULL, NULL);
     sqlite3_close(conn);
+    return alignid;
 }
 
 void GeneDB::remove_alignment(int alignid){
@@ -157,9 +161,7 @@ void GeneDB::remove_alignment(int alignid){
     char *zErrMsg = 0;
     sqlite3_exec(conn, "BEGIN TRANSACTION", NULL, NULL, NULL);
     string sql = "delete from sequence_alignment_map where alignment_id =";
-    std::stringstream ss;
-    ss << alignid;
-    string alignids = ss.str();
+    string alignids = to_string(alignid);
     sql += alignids+");";
     rc = sqlite3_exec(conn, sql.c_str(), 0, 0, 0);
     sqlite3_exec(conn, "COMMIT TRANSACTION", NULL, NULL, NULL);
@@ -171,7 +173,58 @@ void GeneDB::remove_alignment(int alignid){
     sqlite3_exec(conn, "COMMIT TRANSACTION", NULL, NULL, NULL);
 }
 
+void GeneDB::add_seq_to_alignment(int alignid, Sequence inseq){
+    sqlite3 *conn;
+    int rc = sqlite3_open(name.c_str(), &conn);
+    char *zErrMsg = 0;
+    
+    sqlite3_exec(conn, "BEGIN TRANSACTION", NULL, NULL, NULL);
+    string alignids = to_string(alignid);
+    string sql = "insert into sequence_alignment_map (sequence_id, alignment_id,sequence) values (";
+    string dbsid = to_string(inseq.get_sqlite_id());
+    sql += dbsid+",";
+    sql += alignids+",'";
+    sql += inseq.get_sequence()+"');";
+    rc = sqlite3_exec(conn, sql.c_str(), 0, 0, 0);
+    sqlite3_exec(conn, "COMMIT TRANSACTION", NULL, NULL, NULL);
+}
 
+void GeneDB::get_align_seqs(int alignid, vector<Sequence> & seqs){
+    
+    string alignids = to_string(alignid);
+    string sql = "select sequence_id,sequence from sequence_alignment_map where alignment_id = ";
+    sql += alignids+";";
+
+    Database conn(name);
+    Query query(conn);
+    query.get_result(sql);
+    while(query.fetch_row()){
+	string id;
+	string seq;
+	id = to_string(query.getval());
+	seq = to_string(query.getval());
+	Sequence tseq(id,seq);
+	seqs.push_back(tseq);
+    }
+    query.free_result();
+}
+
+void GeneDB::update_align_seqs(int alignid,vector<Sequence> & seqs){
+    sqlite3 *conn;
+    int rc = sqlite3_open(name.c_str(), &conn);
+    char *zErrMsg = 0;
+    
+    sqlite3_exec(conn, "BEGIN TRANSACTION", NULL, NULL, NULL);
+    for(int i=0;i<seqs.size();i++){
+	string sql = "update sequence_alignment_map set sequence = '";
+	sql += seqs[i].get_aligned_seq()+"'";
+	sql += "' where alignment_id = ";
+	sql += to_string(alignid)+" and sequence_id = ";
+	sql += to_string(seqs[i].get_sqlite_id())+";";
+	rc = sqlite3_exec(conn, sql.c_str(), 0, 0, 0);
+    }
+    sqlite3_exec(conn, "COMMIT TRANSACTION", NULL, NULL, NULL);
+}
 
 //void GeneDB::add_profile_alignment(, int child_id1, int child_id2){
 

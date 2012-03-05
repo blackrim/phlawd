@@ -27,6 +27,14 @@ string Sequence::get_sequence(){
 	return seq;
 }
 
+string Sequence::get_aligned_seq(){
+    return al_seq;
+}
+
+void Sequence::set_aligned_seq(string inseq){
+    al_seq = inseq;
+}
+
 string Sequence::get_id(){
 	return id;
 }

@@ -41,11 +41,10 @@ using namespace std;
 #include "SWPS3_matrix.h"
 
 template <class T>
-inline std::string to_string (const T& t)
-{
-std::stringstream ss;
-ss << t;
-return ss.str();
+inline std::string to_string (const T& t){
+    std::stringstream ss;
+    ss << t;
+    return ss.str();
 }
 
 

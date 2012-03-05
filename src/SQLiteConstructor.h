@@ -110,6 +110,8 @@ private:
     void write_gi_numbers(vector<DBSeq> *);
     void write_user_numbers();
     void add_seqs_from_file_to_dbseqs_vector(string filename,vector<DBSeq> * keep_seqs, map<string,string> & taxgimap, vector<string> & taxuservec);
+    void remove_seq_from_seq_vector(vector<Sequence> * inseqs,string sid);
+    void match_aligned_file(vector<DBSeq> * temp_seqs, vector<Sequence> * temp_user_seqs);
 public:
     SQLiteConstructor(string cn, vector <string> searchstr, string genen, string genedb,
 		      double mad_cut,double cover, double ident, string dbs,

@@ -1654,6 +1654,7 @@ void SQLiteConstructor::saturation_tests(vector<string> name_ids, vector<string>
 	    allseqs.push_back(user_seqs->at(i));
 	}
     }
+    vector<int> exist_alignments;
     
     vector<string> seq_set_filenames;//here they will be not node names but numbers
 
@@ -1677,121 +1678,54 @@ void SQLiteConstructor::saturation_tests(vector<string> name_ids, vector<string>
 		 */
 		cout << name << ": " << name_id << " " << temp_seqs->size() <<" " << temp_user_seqs->size()<<  " " << allseqs.size() << endl;
 		//make file
-		FastaUtil seqwriter1;
-		vector<Sequence> sc1;
 		for(int i=0;i<temp_seqs->size();i++){
-		    //need to implement a better way, but this is it for now
-		    int eraseint=0;
-		    int beforesize = allseqs.size();
-		    for(int zz=0;zz<allseqs.size();zz++){
-			if (temp_seqs->at(i).get_id() == allseqs[zz].get_id()){
-			    eraseint = zz;
-			    break;
-			}
-		    }
-		    allseqs.erase(allseqs.begin()+eraseint);
-		    if(allseqs.size() != beforesize-1 ){
-			cout << "single db sequence not erased" << endl;
-			exit(0);
-		    }
-		    sc1.push_back(temp_seqs->at(i));
+		    temp_seqs->at(i).set_aligned_seq(temp_seqs->at(i).get_aligned_seq());
+		    remove_seq_from_seq_vector(&allseqs,temp_seqs->at(i).get_id());
 		}
 		//user seqs
 		for(int i=0;i<temp_user_seqs->size();i++){
-		    //need to implement a better way, but this is it for now
-		    int eraseint=0;
-		    int beforesize = allseqs.size();
-		    for(int zz=0;zz<allseqs.size();zz++){
-			if (temp_user_seqs->at(i).get_id() == allseqs[zz].get_id()){
-			    eraseint = zz;
-			    break;
-			}
-		    }
-		    allseqs.erase(allseqs.begin()+eraseint);
-		    if(allseqs.size() != beforesize-1 ){
-			cout << "single user sequence not erased" << endl;
-			exit(0);
-		    }
-		    sc1.push_back(temp_user_seqs->at(i));
+		    temp_user_seqs->at(i).set_aligned_seq(temp_user_seqs->at(i).get_aligned_seq());
+		    remove_seq_from_seq_vector(&allseqs,temp_user_seqs->at(i).get_id());
 		}
-		string fn1 = gene_name;
-		//fn1 += "/" + name;
-		//change from name to ncbi 
-		fn1 += "/" + name_id;
-		seqwriter1.writeFileFromVector(fn1,sc1);
-		gene_db.add_alignment(name_id,temp_seqs, temp_user_seqs);
-		seq_set_filenames.push_back(fn1);
+		int alignid = gene_db.add_alignment(name_id,temp_seqs, temp_user_seqs);
+		exist_alignments.push_back(alignid);
 	    }else if (temp_seqs->size() + temp_user_seqs->size()== 0){
 		continue;
 	    }else{
+		/*
+		 * multiple sequences
+		 */
 		cout << name << ": " << name_id << " " << temp_seqs->size() << " "<< temp_user_seqs->size() << endl;
 		double mad;
 		if(temp_seqs->size() + temp_user_seqs->size() > 2){
-		    if (temp_seqs->size() +temp_user_seqs->size() < 3000){
-			//TODO: add input tree for mafft
+		    if (temp_seqs->size() +temp_user_seqs->size() < 10000){
 			make_mafft_multiple_alignment(temp_seqs,temp_user_seqs);
 			mad = calculate_MAD_quicktree();
-		    }else if(temp_seqs->size() +temp_user_seqs->size() < 10000){
-			//need to make this happen 10 tens and average
+/*		    }else if(temp_seqs->size() +temp_user_seqs->size() < 10000){
 			mad = 0;
 			for (int i=0;i<10;i++)
 			    mad = mad + (calculate_MAD_quicktree_sample(temp_seqs,temp_user_seqs)/10.0);
-			mad = mad * 2; //make sure is conservative
+			mad = mad * 2; //make sure is conservative*/
 		    }else{//if it is really big
 			mad = mad_cutoff + 1;//make sure it gets broken up
 		    }
 		}else{
+		    make_mafft_multiple_alignment(temp_seqs,temp_user_seqs);
 		    mad = 0;
 		}
 		cout << "mad: "<<mad << endl;
 		//if mad scores are good, store result
-		//write to file and to sqlite database
 		if (mad <= mad_cutoff){
-		    FastaUtil seqwriter1;
-		    vector<Sequence> sc1; 
+		    match_aligned_file(temp_seqs,temp_user_seqs);
 		    for(int i=0;i<temp_seqs->size();i++){
-			//need to implement a better way, but this is it for now
-			int eraseint=0;
-			int beforesize = allseqs.size();
-			for(int zz=0;zz<allseqs.size();zz++){
-			    if (temp_seqs->at(i).get_id() == allseqs[zz].get_id()){
-				eraseint = zz;
-				break;
-			    }
-			}
-			allseqs.erase(allseqs.begin()+eraseint);
-			if(allseqs.size() != beforesize-1 ){
-			    cout << "multiple db sequence not erased" << endl;
-			    exit(0);
-			}
-			sc1.push_back(temp_seqs->at(i));
+			remove_seq_from_seq_vector(&allseqs,temp_seqs->at(i).get_id());
 		    }
 		    //user seqs
 		    for(int i=0;i<temp_user_seqs->size();i++){
-			//need to implement a better way, but this is it for now
-			int eraseint=0;
-			int beforesize = allseqs.size();
-			for(int zz=0;zz<allseqs.size();zz++){
-			    if (temp_user_seqs->at(i).get_id() == allseqs[zz].get_id()){
-				eraseint = zz;
-				break;
-			    }
-			}
-			allseqs.erase(allseqs.begin()+eraseint);
-			if(allseqs.size() != beforesize-1 ){
-			    cout << "multiple user sequence not erased" << endl;
-			    exit(0);
-			}
-			sc1.push_back(temp_user_seqs->at(i));
+			remove_seq_from_seq_vector(&allseqs,temp_user_seqs->at(i).get_id());
 		    }
-		    string fn1 = gene_name;
-		    //fn1 += "/" + name;
-                    //change from name to ncbi 
-		    fn1 += "/" + name_id;
-		    seqwriter1.writeFileFromVector(fn1,sc1);
-		    gene_db.add_alignment(name_id,temp_seqs, temp_user_seqs);
-		    seq_set_filenames.push_back(fn1);
-		    //TODO: SQLITE database storing
+		    int alignid = gene_db.add_alignment(name_id,temp_seqs, temp_user_seqs);
+		    exist_alignments.push_back(alignid);
 		}
 		//if mad scores are bad push the children into names
 		else{
@@ -1873,99 +1807,55 @@ void SQLiteConstructor::saturation_tests(vector<string> name_ids, vector<string>
 	    if(temp_seqs->size()+temp_user_seqs->size() == 1){//just one sequence in the group
 		cout << curnode->getName() << " " << temp_seqs->size() << " " << temp_user_seqs->size() << endl;
 		//make file
-		FastaUtil seqwriter1;
-		vector<Sequence> sc1;
 		for(int i=0;i<temp_seqs->size();i++){
-		    //need to implement a better way, but this is it for now
-		    int eraseint=0;
-		    for(int zz=0;zz<allseqs.size();zz++){
-			if (temp_seqs->at(i).get_id() == allseqs[zz].get_id()){
-			    eraseint = zz;
-			    break;
-			}
-		    }
-		    allseqs.erase(allseqs.begin()+eraseint);
-		    sc1.push_back(temp_seqs->at(i));
+		    temp_seqs->at(i).set_aligned_seq(temp_seqs->at(i).get_aligned_seq());
+		    remove_seq_from_seq_vector(&allseqs,temp_seqs->at(i).get_id());
 		}
 		//user seqs
 		for(int i=0;i<temp_user_seqs->size();i++){
-		    //need to implement a better way, but this is it for now
-		    int eraseint=0;
-		    int beforesize = allseqs.size();
-		    for(int zz=0;zz<allseqs.size();zz++){
-			if (temp_user_seqs->at(i).get_id() == allseqs[zz].get_id()){
-			    eraseint = zz;
-			    break;
-			}
-		    }
-		    allseqs.erase(allseqs.begin()+eraseint);
-		    sc1.push_back(temp_user_seqs->at(i));
+		    temp_user_seqs->at(i).set_aligned_seq(temp_user_seqs->at(i).get_aligned_seq());
+		    remove_seq_from_seq_vector(&allseqs,temp_user_seqs->at(i).get_id());
 		}
-		string fn1 = gene_name;
-		fn1 += "/" + curnode->getName();
-		seqwriter1.writeFileFromVector(fn1,sc1);
-		gene_db.add_alignment(curnode->getName(),temp_seqs, temp_user_seqs);
-		seq_set_filenames.push_back(fn1);
+		int alignid = gene_db.add_alignment(curnode->getName(),temp_seqs, temp_user_seqs);
+		exist_alignments.push_back(alignid);
 	    }else if (temp_seqs->size() + temp_user_seqs->size() == 0){
 		continue;
 	    }else{
+		/*
+		 * multiple sequences
+		 */
 		cout << curnode->getName() << " " << temp_seqs->size() << endl;
 		double mad;
 		if(temp_seqs->size()+temp_user_seqs->size() > 2){
-		    if (temp_seqs->size() +temp_user_seqs->size()< 3000){
+		    if (temp_seqs->size() +temp_user_seqs->size()< 10000){
 			//TODO: add input tree for mafft
 			make_mafft_multiple_alignment(temp_seqs,temp_user_seqs);
 			mad = calculate_MAD_quicktree();
-		    }else if(temp_seqs->size() +temp_user_seqs->size()< 10000){
+			/*}else if(temp_seqs->size() +temp_user_seqs->size()< 10000){
 			//need to make this happen 10 tens and average
 			mad = 0;
 			for (int i=0;i<10;i++)
 			    mad = mad + (calculate_MAD_quicktree_sample(temp_seqs,temp_user_seqs)/10.0);
-			mad = mad * 2; //make sure is conservative
+			mad = mad * 2; //make sure is conservative*/
 		    }else{//if it is really big
 			mad = mad_cutoff + 1;//make sure it gets broken up
 		    }
 		}else{
+		    make_mafft_multiple_alignment(temp_seqs,temp_user_seqs);
 		    mad = 0;
 		}
 		cout << "mad: "<<mad << endl;
 		//if mad scores are good, store result
-		//write to file and to sqlite database
 		if (mad <= mad_cutoff){
-		    FastaUtil seqwriter1;
-		    vector<Sequence> sc1; 
+		    match_aligned_file(temp_seqs,temp_user_seqs);
 		    for(int i=0;i<temp_seqs->size();i++){
-			//need to implement a better way, but this is it for now
-			int eraseint=0;
-			int beforesize = allseqs.size();
-			for(int zz=0;zz<allseqs.size();zz++){
-			    if (temp_seqs->at(i).get_id() == allseqs[zz].get_id()){
-				eraseint = zz;
-				break;
-			    }
-			}
-			allseqs.erase(allseqs.begin()+eraseint);
-			sc1.push_back(temp_seqs->at(i));
+			remove_seq_from_seq_vector(&allseqs,temp_seqs->at(i).get_id());
 		    }
 		    for(int i=0;i<temp_user_seqs->size();i++){
-			//need to implement a better way, but this is it for now
-			int eraseint=0;
-			int beforesize = allseqs.size();
-			for(int zz=0;zz<allseqs.size();zz++){
-			    if (temp_user_seqs->at(i).get_id() == allseqs[zz].get_id()){
-				eraseint = zz;
-				break;
-			    }
-			}
-			allseqs.erase(allseqs.begin()+eraseint);
-			sc1.push_back(temp_user_seqs->at(i));
+			remove_seq_from_seq_vector(&allseqs,temp_user_seqs->at(i).get_id());
 		    }
-		    string fn1 = gene_name;
-		    fn1 += "/" + curnode->getName();
-		    seqwriter1.writeFileFromVector(fn1,sc1);
-		    gene_db.add_alignment(curnode->getName(),temp_seqs, temp_user_seqs);
-		    seq_set_filenames.push_back(fn1);
-		    //TODO: SQLITE database storing
+		    int alignid = gene_db.add_alignment(curnode->getName(),temp_seqs, temp_user_seqs);
+		    exist_alignments.push_back(alignid);
 		}
 		//if mad scores are bad push the children into names
 		else{
@@ -1993,50 +1883,23 @@ void SQLiteConstructor::saturation_tests(vector<string> name_ids, vector<string>
      * clean
      */
     cout << "picking where leftovers should go" << endl;
-    //need to determine the seq_set_filenames
-    vector<string> exist_filenames;
-    getdir(gene_name.c_str(),exist_filenames);
-
-    FastaUtil fu;
     for (int i=0;i<allseqs.size();i++){
-	//can add something here that says if only NCBI, if no name then skip
-	//checking to make sure that the seqs are in NCBI or that they are in user seqs
 	string name;
-	string sql = "SELECT name FROM taxonomy WHERE ncbi_id = '";
-	sql += allseqs.at(i).get_id();
-	sql += "' or ncbi_id = "+allseqs.at(i).get_comment()+";";
 	cout <<"adding leftover: "<<allseqs.at(i).get_id()<<endl;
-	Database conn(db);
-	Query query(conn);
-	query.get_result(sql);
-	bool exists=false;
-	while(query.fetch_row()){
-	    exists=true;
-	}
-	query.free_result();
-	//TODO: add what to do if there are no files left, just leftovers
-	//if (exists==true || userskipsearchdb == true){
-	if(0==0){
-	    int bestscore = 0;
-	    int bestind = 0;
-	    for(int j=0;j<exist_filenames.size();j++){
-		//read in the file into a vector of seqs
-		vector<Sequence> tempseqs;
-		fu.readFile(gene_name+"/"+exist_filenames[j],tempseqs);
-		int tscore = get_single_to_group_seq_score(allseqs[i],tempseqs);
-		if (tscore > bestscore){
-		    bestind = j;
-		}
+	int bestscore = 0;
+	int bestind = 0;
+	for(int j=0;j<exist_alignments.size();j++){
+	    vector<Sequence> tempseqs;
+	    gene_db.get_align_seqs(exist_alignments[j],tempseqs);
+	    int tscore = get_single_to_group_seq_score(allseqs[i],tempseqs);
+	    if (tscore > bestscore){
+		bestind = j;
 	    }
-	    vector<Sequence> finalseqs;
-	    fu.readFile(gene_name+"/"+exist_filenames[bestind],finalseqs);
-	    finalseqs.push_back(allseqs[i]);
-	    //delete the file
-	    remove((gene_name+"/"+exist_filenames[bestind]).c_str());
-	    //write the file out again
-	    fu.writeFileFromVector(gene_name+"/"+exist_filenames[bestind],finalseqs);
-	    
 	}
+	//TODO: START here
+	//align the new one
+	//add then update the aligned seqs
+	gene_db.add_seq_to_alignment(exist_alignments[bestind],allseqs[i]);
     }
     cout << "finished with sequence processing" << endl;
 }
@@ -2199,4 +2062,49 @@ bool SQLiteConstructor::get_updatestatus(){
 
 string SQLiteConstructor::get_genedb(){
     return gene_db_name;
+}
+
+void SQLiteConstructor::remove_seq_from_seq_vector(vector<Sequence> * inseqs,string sid){
+    int eraseint=0;
+    int beforesize = inseqs->size();
+    for(int zz=0;zz<inseqs->size();zz++){
+	if (sid == (*inseqs)[zz].get_id()){
+	    eraseint = zz;
+	    break;
+	}
+    }
+    inseqs->erase(inseqs->begin()+eraseint);
+    if(inseqs->size() != beforesize-1 ){
+	cout << "sequence not erased" << endl;
+	exit(0);
+    }
+}
+
+void SQLiteConstructor::match_aligned_file(vector<DBSeq> * temp_seqs, vector<Sequence> * temp_user_seqs){
+    FastaUtil fu;
+    vector<Sequence> tempalseqs;
+    fu.readFile("TEMPFILES/outfile",tempalseqs);
+    for(int i=0;i<tempalseqs.size();i++){
+	bool set = false;
+	for(int j=0;j<temp_seqs->size();j++){
+	    if(tempalseqs[i].get_id() == temp_seqs->at(j).get_id()){
+		temp_seqs->at(j).set_aligned_seq(tempalseqs[i].get_sequence());
+		set = true;
+		break;
+	    }
+	}
+	if(set == false){
+	    for(int j=0;j<temp_user_seqs->size();j++){
+		if(tempalseqs[i].get_id() == temp_user_seqs->at(j).get_id()){
+		    temp_user_seqs->at(j).set_aligned_seq(tempalseqs[i].get_sequence());
+		    set = true;
+		    break;
+		}
+	    }
+	}
+	if(set == false){
+	    cout << "error, aligned seq " << tempalseqs[i].get_id() << " has no match" << endl;
+	    exit(0);
+	}
+    }
 }
