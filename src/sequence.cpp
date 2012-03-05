@@ -115,3 +115,12 @@ void Sequence::perm_reverse_complement(){
 	}
 	seq = rcomp;
 }
+
+void Sequence::set_sqlite_id(int iid){
+    sqlite_id = iid;
+}
+
+int Sequence::get_sqlite_id(){
+    return sqlite_id;
+}
+

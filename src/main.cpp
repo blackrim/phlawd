@@ -283,7 +283,7 @@ int main(int argc, char* argv[]){
 	     */
 	    if(prof == true){
 		SQLiteProfiler * b;
-		b = new SQLiteProfiler(gene,clade,db,automated,updateDB);
+		b = new SQLiteProfiler(gene,genedb,clade,db,automated,updateDB);
 		b->prelimalign();
 		if(usertree == true && asse == true){
 		    b->set_user_guide_tree(usertreeobj);

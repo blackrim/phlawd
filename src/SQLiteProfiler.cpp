@@ -63,18 +63,14 @@ ss << t;
 return ss.str();
 }
 
-SQLiteProfiler::SQLiteProfiler(string gn, string cn, string dbs,bool autom,bool updb){
-    gene_name = gn;
-    use_orphan = false;
-    cladename = cn;
-    db = dbs;
-    automated = autom;
-    updatedb = updb;
-    usertree = false;
+SQLiteProfiler::SQLiteProfiler(string gn, string gene_dbn,string cn, string dbs,bool autom,bool updb): 
+                              gene_name(gn),gene_db_name(gene_dbn),
+			      use_orphan(false), cladename(cn),db(dbs),automated(autom),updatedb(updb),
+			      usertree(false){
     profilefoldername = gene_name+"_PROFILE/";
+    gene_db= GeneDB(gene_db_name);
 }
 
-//TODO: add the ability to have the usertree inform these alignments
 void SQLiteProfiler::prelimalign(){
     // if temp directory doesn't exist
     mkdir(profilefoldername.c_str(),S_IRWXU | S_IRWXG | S_IROTH | S_IWOTH);

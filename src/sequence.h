@@ -11,6 +11,7 @@ private:
 	string comment;
 	string name;
 	string seq;
+	int sqlite_id;
 	bool aligned;
 	string reverse(string );
 
@@ -30,5 +31,7 @@ public:
 	void set_aligned(bool al);
 	string reverse_complement();
 	void perm_reverse_complement();
+	void set_sqlite_id(int iid);
+	int get_sqlite_id();
 };
 #endif

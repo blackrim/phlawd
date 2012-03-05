@@ -26,6 +26,7 @@
 #define SQLITEPROFILER_H_
 
 #include "tree.h"
+#include "genedb.h"
 
 #include <string>
 #include <map>
@@ -38,6 +39,8 @@ using namespace std;
 class SQLiteProfiler{
 private:
     string gene_name;
+    string gene_db_name;
+    GeneDB gene_db;
     vector<string> file_names;
     string cladename;
     string db;
@@ -78,7 +81,7 @@ private:
     void update_profile();
     string get_profilekey_value(string profile_string);
 public:
-    SQLiteProfiler(string gn, string cn, string dbs, bool autom,bool updb);
+    SQLiteProfiler(string gn, string gene_dbn,string cn, string dbs, bool autom,bool updb);
     void prelimalign();
     void run();
     void set_user_guide_tree(Tree * tree);

@@ -85,13 +85,13 @@ SQLiteConstructor::SQLiteConstructor(string cn, vector <string> searchstr, strin
     }else{
 	updateFILE = false;
     }
-/* gene database work
+    //initialize gene database
     gene_db= GeneDB(gene_db_name);
     if (updateDB == true)
 	gene_db.initialize(false);
     else
 	gene_db.initialize(true);
-*/
+
     known_seqs = new vector<Sequence>();
     user_seqs = new vector<Sequence>();
     seqReader.readFile(known_seq_filen, *known_seqs);
@@ -248,7 +248,8 @@ void SQLiteConstructor::set_user_fasta_file(string filename,bool skipdbcheck){
 		user_seqs->at(i).set_comment(nameval);
 		cout << tname << "="<<nameval<<endl;
 	    }else{
-		cerr <<tname << " is not in the ncbi database as a number or name"<<endl; 
+		cerr <<tname << " is not in the ncbi database as a number or name"<<endl;
+		user_seqs->at(i).set_comment("0");
 	    }
 	}
     }
@@ -460,10 +461,9 @@ int SQLiteConstructor::run(){
 	    exit(0);
 	}
     }
-    //reduce genome sequences
+    //reduce genome sequences to something a more manageable size for alignment programs
     reduce_genomes(keep_seqs);
 	
-    //add the updatedb code here
     //get the list of files and record the higher taxa name and 
     //add the additional sequences to the right hierarchy
     vector<string> sname_ids;
@@ -673,9 +673,11 @@ int SQLiteConstructor::run(){
     }else{
 	write_gi_numbers(keep_seqs);
 	gifile.close();
+	gene_db.add_seqs_to_db(keep_seqs);
 	if(userfasta == true){
 	  write_user_numbers();
 	  ufafile.close();
+	  gene_db.add_user_seqs_to_db(user_seqs);
 	}
 	sname_ids.push_back(sname_id);
 	snames.push_back(clade_name);
@@ -1486,6 +1488,7 @@ void SQLiteConstructor::make_mafft_multiple_alignment(vector<DBSeq> * inseqs, ve
 	string line(buff);
     }
     pclose( fp );
+    
 }
 
 double SQLiteConstructor::calculate_MAD_quicktree(){
@@ -1637,7 +1640,6 @@ double SQLiteConstructor::calculate_MAD_quicktree_sample(vector<DBSeq> * inseqs,
  * the standard run will simply put one name and one id 
  * in the vectors
  */
-//adding the user seq ability
 void SQLiteConstructor::saturation_tests(vector<string> name_ids, vector<string> names, 
 	vector<DBSeq> * keep_seqs){
 
@@ -1680,6 +1682,7 @@ void SQLiteConstructor::saturation_tests(vector<string> name_ids, vector<string>
 		for(int i=0;i<temp_seqs->size();i++){
 		    //need to implement a better way, but this is it for now
 		    int eraseint=0;
+		    int beforesize = allseqs.size();
 		    for(int zz=0;zz<allseqs.size();zz++){
 			if (temp_seqs->at(i).get_id() == allseqs[zz].get_id()){
 			    eraseint = zz;
@@ -1687,12 +1690,17 @@ void SQLiteConstructor::saturation_tests(vector<string> name_ids, vector<string>
 			}
 		    }
 		    allseqs.erase(allseqs.begin()+eraseint);
+		    if(allseqs.size() != beforesize-1 ){
+			cout << "single db sequence not erased" << endl;
+			exit(0);
+		    }
 		    sc1.push_back(temp_seqs->at(i));
 		}
 		//user seqs
 		for(int i=0;i<temp_user_seqs->size();i++){
 		    //need to implement a better way, but this is it for now
 		    int eraseint=0;
+		    int beforesize = allseqs.size();
 		    for(int zz=0;zz<allseqs.size();zz++){
 			if (temp_user_seqs->at(i).get_id() == allseqs[zz].get_id()){
 			    eraseint = zz;
@@ -1700,6 +1708,10 @@ void SQLiteConstructor::saturation_tests(vector<string> name_ids, vector<string>
 			}
 		    }
 		    allseqs.erase(allseqs.begin()+eraseint);
+		    if(allseqs.size() != beforesize-1 ){
+			cout << "single user sequence not erased" << endl;
+			exit(0);
+		    }
 		    sc1.push_back(temp_user_seqs->at(i));
 		}
 		string fn1 = gene_name;
@@ -1707,6 +1719,7 @@ void SQLiteConstructor::saturation_tests(vector<string> name_ids, vector<string>
 		//change from name to ncbi 
 		fn1 += "/" + name_id;
 		seqwriter1.writeFileFromVector(fn1,sc1);
+		gene_db.add_alignment(fn1,temp_seqs, temp_user_seqs);
 		seq_set_filenames.push_back(fn1);
 	    }else if (temp_seqs->size() + temp_user_seqs->size()== 0){
 		continue;
@@ -1739,6 +1752,7 @@ void SQLiteConstructor::saturation_tests(vector<string> name_ids, vector<string>
 		    for(int i=0;i<temp_seqs->size();i++){
 			//need to implement a better way, but this is it for now
 			int eraseint=0;
+			int beforesize = allseqs.size();
 			for(int zz=0;zz<allseqs.size();zz++){
 			    if (temp_seqs->at(i).get_id() == allseqs[zz].get_id()){
 				eraseint = zz;
@@ -1746,12 +1760,17 @@ void SQLiteConstructor::saturation_tests(vector<string> name_ids, vector<string>
 			    }
 			}
 			allseqs.erase(allseqs.begin()+eraseint);
+			if(allseqs.size() != beforesize-1 ){
+			    cout << "multiple db sequence not erased" << endl;
+			    exit(0);
+			}
 			sc1.push_back(temp_seqs->at(i));
 		    }
 		    //user seqs
 		    for(int i=0;i<temp_user_seqs->size();i++){
 			//need to implement a better way, but this is it for now
 			int eraseint=0;
+			int beforesize = allseqs.size();
 			for(int zz=0;zz<allseqs.size();zz++){
 			    if (temp_user_seqs->at(i).get_id() == allseqs[zz].get_id()){
 				eraseint = zz;
@@ -1759,6 +1778,10 @@ void SQLiteConstructor::saturation_tests(vector<string> name_ids, vector<string>
 			    }
 			}
 			allseqs.erase(allseqs.begin()+eraseint);
+			if(allseqs.size() != beforesize-1 ){
+			    cout << "multiple user sequence not erased" << endl;
+			    exit(0);
+			}
 			sc1.push_back(temp_user_seqs->at(i));
 		    }
 		    string fn1 = gene_name;
@@ -1766,6 +1789,7 @@ void SQLiteConstructor::saturation_tests(vector<string> name_ids, vector<string>
                     //change from name to ncbi 
 		    fn1 += "/" + name_id;
 		    seqwriter1.writeFileFromVector(fn1,sc1);
+		    gene_db.add_alignment(fn1,temp_seqs, temp_user_seqs);
 		    seq_set_filenames.push_back(fn1);
 		    //TODO: SQLITE database storing
 		}
@@ -1867,6 +1891,7 @@ void SQLiteConstructor::saturation_tests(vector<string> name_ids, vector<string>
 		for(int i=0;i<temp_user_seqs->size();i++){
 		    //need to implement a better way, but this is it for now
 		    int eraseint=0;
+		    int beforesize = allseqs.size();
 		    for(int zz=0;zz<allseqs.size();zz++){
 			if (temp_user_seqs->at(i).get_id() == allseqs[zz].get_id()){
 			    eraseint = zz;
@@ -1879,6 +1904,7 @@ void SQLiteConstructor::saturation_tests(vector<string> name_ids, vector<string>
 		string fn1 = gene_name;
 		fn1 += "/" + curnode->getName();
 		seqwriter1.writeFileFromVector(fn1,sc1);
+		gene_db.add_alignment(fn1,temp_seqs, temp_user_seqs);
 		seq_set_filenames.push_back(fn1);
 	    }else if (temp_seqs->size() + temp_user_seqs->size() == 0){
 		continue;
@@ -1911,6 +1937,7 @@ void SQLiteConstructor::saturation_tests(vector<string> name_ids, vector<string>
 		    for(int i=0;i<temp_seqs->size();i++){
 			//need to implement a better way, but this is it for now
 			int eraseint=0;
+			int beforesize = allseqs.size();
 			for(int zz=0;zz<allseqs.size();zz++){
 			    if (temp_seqs->at(i).get_id() == allseqs[zz].get_id()){
 				eraseint = zz;
@@ -1923,6 +1950,7 @@ void SQLiteConstructor::saturation_tests(vector<string> name_ids, vector<string>
 		    for(int i=0;i<temp_user_seqs->size();i++){
 			//need to implement a better way, but this is it for now
 			int eraseint=0;
+			int beforesize = allseqs.size();
 			for(int zz=0;zz<allseqs.size();zz++){
 			    if (temp_user_seqs->at(i).get_id() == allseqs[zz].get_id()){
 				eraseint = zz;
@@ -1935,6 +1963,7 @@ void SQLiteConstructor::saturation_tests(vector<string> name_ids, vector<string>
 		    string fn1 = gene_name;
 		    fn1 += "/" + curnode->getName();
 		    seqwriter1.writeFileFromVector(fn1,sc1);
+		    gene_db.add_alignment(fn1,temp_seqs, temp_user_seqs);
 		    seq_set_filenames.push_back(fn1);
 		    //TODO: SQLITE database storing
 		}
