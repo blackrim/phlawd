@@ -9,7 +9,6 @@ node.cpp \
 genedb.cpp \
 tree_utils.cpp \
 fasta_util.cpp \
-DBSeq.cpp \
 SQLiteConstructor.cpp \
 SQLiteProfiler.cpp \
 SQLiteTreeNameConvertor.cpp \
@@ -33,7 +32,6 @@ node.o \
 genedb.o \
 tree_utils.o \
 fasta_util.o \
-DBSeq.o \
 SQLiteConstructor.o \
 SQLiteProfiler.o \
 SQLiteTreeNameConvertor.o \
@@ -57,7 +55,6 @@ node.d \
 genedb.d \
 tree_utils.d \
 fasta_util.d \
-DBSeq.d \
 SQLiteConstructor.d \
 SQLiteProfiler.d \
 SQLiteTreeNameConvertor.d \
@@ -100,6 +97,6 @@ clean:
 
 install:
 	install -m 0755 PHLAWD $(prefix)
-	
+
 uninstall:
 	-rm $(prefix)PHLAWD

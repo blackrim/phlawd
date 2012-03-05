@@ -35,7 +35,6 @@ using namespace std;
 
 #include "sequence.h"
 
-#include "DBSeq.h"
 #include "tree.h"
 #include "node.h"
 #include "genedb.h"
@@ -84,34 +83,35 @@ private:
     map<Sequence*,Node*> user_fasta_node_map; 
     vector<Sequence> * user_seqs;
     vector<Sequence> * known_seqs;
-    vector<DBSeq> use_only_names_from_file(vector<DBSeq> seqs);
-    DBSeq add_higher_taxa(string taxon_id,vector<DBSeq> seqs);
-    vector<DBSeq> exclude_names_from_file(vector<DBSeq> seqs);
-    vector<DBSeq> exclude_gis_from_file(vector<DBSeq> seqs);
-    vector<DBSeq> include_gis_from_file(vector<DBSeq> seqs);
+    vector<Sequence> use_only_names_from_file(vector<Sequence>& seqs);
+    Sequence add_higher_taxa(string taxon_id,vector<Sequence>& seqs);
+    vector<Sequence> exclude_names_from_file(vector<Sequence>& seqs);
+    vector<Sequence> exclude_gis_from_file(vector<Sequence>& seqs);
+    vector<Sequence> include_gis_from_file(vector<Sequence>& seqs);
     void first_seq_search_for_gene_left_right(vector<vector<string> >  &);
-    vector<DBSeq> first_get_seqs_for_name_use_left_right(int name_id, vector<vector<string> > & results);
-    void get_same_seqs_openmp_SWPS3(vector<DBSeq> & seqs,  vector<DBSeq> * keep_seqs);
-    double get_usertree_keepseq_overlap(vector<DBSeq> * keep_seqs);
-    void remove_duplicates_SWPS3(vector<DBSeq> * keep_seqs);
-    void reduce_genomes(vector<DBSeq> * keep_seqs);
-    void get_seqs_for_names(string name_id, vector<DBSeq> * seqs, vector<DBSeq> * temp_seqs);
+    vector<Sequence> first_get_seqs_for_name_use_left_right(int name_id, vector<vector<string> > & results);
+    void get_same_seqs_openmp_SWPS3(vector<Sequence> & seqs,  vector<Sequence> * keep_seqs);
+    double get_usertree_keepseq_overlap(vector<Sequence> * keep_seqs);
+    void remove_duplicates_SWPS3(vector<Sequence> * keep_seqs);
+    void reduce_genomes(vector<Sequence> * keep_seqs);
+    void get_seqs_for_names(string name_id, vector<Sequence> * seqs, vector<Sequence> * temp_seqs);
     void get_seqs_for_names_user(string name_id, vector<Sequence> * seqs);
-    void get_seqs_for_nodes(Node * node, vector<DBSeq> * seqs, vector<DBSeq> * temp_seqs);
+    void get_seqs_for_nodes(Node * node, vector<Sequence> * seqs, vector<Sequence> * temp_seqs);
     void get_seqs_for_user_nodes(Node * node, vector<Sequence> * seqs);
     vector<string> get_final_children(string name_id);
     vector<string> get_final_children_node(Node * node);
     vector<string> get_final_children_node_hier(Node * node);
-    void make_mafft_multiple_alignment(vector<DBSeq> * inseqs,vector<Sequence> * inseqs2);
+    void make_mafft_multiple_alignment(vector<Sequence> * inseqs,vector<Sequence> * inseqs2);
     double calculate_MAD_quicktree();
-    double calculate_MAD_quicktree_sample(vector<DBSeq> * inseqs, vector<Sequence> * inuserseqs);
-    void saturation_tests(vector<string> name_ids, vector<string> names, vector<DBSeq> * keep_seqs);
+    double calculate_MAD_quicktree_sample(vector<Sequence> * inseqs, vector<Sequence> * inuserseqs);
+    void saturation_tests(vector<string> name_ids, vector<string> names, vector<Sequence> * keep_seqs);
     int get_single_to_group_seq_score(Sequence & inseq,vector<Sequence> & ginseqs);
-    void write_gi_numbers(vector<DBSeq> *);
+    void write_gi_numbers(vector<Sequence> *);
     void write_user_numbers();
-    void add_seqs_from_file_to_dbseqs_vector(string filename,vector<DBSeq> * keep_seqs, map<string,string> & taxgimap, vector<string> & taxuservec);
+    void add_seqs_from_db_to_seqs_vector(string alignname,vector<Sequence> * keep_seqs, vector<Sequence> & storedseqs);
     void remove_seq_from_seq_vector(vector<Sequence> * inseqs,string sid);
-    void match_aligned_file(vector<DBSeq> * temp_seqs, vector<Sequence> * temp_user_seqs);
+    void match_aligned_file(vector<Sequence> * temp_seqs, vector<Sequence> * temp_user_seqs);
+    void get_aligned_file(vector<Sequence> * temp_seqs);
 public:
     SQLiteConstructor(string cn, vector <string> searchstr, string genen, string genedb,
 		      double mad_cut,double cover, double ident, string dbs,

@@ -7,11 +7,12 @@ gene = rbcL
 mad = 0.0005
 coverage = 0.4
 identity = 0.2
-db = /home/smitty/Desktop/pln.update.db
+#db = /home/smitty/Desktop/pln.update.db
+db = /media/data/pln.db
 knownfile = rbcL.keep
-numthreads = 2
+numthreads = 10
 #listfile = includefile
-#excludelistfile = exclude
+excludelistfile = exclude
 #listfile = include_wild
 #containshigher
 #containswild

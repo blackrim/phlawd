@@ -31,7 +31,6 @@
 using namespace std;
 
 #include "sequence.h"
-#include "DBSeq.h"
 #include "SWPS3_matrix.h"
 
 template <class T>
@@ -42,7 +41,6 @@ double median(vector<double> arr);
 double mean(vector<double> & x);
 double stdev(vector<double> & x);
 int getdir (string dir, vector<string> &files);
-void combine_ITS(vector<DBSeq> * seqs);
 void splitstring(string str, string seperater, string &first, string &second);
 void fix_bad_chars(string & tfilen);
 void fix_bad_chars_for_seq_names(string & tfilen);

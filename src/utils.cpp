@@ -148,60 +148,6 @@ int getdir (string dir, vector<string> &files)
     return 0;
 }
 
-void combine_ITS(vector<DBSeq> * seqs){
-
-	vector<int> ITS1;
-	vector<int> ITS2;
-	for (int i=0; i<seqs->size();i++){
-		string str1 (seqs->at(i).get_descr());
-		string str2 ("internal transcribed spacer 1");
-		string str3 ("ITS1");
-		string str4 ("internal transcribed spacer 2");
-		string str5 ("ITS2");
-		if (str1.find(str2) != string::npos || str1.find(str3) != string::npos){
-			if (str1.find(str4) == string::npos && str1.find(str5) == string::npos){
-				ITS1.push_back(i);
-			}
-		}
-	}
-	for (int i=0; i<seqs->size();i++){
-		string str1 (seqs->at(i).get_descr());
-		string str2 ("internal transcribed spacer 2");
-		string str3 ("ITS2");
-		string str4 ("internal transcribed spacer 1");
-		string str5 ("ITS1");
-		if (str1.find(str2) != string::npos || str1.find(str3) != string::npos){
-			if (str1.find(str4) == string::npos && str1.find(str5) == string::npos){
-				ITS2.push_back(i);
-			}
-		}
-	}
-
-	//combine
-	vector<DBSeq> seqremoves;
-	for(int i=0;i<ITS1.size();i++){
-		string nameid = seqs->at(ITS1[i]).get_tax_id();
-		for(int j=0;j<ITS2.size();j++){
-			string name2id = seqs->at(ITS2[j]).get_tax_id();
-			if(nameid == name2id){
-				//seqs->at(ITS1[i]).setContent(seqs->at(ITS1[i]).getContent()+seqs->at(ITS2[j]).getContent());
-				seqs->at(ITS1[i]).set_sequence(seqs->at(ITS1[i]).get_sequence()+seqs->at(ITS2[j]).get_sequence());
-				seqremoves.push_back(seqs->at(ITS2[j]));
-				//one.seq = Seq.Seq(one.seq.data + two.seq.data, two.seq.alphabet);
-				//std::cout << "x" << std::endl;
-				break;
-			}
-		}
-	}
-	for(unsigned int i=0;i<seqremoves.size();i++){
-		vector<DBSeq>::iterator it;
-		it = find(seqs->begin(), seqs->end(), seqremoves[i]);
-		//++it;
-		seqs->erase(it);
-		//keep_rc->erase(it);
-	}
-}
-
 void splitstring(string str, string seperater, string &first, string &second) //will split a string into 2
 {
      int i = (int)str.find(seperater); //find seperator

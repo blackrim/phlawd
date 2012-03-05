@@ -16,8 +16,8 @@ using namespace std;
 
 Sequence::Sequence():id(),seq(),aligned(){}
 
-Sequence::Sequence(string _id, string _seq, bool _aligned):id(_id),seq(_seq),aligned(_aligned),name(""),comment(""){}
-Sequence::Sequence(string _id, string _seq):id(_id),seq(_seq),aligned(false),name(""),comment(""){}
+Sequence::Sequence(string _id, string _seq, bool _aligned):id(_id),seq(_seq),aligned(_aligned),name(""),comment(""),ncbi_gi("0"),ncbi_tax("0"){}
+Sequence::Sequence(string _id, string _seq):id(_id),seq(_seq),aligned(false),name(""),comment(""),ncbi_gi("0"),ncbi_tax("0"){}
 
 bool Sequence::is_aligned(){
 	return aligned;
@@ -65,6 +65,22 @@ void Sequence::set_name(string _name){
 
 void Sequence::set_comment(string _comment){
     comment = _comment;
+}
+
+void Sequence::set_ncbi_tax_id(string _tid){
+    ncbi_tax = _tid;
+}
+
+void Sequence::set_ncbi_gi_id(string _tid){
+    ncbi_gi = _tid;
+}
+
+string Sequence::get_ncbi_tax_id(){
+    return ncbi_tax;
+}
+
+string Sequence::get_ncbi_gi_id(){
+    return ncbi_gi;
 }
 
 //this one is private
