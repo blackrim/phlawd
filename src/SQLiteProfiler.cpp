@@ -71,6 +71,8 @@ SQLiteProfiler::SQLiteProfiler(string gn, string gene_dbn,string cn, string dbs,
     gene_db= GeneDB(gene_db_name);
 }
 
+//TODO: replace this with grabbing from the database
+//only complicated with the database
 void SQLiteProfiler::prelimalign(){
     // if temp directory doesn't exist
     mkdir(profilefoldername.c_str(),S_IRWXU | S_IRWXG | S_IROTH | S_IWOTH);
@@ -292,9 +294,7 @@ void SQLiteProfiler::prelimalign(){
     }
 }
 
-/*
- * TODO: probably better to have a operating system independent one
- */
+//TODO: can use the database alignments for this query
 int SQLiteProfiler::count_seqs(string dirc, string file_name){
     string cmd = "grep -c \\> ";
     cmd += dirc+"/";
@@ -742,68 +742,13 @@ void SQLiteProfiler::profile(map<string,string> numnames,map<string,string> name
 		//	os.system("mafft-linsi --seed "+directory+secondfile+" "+directory+firstfile+" > "+directory+str(profile_files_dict[firstfile+"__"+secondfile]))
 	    }else{
 		if(already == true){
-		    string cmd = "muscle -profile -in1 ";
-		    cmd += profilefoldername;
-		    std::string ts;
-		    std::stringstream tout;
-		    tout << profile_files_dict[secondfile];
-		    cout << secondfile << " " << profile_files_dict[secondfile] << endl;
-		    ts = tout.str();
-		    cmd += ts;
-		    cmd += " -in2 ";
-		    cmd += profilefoldername;
-		    string tfilen = firstfile;
-		    fix_bad_chars(tfilen);
-		    cmd += tfilen;
-		    //cmd += firstfile;//fix space
-		    cmd += " -out ";
-		    cmd += profilefoldername;
-		    std::string ts2;
-		    std::stringstream tout2;
-		    tout2 << profile_files_dict[firstfile+"__"+secondfile];
-		    ts2 = tout2.str();
-		    cmd += ts2;
-		    cout << secondfile << " " << profile_files_dict[firstfile+"__"+secondfile] << endl;
-		    cout << "aligning1" << endl;
-		    cout << cmd << endl;
-		    FILE *fp = popen(cmd.c_str(), "r" );
-		    char buff[1000];
-		    while ( fgets( buff, sizeof buff, fp ) != NULL ) {//doesn't exit out
-			string line(buff);
-		    }
-		    pclose( fp );
 		    //clean
+		    string ts2 = make_muscle_profile(profile_files_dict[secondfile],firstfile,profile_files_dict[firstfile+"__"+secondfile]);
 		    clean_before_profile(ts2);
 		    last_profile_file = ts2;
 		}else{
-		    string cmd = "muscle -profile -in1 ";
-		    cmd += profilefoldername;
-		    string tfilen2 = secondfile;
-		    fix_bad_chars(tfilen2);
-		    cmd += tfilen2;
-		    //cmd += secondfile;//fix space
-		    cmd += " -in2 ";
-		    cmd += profilefoldername;
-		    string tfilen = firstfile;
-		    fix_bad_chars(tfilen);
-		    cmd += tfilen;
-		    //cmd += firstfile;//fix space here
-		    cmd += " -out ";
-		    cmd += profilefoldername;
-		    std::string s;
-		    std::stringstream out;
-		    out << profile_files_dict[firstfile+"__"+secondfile];
-		    s = out.str();
-		    cmd += s;
-		    cout << "aligning2" << endl;
-		    cout <<cmd << endl;
-		    FILE *fp = popen(cmd.c_str(), "r" );
-		    char buff[1000];
-		    while ( fgets( buff, sizeof buff, fp ) != NULL ) {//doesn't exit out
-			string line(buff);
-		    }
-		    pclose( fp );
 		    //clean
+		    string s = make_muscle_profile(secondfile,firstfile,profile_files_dict[firstfile+"__"+secondfile]);
 		    clean_before_profile(s);
 		    last_profile_file = s;
 		}
@@ -843,29 +788,11 @@ void SQLiteProfiler::profile(map<string,string> numnames,map<string,string> name
 		    if(muscle == false){
 			//os.system("mafft-linsi --seed "+directory+sn+" "+directory+firstfile+" > "+directory+firstfile+"__"+sn)
 		    }else{
-			string cmd = "muscle -profile -in1 ";
-			cmd += profilefoldername;
 			string tfilen2(shortestnamestwo->at(i));
 			fix_bad_chars(tfilen2);
-			cmd += tfilen2;
-			//cmd += shortestnamestwo->at(i);//fix space here
-			cmd += " -in2 ";
-			cmd += profilefoldername;
 			string tfilen = firstfile;
 			fix_bad_chars(tfilen);
-			cmd += tfilen;
-			//cmd += firstfile;//fix space here
-			cmd += " -out ";
-			cmd += profilefoldername;
-			cmd += tfilen+"__"+tfilen2;
-			cout << "aligning many1" << endl;
-			cout << cmd << endl;
-			FILE *fp = popen(cmd.c_str(), "r" );
-			char buff[1000];
-			while ( fgets( buff, sizeof buff, fp ) != NULL ) {//doesn't exit out
-			    string line(buff);
-			}
-			pclose( fp );
+			make_muscle_profile(tfilen2,tfilen,tfilen+"__"+tfilen2);
 		    }
 		    profile_files_count += 1;
 		    string cmd = "muscle -spscore ";
@@ -950,35 +877,8 @@ void SQLiteProfiler::profile(map<string,string> numnames,map<string,string> name
 		    //	os.system("mafft-linsi --seed "+directory+str(profile_files_dict[secondfile])+" "+directory+firstfile+" > "+directory+str(profile_files_dict[firstfile+"__"+secondfile]))
 		}else{
 		    //	os.system("muscle -profile -in1 "+directory+str(profile_files_dict[secondfile])+" -in2 "+directory+firstfile+" -out "+directory+str(profile_files_dict[firstfile+"__"+secondfile]))
-		    string cmd = "muscle -profile -in1 ";
-		    cmd += profilefoldername;
-		    std::string s;
-		    std::stringstream out;
-		    out << profile_files_dict[secondfile];
-		    s = out.str();
-		    cmd += s;
-		    cmd += " -in2 ";
-		    cmd += profilefoldername;
-		    string tfilen = firstfile;
-		    fix_bad_chars(tfilen);
-		    cmd += tfilen;
-		    //cmd += firstfile; //fix space here
-		    cmd += " -out ";
-		    cmd += profilefoldername;
-		    std::string s2;
-		    std::stringstream out2;
-		    out2 << profile_files_dict[firstfile+"__"+secondfile];
-		    s2 = out2.str();
-		    cmd += s2;
-		    cout << "aligning3" << endl;
-		    cout << cmd << endl;
-		    FILE *fp = popen(cmd.c_str(), "r" );
-		    char buff[1000];
-		    while ( fgets( buff, sizeof buff, fp ) != NULL ) {//doesn't exit out
-			string line(buff);
-		    }
-		    pclose( fp );
 		    //clean
+		    string s2 = make_muscle_profile(profile_files_dict[secondfile],firstfile,profile_files_dict[firstfile+"__"+secondfile]);
 		    clean_before_profile(s2);
 		    last_profile_file = s2;
 		}
@@ -1033,35 +933,7 @@ void SQLiteProfiler::profile(map<string,string> numnames,map<string,string> name
 	    //	os.system("mafft-linsi --seed "+directory+str(profile_files_dict[secondfile])+" "+directory+firstfile+" > "+directory+str(profile_files_dict[firstfile+"__"+secondfile]))
 	}else{
 	    //	os.system("muscle -profile -in1 "+directory+str(profile_files_dict[secondfile])+" -in2 "+directory+firstfile+" -out "+directory+str(profile_files_dict[firstfile+"__"+secondfile]))
-	    string cmd = "muscle -profile -in1 ";
-	    cmd += profilefoldername;
-	    std::string s1;
-	    std::stringstream out1;
-	    out1 << profile_files_dict[firstfile];
-	    s1 = out1.str();
-	    cmd += s1;
-	    cmd += " -in2 ";
-	    cmd += profilefoldername;
-	    std::string s3;
-	    std::stringstream out3;
-	    out3 << profile_files_dict[secondfile];
-	    s3 = out3.str();
-	    cmd += s3;
-	    cmd += " -out ";
-	    cmd += profilefoldername;
-	    std::string s2;
-	    std::stringstream out2;
-	    out2 << profile_files_dict[firstfile+"__"+secondfile];
-	    s2 = out2.str();
-	    cmd += s2;
-	    cout << "aligningfinal" << endl;
-	    cout << cmd << endl;
-	    FILE *fp = popen(cmd.c_str(), "r" );
-	    char buff[1000];
-	    while ( fgets( buff, sizeof buff, fp ) != NULL ) {//doesn't exit out
-		string line(buff);
-	    }
-	    pclose( fp );
+	    string s2 = make_muscle_profile(profile_files_dict[firstfile],profile_files_dict[secondfile],profile_files_dict[firstfile+"__"+secondfile]);
 	    //clean
 	    clean_before_profile(s2);
 	    last_profile_file = s2;
@@ -1097,33 +969,7 @@ void SQLiteProfiler::update_profile(){
 			string profile1 = get_profilekey_value(profilekey[profilerun[i]][0]);
 			string profile2 = get_profilekey_value(profilekey[profilerun[i]][1]);
 			cout << profile1 << " " << profile2 <<endl;
-			string cmd = "muscle -profile -in1 ";
-			cmd += profilefoldername;
-			std::string ts;
-			std::stringstream tout;
-			tout << profile1;
-			ts = tout.str();
-			cmd += ts;
-			cmd += " -in2 ";
-			cmd += profilefoldername;
-			string tfilen = profile2;
-			fix_bad_chars(tfilen);
-			cmd += tfilen;
-			cmd += " -out ";
-			cmd += profilefoldername;
-			std::string ts2;
-			std::stringstream tout2;
-			tout2 << profilerun[i];
-			ts2 = tout2.str();
-			cmd += ts2;
-			cout << "aligning" << endl;
-			cout << cmd << endl;
-			FILE *fp = popen(cmd.c_str(), "r" );
-			char buff[1000];
-			while ( fgets( buff, sizeof buff, fp ) != NULL ) {//doesn't exit out
-				string line(buff);
-			}
-			pclose( fp );
+			string ts2 = make_muscle_profile(profile1,profile2,profilerun[i]);
 			//clean
 			clean_before_profile(ts2);
 		}else{
@@ -1135,6 +981,37 @@ void SQLiteProfiler::update_profile(){
 	}else{
 		copy_final_file(updatedfiles[0]); //should mean that there is only one file
 	}
+}
+
+string SQLiteProfiler::make_muscle_profile(string profile1,string profile2,string outfile){
+    string cmd = "muscle -profile -in1 ";
+    cmd += profilefoldername;
+    std::string ts;
+    std::stringstream tout;
+    tout << profile1;
+    ts = tout.str();
+    cmd += ts;
+    cmd += " -in2 ";
+    cmd += profilefoldername;
+    string tfilen = profile2;
+    fix_bad_chars(tfilen);
+    cmd += tfilen;
+    cmd += " -out ";
+    cmd += profilefoldername;
+    std::string ts2;
+    std::stringstream tout2;
+    tout2 << outfile;
+    ts2 = tout2.str();
+    cmd += ts2;
+    cout << "aligning" << endl;
+    cout << cmd << endl;
+    FILE *fp = popen(cmd.c_str(), "r" );
+    char buff[1000];
+    while ( fgets( buff, sizeof buff, fp ) != NULL ) {//doesn't exit out
+	string line(buff);
+    }
+    pclose( fp );
+    return ts2;
 }
 
 /*

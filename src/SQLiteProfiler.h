@@ -72,6 +72,7 @@ private:
 					 map<string,double> & allmeans);
     void remove_outliers();
     void rename_final_alignment(string which);
+    string make_muscle_profile(string profile1,string profile2,string outfile);
 
     //updated runs things
     vector<string> updatedfiles;

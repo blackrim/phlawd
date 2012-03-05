@@ -18,7 +18,8 @@ public:
     GeneDB(string name);
     void add_user_seqs_to_db(vector<Sequence> * user_seqs);
     void add_seqs_to_db(vector<DBSeq> * keep_seqs);
-    void add_alignment(string filen, vector<DBSeq> * dbseqs, vector<Sequence> * userseqs);
+    int add_alignment(string filen, vector<DBSeq> * dbseqs, vector<Sequence> * userseqs);
+    void remove_alignment(int alignid);
     void initialize(bool overwrite);
 };
 

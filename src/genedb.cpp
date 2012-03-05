@@ -111,7 +111,7 @@ void GeneDB::add_seqs_to_db(vector<DBSeq> * keep_seqs){
 }
 
 //TODO: add the reading of the actual alignment file
-void GeneDB::add_alignment(string filename, vector<DBSeq> * dbseqs, vector<Sequence> * userseqs){
+int GeneDB::add_alignment(string filename, vector<DBSeq> * dbseqs, vector<Sequence> * userseqs){
     cout << "adding alignment to database: " << name << endl;
     sqlite3 *conn;
     int rc = sqlite3_open(name.c_str(), &conn);
@@ -150,3 +150,29 @@ void GeneDB::add_alignment(string filename, vector<DBSeq> * dbseqs, vector<Seque
     sqlite3_exec(conn, "COMMIT TRANSACTION", NULL, NULL, NULL);
     sqlite3_close(conn);
 }
+
+void GeneDB::remove_alignment(int alignid){
+    sqlite3 *conn;
+    int rc = sqlite3_open(name.c_str(), &conn);
+    char *zErrMsg = 0;
+    sqlite3_exec(conn, "BEGIN TRANSACTION", NULL, NULL, NULL);
+    string sql = "delete from sequence_alignment_map where alignment_id =";
+    std::stringstream ss;
+    ss << alignid;
+    string alignids = ss.str();
+    sql += alignids+");";
+    rc = sqlite3_exec(conn, sql.c_str(), 0, 0, 0);
+    sqlite3_exec(conn, "COMMIT TRANSACTION", NULL, NULL, NULL);
+
+    sqlite3_exec(conn, "BEGIN TRANSACTION", NULL, NULL, NULL);
+    sql = "delete from alignments where id =";
+    sql += alignids+");";
+    rc = sqlite3_exec(conn, sql.c_str(), 0, 0, 0);
+    sqlite3_exec(conn, "COMMIT TRANSACTION", NULL, NULL, NULL);
+}
+
+
+
+//void GeneDB::add_profile_alignment(, int child_id1, int child_id2){
+
+//}

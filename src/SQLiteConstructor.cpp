@@ -1719,7 +1719,7 @@ void SQLiteConstructor::saturation_tests(vector<string> name_ids, vector<string>
 		//change from name to ncbi 
 		fn1 += "/" + name_id;
 		seqwriter1.writeFileFromVector(fn1,sc1);
-		gene_db.add_alignment(fn1,temp_seqs, temp_user_seqs);
+		gene_db.add_alignment(name_id,temp_seqs, temp_user_seqs);
 		seq_set_filenames.push_back(fn1);
 	    }else if (temp_seqs->size() + temp_user_seqs->size()== 0){
 		continue;
@@ -1789,7 +1789,7 @@ void SQLiteConstructor::saturation_tests(vector<string> name_ids, vector<string>
                     //change from name to ncbi 
 		    fn1 += "/" + name_id;
 		    seqwriter1.writeFileFromVector(fn1,sc1);
-		    gene_db.add_alignment(fn1,temp_seqs, temp_user_seqs);
+		    gene_db.add_alignment(name_id,temp_seqs, temp_user_seqs);
 		    seq_set_filenames.push_back(fn1);
 		    //TODO: SQLITE database storing
 		}
@@ -1904,7 +1904,7 @@ void SQLiteConstructor::saturation_tests(vector<string> name_ids, vector<string>
 		string fn1 = gene_name;
 		fn1 += "/" + curnode->getName();
 		seqwriter1.writeFileFromVector(fn1,sc1);
-		gene_db.add_alignment(fn1,temp_seqs, temp_user_seqs);
+		gene_db.add_alignment(curnode->getName(),temp_seqs, temp_user_seqs);
 		seq_set_filenames.push_back(fn1);
 	    }else if (temp_seqs->size() + temp_user_seqs->size() == 0){
 		continue;
@@ -1963,7 +1963,7 @@ void SQLiteConstructor::saturation_tests(vector<string> name_ids, vector<string>
 		    string fn1 = gene_name;
 		    fn1 += "/" + curnode->getName();
 		    seqwriter1.writeFileFromVector(fn1,sc1);
-		    gene_db.add_alignment(fn1,temp_seqs, temp_user_seqs);
+		    gene_db.add_alignment(curnode->getName(),temp_seqs, temp_user_seqs);
 		    seq_set_filenames.push_back(fn1);
 		    //TODO: SQLITE database storing
 		}
@@ -2035,6 +2035,7 @@ void SQLiteConstructor::saturation_tests(vector<string> name_ids, vector<string>
 	    remove((gene_name+"/"+exist_filenames[bestind]).c_str());
 	    //write the file out again
 	    fu.writeFileFromVector(gene_name+"/"+exist_filenames[bestind],finalseqs);
+	    
 	}
     }
     cout << "finished with sequence processing" << endl;
