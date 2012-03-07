@@ -111,6 +111,7 @@ private:
     void add_seqs_from_db_to_seqs_vector(string alignname,vector<Sequence> * keep_seqs, vector<Sequence> & storedseqs);
     void remove_seq_from_seq_vector(vector<Sequence> * inseqs,string sid);
     void match_aligned_file(vector<Sequence> * temp_seqs, vector<Sequence> * temp_user_seqs);
+    void match_an_aligned_seq(Sequence * temp_seq);
     void get_aligned_file(vector<Sequence> * temp_seqs);
 public:
     SQLiteConstructor(string cn, vector <string> searchstr, string genen, string genedb,

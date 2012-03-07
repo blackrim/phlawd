@@ -148,3 +148,19 @@ int Sequence::get_sqlite_id(){
     return sqlite_id;
 }
 
+bool Sequence::operator==(const Sequence &other) const{
+	bool ret = true;
+	if(other.ncbi_gi != ncbi_gi){
+		ret = false;
+		return ret;
+	}
+	if(other.ncbi_tax != ncbi_tax){
+		ret = false;
+		return ret;
+	}
+	if(other.name != name){
+		ret = false;
+		return ret;
+	}
+	return ret;
+}

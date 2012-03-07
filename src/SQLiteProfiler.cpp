@@ -34,7 +34,7 @@
 #include <fstream>
 #include <algorithm>
 #include <cstdio>
-
+#include <unistd.h>
 
 using namespace std;
 
@@ -56,11 +56,10 @@ using namespace std;
 #define SIXES 666666
 
 template <class T>
-inline std::string to_string (const T& t)
-{
-std::stringstream ss;
-ss << t;
-return ss.str();
+inline std::string to_string (const T& t){
+    std::stringstream ss;
+    ss << t;
+    return ss.str();
 }
 
 SQLiteProfiler::SQLiteProfiler(string gn, string gene_dbn,string cn, string dbs,bool autom,bool updb): 
@@ -71,44 +70,21 @@ SQLiteProfiler::SQLiteProfiler(string gn, string gene_dbn,string cn, string dbs,
     gene_db= GeneDB(gene_db_name);
 }
 
-//TODO: replace this with grabbing from the database
-//only complicated with the database
 void SQLiteProfiler::prelimalign(){
-    // if temp directory doesn't exist
     mkdir(profilefoldername.c_str(),S_IRWXU | S_IRWXG | S_IROTH | S_IWOTH);
     bool standard = true;
     if(updatedb == true){
 	vector<string> samefiles; //files were not updated at all
 	bool newfiles=false; // if there are new files from MAD in align stage, kick out and tree as new for now 
 	vector<string> originalalnfiles;
-	vector<string> curfiles;
-	getdir(profilefoldername.c_str(),curfiles);
-	getdir(gene_name.c_str(),originalalnfiles);
-	//to get updated files, just diff the seq counts for each original file and the profilefiles
-	for(unsigned int i=0;i< originalalnfiles.size();i++){
-	    int origcounts = count_seqs(gene_name,originalalnfiles[i]);
-	    if(count(curfiles.begin(),curfiles.end(),originalalnfiles[i]) == 1){
-		int counts = count_seqs(profilefoldername,originalalnfiles[i]);
-		if (counts < origcounts){
-		    updatedfiles.push_back(originalalnfiles[i]);
-		}else if (counts == origcounts){
-		    samefiles.push_back(originalalnfiles[i]);
-		}
-	    }else{//count == 0
-		newfiles = true;
-		cout << "there is a new file: " << originalalnfiles[i] << endl;
-		break;
-	    }
-	}if (newfiles == true){
-	    //delete all the files in the directory if they are there
-	    vector<string> exist_filenames;
-	    getdir(profilefoldername.c_str(),exist_filenames);
-	    cout << "removing existing files" << endl;
-	    for(unsigned int i=0;i<exist_filenames.size();i++){
-		string tname = profilefoldername+"/"+exist_filenames[i];
-		cout << "removing: " << tname << endl;
-		remove(tname.c_str());
-	    }
+	vector<string> curproffiles;
+	//TODO: could do more for comparing these
+	gene_db.get_alignment_names(originalalnfiles);
+	gene_db.get_first_profile_alignments(curproffiles);
+	if (originalalnfiles.size() != curproffiles.size())
+	    newfiles = true;
+	if (newfiles == true){
+	    gene_db.remove_profile_alignments();
 	    standard = true;
 	    updatedb = false;
 	}else{//update the profiles
@@ -159,11 +135,11 @@ void SQLiteProfiler::prelimalign(){
 		remove(tname.c_str());
 	    }
 	    //delete everything that isn't in the same file or in the profilerun vector
-	    for(unsigned int i=0;i<curfiles.size();i++){
-		if(count(samefiles.begin(),samefiles.end(),curfiles[i]) == 0){
-		    if(count(profilerun.begin(),profilerun.end(),curfiles[i]) == 0){
-			if(curfiles[i] != "record.log"){
-			    string tname = profilefoldername+"/"+curfiles[i];
+	    for(unsigned int i=0;i<curproffiles.size();i++){
+		if(count(samefiles.begin(),samefiles.end(),curproffiles[i]) == 0){
+		    if(count(profilerun.begin(),profilerun.end(),curproffiles[i]) == 0){
+			if(curproffiles[i] != "record.log"){
+			    string tname = profilefoldername+"/"+curproffiles[i];
 			    cout << "removing file: "<< tname << endl;
 			    remove(tname.c_str());
 			}
@@ -171,78 +147,19 @@ void SQLiteProfiler::prelimalign(){
 		}
 	    }
 	}
-    }else{//standard run
-	//delete all the files in the directory if they are there
-	vector<string> exist_filenames;
-	getdir(profilefoldername.c_str(),exist_filenames);
-	cout << "removing existing files" << endl;
-	for(unsigned int i=0;i<exist_filenames.size();i++){
-	    string tname = profilefoldername+"/"+exist_filenames[i];
-	    cout << "removing: " << tname << endl;
-	    remove(tname.c_str());
-	}
     }
 	
     if(standard == true){//not an update run
-	file_names = vector<string>();
-	cout << "getting file names" << endl;
-	getdir(gene_name,file_names);
-	for (unsigned int i = 0;i < file_names.size();i++) {
-	    /*
-	     * test to see how many sequences in the file
-	     * if there is only one, just copy, if there
-	     * are many, then align
-	     */
-	    bool many = false;
-	    int intReturn = count_seqs(gene_name, file_names[i]);
-	    if(intReturn > 1){
-		many = true;
-	    }
-	    if(many == false){
-		string cmd = "cp ";
-		cmd += gene_name+"/";
-		string tfilen = file_names[i];
-		fix_bad_chars(tfilen);
-		cmd += tfilen;
-		cmd += " ";
-		cmd += profilefoldername;
-		cmd += tfilen;//fix spaces here
-		cout << "copying file with single fasta" << endl;
-		cout << cmd << endl;
-		FILE *fp = popen(cmd.c_str(), "r" );
-		char buff[1000];
-		while ( fgets( buff, sizeof buff, fp ) != NULL ) {//doesn't exit out
-		    string line(buff);
-		}
-		pclose( fp );
-	    }else{
-		cout << file_names[i] << endl;
-		string cmd = "mafft --thread "+to_string(omp_get_max_threads());
-		cmd += " --auto ";
-		cmd += gene_name+"/";
-		//cmd += file_names[i];//fix spaces here
-		string tfilen = file_names[i];
-		fix_bad_chars(tfilen);
-		cmd += tfilen;
-		cmd += " > ";
-		cmd += profilefoldername;
-		cmd += tfilen;//fix spaces here
-		cout << "prelim aligning" << endl;
-		cout << cmd << endl;
-		FILE *fp = popen(cmd.c_str(), "r" );
-		char buff[1000];
-		while ( fgets( buff, sizeof buff, fp ) != NULL ) {//doesn't exit out
-		    string line(buff);
-		}
-		pclose( fp );
-	    }
-	    if(intReturn > 100){
-		clean_before_profile(file_names[i]);
-	    }
-	}
+	align_names = vector<string>();
+	align_nums = vector<int>();
+	cout << "getting alignments" << endl;
+	gene_db.get_alignment_names(align_names);
+	gene_db.get_alignment_nums(align_nums);
+	profile_id_name_map = map<int,string>();
+	gene_db.copy_alignments_to_first_profiles(profile_id_name_map);
     }else{//updaterun
 	//only align those files that are updated
-	file_names = vector<string>();
+	align_names = vector<string>();
 	cout << "aligning updated files" << endl;
 	for(unsigned int i=0;i<updatedfiles.size();i++){
 	    int intReturn = count_seqs(gene_name,updatedfiles[i]);
@@ -288,7 +205,9 @@ void SQLiteProfiler::prelimalign(){
 		pclose( fp );
 	    }
 	    if(intReturn > 100){
-		clean_before_profile(updatedfiles[i]);
+//TODO correct this
+//		clean_before_profile(updatedfiles[i]);
+		
 	    }
 	}
     }
@@ -319,39 +238,32 @@ void SQLiteProfiler::set_user_guide_tree(Tree * tree){
 }
 
 void SQLiteProfiler::run(){
+    cout << "starting run" << endl;
+    int finalaln;
     if(updatedb == false){//standard
-	file_names = vector<string>();
-	cout << "getting file names" << endl;
-	getdir(profilefoldername.c_str(),file_names);
-	if(file_names.size() > 1){
+	if(align_nums.size() > 1){
 	    map<string,string> numnames;
 	    map<string,string> namesnum;
-	    vector< vector<double> > numlist;
+	    map<int, map<int,double> > numlist;
 	    //TODO: make sure that this works with update , incomplete user guide tree
 	    if(usertree == true){
 		cout << "user guide tree" << endl;
-		create_distances_user_tree(file_names,&numnames,&namesnum,&numlist);
+		create_distances_user_tree(align_names,&numnames,&namesnum,&numlist);
 	    }else{//use ncbi tree
 		cout << "ncbi guide tree" << endl;
-		create_distances(cladename,file_names,&numnames,&namesnum,&numlist);
+		create_distances(cladename,&numlist);
 	    }
 	    //start profiling
 	    cout<<"profiling"<<endl;
-	    profile(numnames,namesnum,numlist);
+	    finalaln = profile(numlist);
 	}else{
-	    //need to create an empty record file
-	    string recordname = profilefoldername+"/record.log";
-	    ofstream ofs(recordname.c_str());
-	    ofs.close();
-	    copy_final_file(file_names[0]);
+	    finalaln = 1;
 	}
     }else{//updatedb
 	update_profile();
     }
-    rename_final_alignment("FINAL.aln");//requires FINAL.aln
-    remove_outliers();//requires FINAL.aln
-    rename_final_alignment("FINAL.aln.cln"); //requires FINAL.aln.cln
-
+    rename_final_alignment(finalaln);//requires FINAL.aln
+    //remove_outliers
 }
 
 //for updating alignments
@@ -499,13 +411,7 @@ string SQLiteProfiler::get_right_one(vector<string> allids,Query & res){
 }
 
 //ncbi one
-void SQLiteProfiler::create_distances(string clade_name, vector<string> names,map<string,string> * numnames,
-		map<string,string>* namesnum, vector< vector<double> > * numlist){
-    //the map of clade name and number
-    numnames->clear();
-    //the opposite
-    namesnum->clear();
-    //the distances in terms of i and j
+void SQLiteProfiler::create_distances(string clade_name,map<int, map<int,double> > * numlist){
     numlist->clear();
     //get id for clade name
     // Make SQL string and execute it
@@ -545,11 +451,12 @@ void SQLiteProfiler::create_distances(string clade_name, vector<string> names,ma
     //vector<string> allids = get_left_right_children(cladeid);
     cout << "clade=" << cladeid << endl;
     //get the route to the clade name
-    for(int i=0;i<names.size();i++){
+//    for(int i=0;i<names.size();i++){
+    map<int,string>::iterator it;
+    for (it=profile_id_name_map.begin();it!=profile_id_name_map.end();it++){
 	Database conn(db);
-	//sql = "SELECT ncbi_id FROM taxonomy WHERE name = '"+names[i]+"' and name_class = 'scientific name';";
 	//change to ncbi id
-	sql = "SELECT ncbi_id FROM taxonomy WHERE ncbi_id = "+names[i]+";";
+	sql = "SELECT ncbi_id FROM taxonomy WHERE ncbi_id = "+(*it).second+";";//names[i]+";";
 	Query query2(conn);
 	query2.get_result(sql);
 	string nameid = get_right_one(allids, query2);
@@ -560,8 +467,6 @@ void SQLiteProfiler::create_distances(string clade_name, vector<string> names,ma
 	vector<string> route;
 	while(parentid != cladeid){
 	    route.push_back(parentid);
-//	    cout << "nameid " << nameid << endl;
-//	    cout << "parentid1 " << parentid << endl;
 	    nameid = parentid;
 	    sql = "SELECT parent_ncbi_id FROM taxonomy WHERE ncbi_id = "+nameid+" and name_class = 'scientific name';";
 	    //cout << sql << endl;
@@ -571,12 +476,14 @@ void SQLiteProfiler::create_distances(string clade_name, vector<string> names,ma
 	}
 	route.push_back(parentid);
 
-	vector<double> tdistance;
-	for(int j=0;j<names.size();j++){
-	    if(j!=i){
+	map<int,double> tdistance;
+	map<int,string>::iterator it2;
+//	for(int j=0;j<names.size();j++){
+	for(it2=profile_id_name_map.begin();it2!=profile_id_name_map.end();it2++){
+	    if(it2!=it){
 		//sql = "SELECT ncbi_id FROM taxonomy WHERE name = '"+names[j]+"'  and name_class = 'scientific name';";
                 //change to ncbi id
-		sql = "SELECT ncbi_id FROM taxonomy WHERE ncbi_id = "+names[i]+";";
+		sql = "SELECT ncbi_id FROM taxonomy WHERE ncbi_id = "+(*it2).second+";";//names[j]+";";
 		Query query5(conn);
 		query5.get_result(sql);
 		string jnameid = get_right_one(allids,query5);
@@ -592,28 +499,24 @@ void SQLiteProfiler::create_distances(string clade_name, vector<string> names,ma
 		    if(route[k] == jnameid)
 			distance += k;
 		}
-		tdistance.push_back(distance);
+		tdistance[(*it2).first] = distance;
 	    }else{
-		tdistance.push_back(SIXES);
+		tdistance[(*it2).first] = SIXES;
 	    }
 	}
-	std::ostringstream stm;
-	stm << i;
-	numnames->insert( pair<string,string>(stm.str(),names[i]) );
-	namesnum->insert( pair<string,string>(names[i],stm.str()) );
-	numlist->push_back(tdistance);
-	cout << "distances complete: "<< names[i] << endl;
+	(*numlist)[(*it).first] = tdistance;
+	cout << "distances complete: "<< (*it).second << endl;
     }
 }
 
 //user tree one
-void SQLiteProfiler::create_distances_user_tree(vector<string> file_names,map<string,string> * numnames
-		,map<string,string> * namesnum, vector< vector<double> > * numlist){
+void SQLiteProfiler::create_distances_user_tree(vector<string> ifile_names,map<string,string> * numnames
+						,map<string,string> * namesnum, map<int, map<int,double> > * numlist){
     //get the list of nodes for which distances are required
     vector<Node *> nodesfordist;
-    for(int i=0;i<file_names.size();i++){
+    for(int i=0;i<ifile_names.size();i++){
 	for(int j=0;j<userguidetree->getNodeCount();j++){
-	    if (userguidetree->getNode(j)->getName()==file_names[i])
+	    if (userguidetree->getNode(j)->getName()==ifile_names[i])
 		nodesfordist.push_back(userguidetree->getNode(j));
 	}
     }
@@ -631,46 +534,40 @@ void SQLiteProfiler::create_distances_user_tree(vector<string> file_names,map<st
 	stm << i;
 	numnames->insert( pair<string,string>(stm.str(),nodesfordist[i]->getName()) );
 	namesnum->insert( pair<string,string>(nodesfordist[i]->getName(),stm.str()) );
-	numlist->push_back(tdistance);
+//	numlist->push_back(tdistance);
     }
 }
 
-void SQLiteProfiler::get_shortest_distance_with_dicts(vector<string> names, map<string,string> numnames,map<string,string> namesnum,
-		vector< vector<double> > numlist, string * shortestnameone, vector<string> * shortestnametwo){
-    vector<double> distances;
+void SQLiteProfiler::get_shortest_distance_with_dicts(vector<int> & nums,
+						      map<int, map<int, double> > & numlist, int * shortestnumone, vector<int> * shortestnumtwo){
+    map<int,double> distances;
     double shortestdistance = 10000;
-    for(int i=0;i<names.size();i++){
+    for(int i=0;i<nums.size();i++){
 	bool keepD = false;
-	string nameid = namesnum[names[i]];
-	vector<double> tdistance = numlist[atoi(nameid.c_str())];
-	//for(int j=0;j<names.size();j++){
-	//	cout << tdistance[j] << " " ;
-	//}
-	//cout << endl;
-	for(int j=0;j<file_names.size();j++){
-	    string nameid2 = namesnum[file_names[j]];
-	    double distance = tdistance[atoi(nameid2.c_str())];
+	for(int j=0;j<align_nums.size();j++){
+	    double distance = numlist[nums[i]][align_nums[j]];
 	    if(distance < shortestdistance && distance != SIXES){
 		shortestdistance = distance;
-		*shortestnameone = names[i];
+		*shortestnumone = nums[i];
 		keepD = true;
 	    }
 	}
 	if (keepD == true){
-	    distances = tdistance;
+	    distances = numlist[nums[i]];
 	}
     }
-    shortestnametwo->clear();
-    for(int j=0;j<file_names.size();j++){
-	//int ct = (int) count(shortestnametwo->begin(),shortestnametwo->end(),file_names[j]);
-	if(distances[j]==shortestdistance && distances[j]!=SIXES){
-	    shortestnametwo->push_back(file_names[j]);
-	    cout << "f " <<file_names[j]<<endl;
+    shortestnumtwo->clear();
+    for(int j=0;j<align_nums.size();j++){
+	if(distances[align_nums[j]]==shortestdistance && distances[align_nums[j]]!=SIXES){
+	    shortestnumtwo->push_back(align_nums[j]);//should this be nums
+	    cout << "f " <<align_nums[j] << " " <<distances[align_nums[j]] << endl;
 	}
     }
 }
 
-void SQLiteProfiler::clean_before_profile(string infile){
+void SQLiteProfiler::clean_before_profile(int infile){
+    //NEED TO work this out, would be great to remove phyutility requirement
+/*
     string tfilen = infile;
     fix_bad_chars(tfilen);
     string cmd = "phyutility -clean 0.10 -in ";
@@ -687,213 +584,121 @@ void SQLiteProfiler::clean_before_profile(string infile){
 	string line(buff);
     }
     pclose( fp );
+*/
 }
 
 /*
  * TODO: fix the orphans
  */
-void SQLiteProfiler::profile(map<string,string> numnames,map<string,string> namesnum,
-		vector< vector<double> > numlist){
+int SQLiteProfiler::profile(map<int, map<int,double> > numlist){
     cout << "writing everything to record.log" << endl;
     string recordname = profilefoldername+"/record.log";
     ofstream ofs(recordname.c_str());
     bool muscle = true;
-    vector<string> profile_files;
-    map<string,string> profile_files_dict;
-    int profile_files_count = 0;
-    vector<string> newnames(file_names.begin(),file_names.end());
-    string last_profile_file; //for changing to FINAL.aln
-    while (newnames.size() > 0){
-	string shortestnameone = "";
-	vector<string> * shortestnamestwo = new vector<string>();
-	get_shortest_distance_with_dicts(newnames,numnames,namesnum,numlist, &shortestnameone, shortestnamestwo);
+    vector<int> profile_files;
+    vector<int> newnums(align_nums.begin(),align_nums.end());
+    int last_profile_file; //for changing to FINAL.aln
+    while (newnums.size() > 0){
+	int shortestnameone;
+	vector<int> * shortestnamestwo = new vector<int>();
+	get_shortest_distance_with_dicts(newnums,numlist, &shortestnameone, shortestnamestwo);
 	cout << "shortestnameone " << shortestnameone << endl;
 	for(int i=0;i<shortestnamestwo->size();i++)
 	    cout << shortestnamestwo->at(i) << " ";
 	cout << endl;
-	vector<string>::iterator it;
-	it = find (newnames.begin(), newnames.end(), shortestnameone);
-	newnames.erase(it);
+	vector<int>::iterator it;
+	it = find (newnums.begin(), newnums.end(), shortestnameone);
+	newnums.erase(it);
 	//only one, simple case
 	if(shortestnamestwo->size() == 1){
-	    string firstfile = shortestnameone;
-	    string secondfile;
+	    int firstfile = shortestnameone;
+	    int secondfile;
 	    bool already = false;
-	    for(int i=0; i < profile_files.size(); i++){
-		for(int j=0;j<shortestnamestwo->size();j++){
-		    size_t found;
-		    found=profile_files[i].find(shortestnamestwo->at(j));
-		    if(found!=string::npos){
-			already = true;
-			secondfile = profile_files[i];
-		    }
-		}
-	    }
-	    if(already == false){
+	    secondfile = gene_db.get_deepest_profile_for_alignment(shortestnamestwo->at(0));
+	    if (secondfile != -1)//there is an alignment already
+		already = true;
+	    if(already == false)
 		secondfile = shortestnamestwo->at(0);
-	    }
-	    profile_files.push_back(firstfile+"__"+secondfile);
-	    profile_files_dict.insert( pair<string,string>(firstfile+"__"+secondfile,"PROFILE_"+to_string(profile_files_count)) );
-	    ofs << "PROFILE_"+to_string(profile_files_count) << "," << firstfile+"++"+secondfile << endl;
-	    if(muscle == false){
-		//if already == True:
-		//	os.system("mafft-linsi --seed "+directory+str(profile_files_dict[secondfile])+" "+directory+firstfile+" > "+directory+str(profile_files_dict[firstfile+"__"+secondfile]))
-		//else:
-		//	os.system("mafft-linsi --seed "+directory+secondfile+" "+directory+firstfile+" > "+directory+str(profile_files_dict[firstfile+"__"+secondfile]))
-	    }else{
-		if(already == true){
-		    //clean
-		    string ts2 = make_muscle_profile(profile_files_dict[secondfile],firstfile,profile_files_dict[firstfile+"__"+secondfile]);
-		    clean_before_profile(ts2);
-		    last_profile_file = ts2;
-		}else{
-		    //clean
-		    string s = make_muscle_profile(secondfile,firstfile,profile_files_dict[firstfile+"__"+secondfile]);
-		    clean_before_profile(s);
-		    last_profile_file = s;
-		}
-	    }
-	    cout << "moving on " << profile_files_count << endl;
-	    profile_files_count += 1;
+	    int profileout = gene_db.add_profile_alignment(firstfile,secondfile);
+	    profile_files.push_back(profileout);
+	    int ts2 = make_muscle_profile(firstfile,secondfile,profileout);
+	    clean_before_profile(ts2);
+	    last_profile_file = ts2;
+	    match_and_add_profile_alignment_to_db(profileout);
 	    if(already == false){
-		vector<string>::iterator it;
-		it = find (newnames.begin(), newnames.end(), secondfile);
-		newnames.erase(it);
+		vector<int>::iterator it;
+		it = find (newnums.begin(), newnums.end(), secondfile);
+		newnums.erase(it);
 	    }else{
-		vector<string>::iterator it;
+		vector<int>::iterator it;
 		it = find (profile_files.begin(), profile_files.end(), secondfile);
-		//cout <<profile_files.size()<<endl;
 		profile_files.erase(it);
-		//cout <<profile_files.size()<<endl;
 	    }
 	}else{
-	    string firstfile = shortestnameone;
-	    string secondfile;
+	    int firstfile = shortestnameone;
+	    int secondfile;
 	    bool already = false;
 	    for(int i=0; i < profile_files.size(); i++){
 		for(int j=0;j<shortestnamestwo->size();j++){
-		    size_t found;
-		    found=profile_files[i].find(shortestnamestwo->at(j));
-		    if(found!=string::npos){
+		    secondfile = gene_db.get_deepest_profile_for_alignment(shortestnamestwo->at(0));
+		    if (secondfile != -1){//there is an alignment already
 			already = true;
-			secondfile = profile_files[i];
+			break;
 		    }
 		}
+		if (already == true)
+		    break;
 	    }
 	    if (already == false){
-		secondfile = shortestnamestwo->at(0);
-		string bestsn = shortestnamestwo->at(0);
+		int bestsn;
 		double bestscore = 0;
 		for(int i=0;i<shortestnamestwo->size();i++){
-		    if(muscle == false){
-			//os.system("mafft-linsi --seed "+directory+sn+" "+directory+firstfile+" > "+directory+firstfile+"__"+sn)
-		    }else{
-			string tfilen2(shortestnamestwo->at(i));
-			fix_bad_chars(tfilen2);
-			string tfilen = firstfile;
-			fix_bad_chars(tfilen);
-			make_muscle_profile(tfilen2,tfilen,tfilen+"__"+tfilen2);
-		    }
-		    profile_files_count += 1;
-		    string cmd = "muscle -spscore ";
-		    cmd += profilefoldername;
-		    string tfilen = firstfile;
-		    fix_bad_chars(tfilen);
-		    string tfilen2 = shortestnamestwo->at(i);
-		    fix_bad_chars(tfilen2);
-		    cmd += tfilen+"__"+tfilen2;
-		    cmd += " -log prlog";
-		    cout << "aligning many2" << endl;
-		    cout << cmd << endl;
-		    FILE *fp = popen(cmd.c_str(), "r" );
-		    char buff[1000];
-		    while ( fgets( buff, sizeof buff, fp ) != NULL ) {//doesn't exit out
-			string line(buff);
-		    }
-		    pclose( fp );
-		    //read file
-		    double score = 0;
-		    ifstream ifs("prlog");
-		    string line;
-		    while(getline(ifs,line)){
-			TrimSpaces(line);
-			size_t se = line.find("="); // Find the first character position from reverse af
-			// if all spaces or empty return an empty string
-			if (se != string::npos){
-			    vector<string> tokens;
-			    string del("SP=");
-			    Tokenize(line, tokens, del);
-			    score = atof(tokens[2].c_str());
-			}
-		    }
-		    ifs.close();
+		    make_muscle_profile(firstfile,shortestnamestwo->at(i),0);//needs to be a fake one
+		    double score  = get_muscle_spscore("TEMPOUT.PROFILE");
 		    if(score > bestscore){
 			bestscore = score;
 			bestsn = shortestnamestwo->at(i);
 		    }
+		    cout << "score: " << score << endl;
 		}
 		secondfile = bestsn;
-		profile_files.push_back(firstfile+"__"+secondfile);
-		profile_files_dict.insert( pair<string,string>(firstfile+"__"+secondfile,"PROFILE_"+to_string(profile_files_count)) );
-		ofs << "PROFILE_"+to_string(profile_files_count) << "," << firstfile+"++"+secondfile << endl;
-		string cmd = "cp ";
-		cmd += profilefoldername;
-		string tfilen = firstfile;
-		fix_bad_chars(tfilen);
-		string tfilen2 = secondfile;
-		fix_bad_chars(tfilen2);
-		cmd += tfilen+"__"+tfilen2;
-		cmd += " ";
-		cmd += profilefoldername;
-		std::string s;
-		std::stringstream out;
-		out << profile_files_dict[firstfile+"__"+secondfile];
-		s = out.str();
-		cmd += s;
-		cout << "cp many3" << endl;
-		cout << cmd << endl;
-		FILE *fp = popen(cmd.c_str(), "r" );
-		char buff[1000];
-		while ( fgets( buff, sizeof buff, fp ) != NULL ) {//doesn't exit out
-		    string line(buff);
-		}
-		pclose( fp );
+		int profileout = gene_db.add_profile_alignment(firstfile,secondfile);
+		int s = make_muscle_profile(firstfile,secondfile,profileout);
+		match_and_add_profile_alignment_to_db(profileout);
 		//clean
+		profile_files.push_back(profileout);
 		clean_before_profile(s);
 		last_profile_file = s;
-		profile_files_count += 1;
-		vector<string>::iterator it;
-		it = find (newnames.begin(), newnames.end(), secondfile);
-		newnames.erase(it);
+		vector<int>::iterator it;
+		it = find (newnums.begin(), newnums.end(), secondfile);
+		newnums.erase(it);
 	    }else{
-		//mafft profile
-		vector<string>::iterator it;
+		int profileout = gene_db.add_profile_alignment(firstfile,secondfile);
+		int s2 = make_muscle_profile(firstfile,secondfile,profileout);
+		match_and_add_profile_alignment_to_db(profileout);
+		profile_files.push_back(profileout);
+		clean_before_profile(s2);
+		last_profile_file = s2;
+		vector<int>::iterator it;
 		it = find (profile_files.begin(), profile_files.end(), secondfile);
 		profile_files.erase(it);
-		profile_files.push_back(firstfile+"__"+secondfile);
-		profile_files_dict.insert( pair<string,string>(firstfile+"__"+secondfile,"PROFILE_"+to_string(profile_files_count)) );
-		ofs << "PROFILE_"+to_string(profile_files_count) << "," << firstfile+"++"+secondfile << endl;
-		if (muscle == false){
-		    //	os.system("mafft-linsi --seed "+directory+str(profile_files_dict[secondfile])+" "+directory+firstfile+" > "+directory+str(profile_files_dict[firstfile+"__"+secondfile]))
-		}else{
-		    //	os.system("muscle -profile -in1 "+directory+str(profile_files_dict[secondfile])+" -in2 "+directory+firstfile+" -out "+directory+str(profile_files_dict[firstfile+"__"+secondfile]))
-		    //clean
-		    string s2 = make_muscle_profile(profile_files_dict[secondfile],firstfile,profile_files_dict[firstfile+"__"+secondfile]);
-		    clean_before_profile(s2);
-		    last_profile_file = s2;
-		}
-		profile_files_count += 1;
 	    }
 	}
 	delete shortestnamestwo;
+//	exit(0);
     }
+    cout << "processing profile files" << endl;
     for(int i=0; i < profile_files.size(); i++){
-	cout << profile_files[i] << " ++ "<< profile_files_dict[profile_files[i]] << endl;
+	cout << profile_files[i] << endl;
     }
+
+
     while(profile_files.size() > 1){
-	string shortestnameone = "";
-	vector<string> * shortestnamestwo = new vector<string>();
-	get_shortest_distance_with_dicts(file_names,numnames,namesnum,numlist, &shortestnameone, shortestnamestwo);
+//TODO: choose the best, for now just choose any two
+/*
+	int shortestnameone;
+	vector<int> * shortestnamestwo = new vector<int>();
+	get_shortest_distance_with_dicts(align_nums,numlist, &shortestnameone, shortestnamestwo);
 	vector<string> tokens;
 	string del("_");
 	Tokenize(profile_files[0], tokens, del);
@@ -918,41 +723,24 @@ void SQLiteProfiler::profile(map<string,string> numnames,map<string,string> name
 		bestfile = profile_files[i];
 	    }
 	}
-	string firstfile = profile_files[0];
-	string secondfile = bestfile;
-	vector<string>::iterator it;
+*/
+	int firstfile = profile_files[0];
+	int secondfile = profile_files[1];
+	vector<int>::iterator it;
 	it = find (profile_files.begin(), profile_files.end(), firstfile);
 	profile_files.erase(it);
 	it = find (profile_files.begin(), profile_files.end(), secondfile);
 	profile_files.erase(it);
-
-	profile_files.push_back(firstfile+"__"+secondfile);
-	profile_files_dict.insert( pair<string,string>(firstfile+"__"+secondfile,"PROFILE_"+to_string(profile_files_count)) );
-	ofs <<"PROFILE_"+ to_string(profile_files_count) << "," << firstfile+"++"+secondfile <<endl;
-	if (muscle == false){
-	    //	os.system("mafft-linsi --seed "+directory+str(profile_files_dict[secondfile])+" "+directory+firstfile+" > "+directory+str(profile_files_dict[firstfile+"__"+secondfile]))
-	}else{
-	    //	os.system("muscle -profile -in1 "+directory+str(profile_files_dict[secondfile])+" -in2 "+directory+firstfile+" -out "+directory+str(profile_files_dict[firstfile+"__"+secondfile]))
-	    string s2 = make_muscle_profile(profile_files_dict[firstfile],profile_files_dict[secondfile],profile_files_dict[firstfile+"__"+secondfile]);
-	    //clean
-	    clean_before_profile(s2);
-	    last_profile_file = s2;
-	}
-	profile_files_count += 1;
+	
+	int profileout = gene_db.add_profile_alignment(firstfile,secondfile);
+	int s2 = make_muscle_profile(firstfile,secondfile,profileout);
+	match_and_add_profile_alignment_to_db(profileout);
+	profile_files.push_back(s2);
+	clean_before_profile(s2);
+	last_profile_file = s2;
     }
 
-    //do the orphans
-    //print profile_files
-    //print profile_files_dict[profile_files[0]]
-    /*
-     * fix orphans
-     */
-    //if useorphan == True:
-    //	os.system("mafft-linsi --seed "+orphanfile+" "+directory+str(profile_files_dict[profile_files[0]])+" > "+directory+"FINAL.aln")
-    //else:
-    //	os.system("cp "+directory+profile_files[0]+" "+directory+"FINAL.aln")
-    copy_final_file(last_profile_file);
-    ofs.close();
+    return last_profile_file;
 }
 
 /*
@@ -962,47 +750,41 @@ void SQLiteProfiler::profile(map<string,string> numnames,map<string,string> name
  * They are already premapped so you are just rerunning the ones that have updated seqs
  */
 void SQLiteProfiler::update_profile(){
-	for(unsigned int i=0;i<profilerun.size();i++){
-		cout << count(flaggedprofiles.begin(),flaggedprofiles.end(),profilerun[i])  << " " << profilerun[i] << endl;
-		if(count(flaggedprofiles.begin(),flaggedprofiles.end(),profilerun[i]) > 0){
-			cout << "reruning " << profilerun[i] << endl;
-			string profile1 = get_profilekey_value(profilekey[profilerun[i]][0]);
-			string profile2 = get_profilekey_value(profilekey[profilerun[i]][1]);
-			cout << profile1 << " " << profile2 <<endl;
-			string ts2 = make_muscle_profile(profile1,profile2,profilerun[i]);
-			//clean
-			clean_before_profile(ts2);
-		}else{
-			cout << "skipping " << profilerun[i] << endl;
-		}
-	}
-	if(profilerun.size() > 0){
-		copy_final_file(profilerun[profilerun.size()-1]);
+    for(unsigned int i=0;i<profilerun.size();i++){
+	cout << count(flaggedprofiles.begin(),flaggedprofiles.end(),profilerun[i])  << " " << profilerun[i] << endl;
+	if(count(flaggedprofiles.begin(),flaggedprofiles.end(),profilerun[i]) > 0){
+	    cout << "reruning " << profilerun[i] << endl;
+	    string profile1 = get_profilekey_value(profilekey[profilerun[i]][0]);
+	    string profile2 = get_profilekey_value(profilekey[profilerun[i]][1]);
+	    cout << profile1 << " " << profile2 <<endl;
+//	    string ts2 = make_muscle_profile(profile1,profile2,profilerun[i]);
+//TODO: needs to be changed to int
+	    //clean
+//	    clean_before_profile(ts2);
 	}else{
-		copy_final_file(updatedfiles[0]); //should mean that there is only one file
+	    cout << "skipping " << profilerun[i] << endl;
 	}
+    }
+    if(profilerun.size() > 0){
+	copy_final_file(profilerun[profilerun.size()-1]);
+    }else{
+	copy_final_file(updatedfiles[0]); //should mean that there is only one file
+    }
 }
 
-string SQLiteProfiler::make_muscle_profile(string profile1,string profile2,string outfile){
+int SQLiteProfiler::make_muscle_profile(int profile1,int profile2,int outfile){
+    remove((profilefoldername+"TEMP1.PROFILE").c_str());
+    remove((profilefoldername+"TEMP2.PROFILE").c_str());
+    remove((profilefoldername+"TEMPOUT.PROFILE").c_str());
+    gene_db.write_profile_alignment_to_file(profile1,profilefoldername+"TEMP1.profile");
+    gene_db.write_profile_alignment_to_file(profile2,profilefoldername+"TEMP2.profile");
     string cmd = "muscle -profile -in1 ";
     cmd += profilefoldername;
-    std::string ts;
-    std::stringstream tout;
-    tout << profile1;
-    ts = tout.str();
-    cmd += ts;
-    cmd += " -in2 ";
+    cmd += "TEMP1.profile -in2 ";
     cmd += profilefoldername;
-    string tfilen = profile2;
-    fix_bad_chars(tfilen);
-    cmd += tfilen;
-    cmd += " -out ";
+    cmd += "TEMP2.profile -out ";
     cmd += profilefoldername;
-    std::string ts2;
-    std::stringstream tout2;
-    tout2 << outfile;
-    ts2 = tout2.str();
-    cmd += ts2;
+    cmd += "TEMPOUT.PROFILE";
     cout << "aligning" << endl;
     cout << cmd << endl;
     FILE *fp = popen(cmd.c_str(), "r" );
@@ -1011,7 +793,8 @@ string SQLiteProfiler::make_muscle_profile(string profile1,string profile2,strin
 	string line(buff);
     }
     pclose( fp );
-    return ts2;
+    test_outfile_exists(profilefoldername+"TEMPOUT.PROFILE");
+    return outfile;
 }
 
 /*
@@ -1207,58 +990,67 @@ string SQLiteProfiler::get_name_from_tax_id(string taxid){
 /*
  * rename the FINAL.aln.cln file to FINAL.aln.cln.rn using the table in ITS.gi
  */
-void SQLiteProfiler::rename_final_alignment(string which){
-    /*
-     * read in the final file
-     */
-    FastaUtil seqreader;
-    vector<Sequence> * sequences = new vector<Sequence>();
-    seqreader.readFile(profilefoldername+which, *sequences);
-    /*
-     * read in the table
-     */
-    string line;
-    string tblname = gene_name+".gi";
-    ifstream pfile (tblname.c_str());
-    vector<string> tokens;
-    bool first = true;
-    map<string,string> db_to_ncbi;
-    map<string,string> db_to_name;
-    if (pfile.is_open()){
-	while (! pfile.eof() ){
-	    if (first == false){
-		getline (pfile,line);
-		string del("\t");
-		tokens.clear();
-		Tokenize(line, tokens, del);
-		if(tokens.size() >= 1){
-		    db_to_ncbi[tokens[0]] = tokens[1];
-		    //changing to reading the edited names from the table
-		    //string astr = get_name_from_tax_id(tokens[0]);
-		    //fix_bad_chars_for_seq_names(astr);
-		    string astr = tokens[2];
-		    db_to_name[tokens[0]] = astr;
-		}
-	    }else{
-		getline (pfile,line);
-		first = false;
-	    }
-	}
-    }
-    /*
-     * write the final file
-     */
-    vector<Sequence> sc1;
-    FastaUtil seqwriter;
-    string fn1 = profilefoldername+which+".rn";
-    for(int i=0;i<sequences->size();i++){
-	//TODO : there was a pointer problem here
-	string tname = db_to_name[sequences->at(i).get_id()];
-	Sequence ts = sequences->at(i);
-	ts.set_id(tname);
-	sc1.push_back(ts);
-    }
-    seqwriter.writeFileFromVector(fn1,sc1);
-    delete sequences;
+void SQLiteProfiler::rename_final_alignment(int alignid){
+    string fn1 = profilefoldername+"FINAL.aln.rn";
+    gene_db.write_profile_alignment_with_names_to_file(alignid,fn1,false);
+    fn1 = profilefoldername+"FINAL.aln";
+    gene_db.write_profile_alignment_with_names_to_file(alignid,fn1,true);
 }
 
+double SQLiteProfiler::get_muscle_spscore(string filename){
+    remove("prolog");
+    string cmd = "muscle -spscore ";
+    cmd += profilefoldername;
+    cmd += filename;
+    cmd += " -log prlog";
+    cout << cmd << endl;
+    FILE *fp = popen(cmd.c_str(), "r" );
+    char buff[1000];
+    while ( fgets( buff, sizeof buff, fp ) != NULL ) {//doesn't exit out
+	string line(buff);
+    }
+    pclose( fp );
+    //read file
+    double score = 0;
+    ifstream ifs("prlog");
+    string line;
+    while(getline(ifs,line)){
+	TrimSpaces(line);
+	size_t se = line.find("="); // Find the first character position from reverse af
+	// if all spaces or empty return an empty string
+	if (se != string::npos){
+	    vector<string> tokens;
+	    string del("=");
+	    Tokenize(line, tokens, del);
+	    score = atof(tokens[2].c_str());
+	}
+    }
+    ifs.close();
+    return score;
+}
+
+void SQLiteProfiler::test_outfile_exists(string filename){
+    struct stat filestatus;
+    stat(filename.c_str(), &filestatus );
+    cout << filestatus.st_size << " bytes\n";
+    if (int(filestatus.st_size) <= 64){
+	cerr << "problem: empty file "<< filename<< " created" << endl;
+	exit(0);
+    }
+}
+
+/*
+ * assumes that the id of the seq is the sqlite id 
+ */
+void SQLiteProfiler::match_and_add_profile_alignment_to_db(int profileid){
+    FastaUtil fu;
+    vector<Sequence> tempalseqs;
+    fu.readFile(profilefoldername+"TEMPOUT.PROFILE",tempalseqs);
+    vector<Sequence> seqs;
+    for(int i=0;i<tempalseqs.size();i++){
+	Sequence tseq(tempalseqs[i].get_id(),tempalseqs[i].get_sequence());
+	seqs.push_back(tseq);
+    }
+    cout << "adding sequences to profile alignment table" << endl;
+    gene_db.add_sequences_for_profile_alignment(profileid,seqs);
+}

@@ -248,6 +248,7 @@ void SQLiteConstructor::set_user_fasta_file(string filename,bool skipdbcheck){
 		cout << tname << "="<<nameval<<endl;
 	    }else{
 		cerr <<tname << " is not in the ncbi database as a number or name"<<endl;
+		user_seqs->at(i).set_ncbi_tax_id("0");
 	    }
 	}
     }
@@ -286,9 +287,10 @@ int SQLiteConstructor::run(){
 	    if(stored_seqs[i].get_name().find("user_") != 0)//not a user seq with no id
 		stored_seqs_ncbis.push_back(stored_seqs[i].get_id());
 	    else//user seq
-		stored_user_seqnames.push_back(stored_seqs[i].get_name());
+		stored_user_seqnames.push_back(stored_seqs[i].get_id());
 	}
 	cout << "existing seqs: " << stored_seqs.size() << endl;
+	cout << "existing db: " << stored_seqs_ncbis.size() << " user: " << stored_user_seqnames.size() << endl; 
     }else{
 	gifile.open(gin.c_str(),fstream::out);
 	gifile << "ncbi_tax_id\tgi_number\tedited_name" << endl;
@@ -422,10 +424,11 @@ int SQLiteConstructor::run(){
 	    cout << "There are no new DB sequences to add." << endl;
 	    gifile.close();
 	}
-	cout << "total size of DB updated:" << keep_seqs->size() << endl;
+	cout << "total size of seqs to add (update):" << keep_seqs->size() << endl;
 	for(int j=0;j<keep_seqs->size();j++){
 	    cout << "adding: " << keep_seqs->at(j).get_ncbi_tax_id() << endl;
 	}
+	gene_db.add_seqs_to_db(keep_seqs);
 	//add the right gi numbers before add the rest of the seqs are added to keep_seqs
 	write_gi_numbers(keep_seqs);
 	gifile.close();
@@ -448,6 +451,7 @@ int SQLiteConstructor::run(){
 	for(int j=0;j<user_seqs->size();j++){
 	    cout << "adding: " << user_seqs->at(j).get_id() << endl;
 	}
+	gene_db.add_user_seqs_to_db(user_seqs);
 	if(user_seqs->size() + keep_seqs->size() == 0)
 	  exit(0);
 	//if update is more than 20% then redo run
@@ -464,10 +468,6 @@ int SQLiteConstructor::run(){
 	vector<string> align_names;
 	gene_db.get_alignment_names(align_names);
 	if(usertree == false){
-	    cout << "PRE LIST OF SEQS" << endl;
-	    for(int i=0;i<keep_seqs->size();i++){
-		cout << keep_seqs->at(i).get_ncbi_tax_id() << " " << keep_seqs->at(i).get_ncbi_gi_id() << endl;
-	    }
 	    for (unsigned int i = 0;i < align_names.size();i++){
 		string sql = "SELECT ncbi_id,left_value,right_value FROM taxonomy where ncbi_id = "+align_names[i]+";";
 		Query query(conn);
@@ -508,10 +508,10 @@ int SQLiteConstructor::run(){
 		}
 	    }
 	    cout <<"seqs to process: " << keep_seqs->size() << endl;
-	    cout << "LIST OF SEQS" << endl;
-	    for(int i=0;i<keep_seqs->size();i++){
-		cout << keep_seqs->at(i).get_ncbi_tax_id() << " " << keep_seqs->at(i).get_ncbi_gi_id() << endl;
-	    }
+//	    cout << "LIST OF SEQS" << endl;
+//	    for(int i=0;i<keep_seqs->size();i++){
+//		cout << keep_seqs->at(i).get_ncbi_tax_id() << " " << keep_seqs->at(i).get_ncbi_gi_id() << endl;
+//	    }
 //	    exit(0);
 	}else{//usertree == true
 	    //can do seq similarity, tree building distance, or ncbi
@@ -565,7 +565,6 @@ int SQLiteConstructor::run(){
 		it = find(align_names.begin(), align_names.end(),rem_files[i]);
 		//align_names.erase(it);
 	    }
-	    
 	    if (align_names.size()>0){//explode is just a redo
 		for(unsigned int i=0;i<keep_seqs->size();i++){
 		    int bestind;
@@ -1607,6 +1606,8 @@ void SQLiteConstructor::saturation_tests(vector<string> name_ids, vector<string>
 		    remove_seq_from_seq_vector(&allseqs,temp_user_seqs->at(i).get_id());
 		}
 		int alignid = gene_db.add_alignment(name_id,temp_seqs, temp_user_seqs);
+		if(updateDB==true)
+		    gene_db.toggle_alignment_update(alignid);
 		exist_alignments.push_back(alignid);
 	    }else if (temp_seqs->size() + temp_user_seqs->size()== 0){
 		continue;
@@ -1644,6 +1645,8 @@ void SQLiteConstructor::saturation_tests(vector<string> name_ids, vector<string>
 			remove_seq_from_seq_vector(&allseqs,temp_user_seqs->at(i).get_id());
 		    }
 		    int alignid = gene_db.add_alignment(name_id,temp_seqs, temp_user_seqs);
+		    if(updateDB==true)
+			gene_db.toggle_alignment_update(alignid);
 		    exist_alignments.push_back(alignid);
 		}
 		//if mad scores are bad push the children into names
@@ -1736,6 +1739,8 @@ void SQLiteConstructor::saturation_tests(vector<string> name_ids, vector<string>
 		    remove_seq_from_seq_vector(&allseqs,temp_user_seqs->at(i).get_id());
 		}
 		int alignid = gene_db.add_alignment(curnode->getName(),temp_seqs, temp_user_seqs);
+		if(updateDB==true)
+		    gene_db.toggle_alignment_update(alignid);
 		exist_alignments.push_back(alignid);
 	    }else if (temp_seqs->size() + temp_user_seqs->size() == 0){
 		continue;
@@ -1774,6 +1779,8 @@ void SQLiteConstructor::saturation_tests(vector<string> name_ids, vector<string>
 			remove_seq_from_seq_vector(&allseqs,temp_user_seqs->at(i).get_id());
 		    }
 		    int alignid = gene_db.add_alignment(curnode->getName(),temp_seqs, temp_user_seqs);
+		    if(updateDB==true)
+			gene_db.toggle_alignment_update(alignid);
 		    exist_alignments.push_back(alignid);
 		}
 		//if mad scores are bad push the children into names
@@ -1822,13 +1829,16 @@ void SQLiteConstructor::saturation_tests(vector<string> name_ids, vector<string>
 	Sequence tseq(to_string(allseqs[i].get_sqlite_id()),allseqs[i].get_sequence());
 	tempseqs.push_back(tseq);
 	vector<Sequence> emptys;
-	make_mafft_multiple_alignment(&emptys,&tempseqs);
+	make_mafft_multiple_alignment(&tempseqs,&emptys);
+	match_an_aligned_seq(&allseqs[i]);
 	//add then update the aligned seqs
 	gene_db.add_seq_to_alignment(exist_alignments[bestind],allseqs[i]);
 	//read mafft
 	vector<Sequence> alseqs;
 	get_aligned_file(&alseqs);
 	gene_db.update_align_seqs(exist_alignments[bestind],alseqs);
+	if(updateDB==true)
+	    gene_db.toggle_alignment_update(exist_alignments[bestind]);
     }
     cout << "finished with sequence processing" << endl;
 }
@@ -1992,6 +2002,27 @@ void SQLiteConstructor::match_aligned_file(vector<Sequence> * temp_seqs, vector<
 	    cout << "error, aligned seq " << tempalseqs[i].get_id() << " has no match" << endl;
 	    exit(0);
 	}
+    }
+}
+
+/*
+ * assumes the id from the file is the sqlite id from the seq
+ */
+void SQLiteConstructor::match_an_aligned_seq(Sequence * temp_seq){
+    FastaUtil fu;
+    vector<Sequence> tempalseqs;
+    fu.readFile("TEMPFILES/outfile",tempalseqs);
+    bool set = false;
+    for(int i=0;i<tempalseqs.size();i++){
+	if(tempalseqs[i].get_id() == to_string(temp_seq->get_sqlite_id())){
+	    temp_seq->set_aligned_seq(tempalseqs[i].get_sequence());
+	    set = true;
+	    break;
+	}
+    }
+    if(set == false){
+	cout << "error, aligned seq " << temp_seq->get_id() << " has no match" << endl;
+	exit(0);
     }
 }
 

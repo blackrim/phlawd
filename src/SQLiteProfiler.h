@@ -41,7 +41,8 @@ private:
     string gene_name;
     string gene_db_name;
     GeneDB gene_db;
-    vector<string> file_names;
+    vector<string> align_names;
+    vector<int> align_nums;
     string cladename;
     string db;
     string profilefoldername;
@@ -55,24 +56,23 @@ private:
     int count_seqs(string dirc, string file_name);
     string get_right_one(vector<string> allids,Query & res);
     vector<string> get_left_right_children(string id);
-    void create_distances(string clade_name, vector<string> names,map<string,string> * numnames,
-			  map<string,string>* namesnum, vector< vector<double> > * numlist);
+    void create_distances(string clade_name,map<int, map<int,double> > * numlist);
     void create_distances_user_tree(vector<string> names,map<string,string> * numnames
-				    ,map<string,string> * namesnum, vector< vector<double> > * numlist);
-    void get_shortest_distance_with_dicts(vector<string> names,map<string,string> numnames,map<string,string> namesnum,
-					  vector< vector<double> > numlist, string * shortestnameone, vector<string> * shortestnametwo);
-    void clean_before_profile(string infile);
-    void profile(map<string,string> numnames,map<string,string> namesnum,
-		 vector< vector<double> > numlist);
+				    ,map<string,string> * namesnum, map<int, map<int,double> > * numlist);
+    void get_shortest_distance_with_dicts(vector<int>& nums,map<int, map<int,double> > & numlist, int * shortestnameone, 
+					  vector<int> * shortestnametwo);
+    void clean_before_profile(int infile);
+    int profile(map<int, map<int,double> > numlist);
     void copy_final_file(string filename);
     string get_name_from_tax_id(string taxid);
     void calculate_for_removal(vector<Sequence> * seqs,
 			       map<string,double> & allmeans);
-    void calculate_for_removal_quicktree(vector<Sequence> * seqs,
-					 map<string,double> & allmeans);
+    void calculate_for_removal_quicktree(vector<Sequence> * seqs, map<string,double> & allmeans);
     void remove_outliers();
-    void rename_final_alignment(string which);
-    string make_muscle_profile(string profile1,string profile2,string outfile);
+    void rename_final_alignment(int alignid);
+    int make_muscle_profile(int profile1,int profile2,int outprofile);
+
+    map<int, string> profile_id_name_map;
 
     //updated runs things
     vector<string> updatedfiles;
@@ -81,6 +81,9 @@ private:
     vector<string> flaggedprofiles; // these are the ones that need to be rerun
     void update_profile();
     string get_profilekey_value(string profile_string);
+    double get_muscle_spscore(string filename);
+    void test_outfile_exists(string filename);
+    void match_and_add_profile_alignment_to_db(int profileid);
 public:
     SQLiteProfiler(string gn, string gene_dbn,string cn, string dbs, bool autom,bool updb);
     void prelimalign();

@@ -42,5 +42,6 @@ public:
     void set_ncbi_gi_id(string _tid);
     string get_ncbi_tax_id();
     string get_ncbi_gi_id();
+    bool operator==(const Sequence &other) const;
 };
 #endif
