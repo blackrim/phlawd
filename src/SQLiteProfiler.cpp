@@ -477,12 +477,10 @@ void SQLiteProfiler::clean_before_profile(string filename){
 	    if (count(removeem.begin(),removeem.end(),j)==0)
 		a += tempalseqs[i].get_sequence()[j];
 	}
-	cout <<tempalseqs[i].get_sequence() << endl;
 	tempalseqs[i].set_sequence(a);
     }
     remove((profilefoldername+filename).c_str());
     fu.writeFileFromVector(profilefoldername+filename,tempalseqs);
-    exit(0);
 }
 
 /*
@@ -670,159 +668,6 @@ void SQLiteProfiler::copy_final_file(string filename){
     pclose( fp );
 }
 
-void SQLiteProfiler::calculate_for_removal_quicktree(vector<Sequence> * seqs,
-		map<string,double> & allmeans){
-    FastaUtil seqwriter;
-    const string fn1 = "TEMPFILES/tempremoval";
-    seqwriter.writeFileFromVector(fn1,*seqs);
-
-    string phcmd = "phyutility -concat -in TEMPFILES/tempremoval -out TEMPFILES/outfile.nex";
-    FILE *phfp = popen(phcmd.c_str(), "r" );
-    pclose( phfp );
-
-    cout << phcmd << endl;
-
-    ifstream infile;
-    ofstream outfile;
-    infile.open ("TEMPFILES/outfile.nex",ios::in);
-    outfile.open ("TEMPFILES/outfile.stoc",ios::out);
-    bool begin = false;
-    bool end = false;
-    string line;
-    /*
-     * convert to stockholm format
-     */
-    while(getline(infile,line)){
-	if (line.find("MATRIX") != string::npos){
-	    begin = true;
-	}else if ((begin == true && end == false) && line.find_first_of(";") != string::npos){
-	    end = true;
-	}else if (begin == true && end == false){
-	    std::string::size_type begin = line.find_first_not_of("\t");
-	    //std::string::size_type end   = line.find_last_not_of("\t");
-	    std::string::size_type end = line.size();
-	    std::string trimmed = line.substr(begin, end-begin + 1);
-	    outfile << trimmed << endl;
-	}
-    }
-    infile.close();
-    outfile.close();
-
-    const char * cmd = "quicktree -in a -out m TEMPFILES/outfile.stoc > TEMPFILES/dist";
-    cout << "calculating distance" << endl;
-    FILE *fp = popen(cmd, "r" );
-    char buff[1000];
-    while ( fgets( buff, sizeof buff, fp ) != NULL ) {//doesn't exit out
-	string line(buff);
-    }
-    pclose( fp );
-
-    //new
-    vector<string> ids;
-    vector<vector<double> > nums;
-    bool first = true;
-
-    ifstream pfile ("TEMPFILES/dist");
-    vector<string> tokens;
-    int nspecies;
-    if (pfile.is_open()){
-	int curspecies = 0;
-	while (! pfile.eof() ){
-	    /*
-	     * record the id as the first token
-	     * and the numbers below as the numbers
-	     */
-	    if (first == false){
-		getline (pfile,line);
-		string del(" \t");
-		tokens.clear();
-		Tokenize(line, tokens, del);
-		if(tokens.size() >= 1){
-		    ids[curspecies] = tokens.at(0);
-		    double n1;
-		    for(int j = curspecies; j < nspecies;j++){
-			n1 = atof(tokens.at(j+1).c_str());
-			nums[curspecies][j] = n1;
-			nums[j][curspecies] = n1;
-		    }
-		    curspecies += 1;
-		}
-	    }else{
-		first = false;
-		getline (pfile,line);
-		TrimSpaces(line);
-		nspecies = atoi(line.c_str());
-		vector<double> cols(nspecies, 0);
-		nums = vector< vector<double> >(nspecies, cols);
-		ids = vector<string>(nspecies);
-	    }
-	}
-	pfile.close();
-    }
-    /*
-     * calculate the means
-     */
-    vector<double> mns(ids.size());
-    for(int i=0;i<nums.size();i++){
-	allmeans[ids[i]] = mean(nums[i]);
-    }
-}
-
-void SQLiteProfiler::remove_outliers(){
-    FastaUtil seqreader;
-    vector<Sequence> * sequences = new vector<Sequence>();
-    seqreader.readFile(profilefoldername+"FINAL.aln", *sequences);
-    int numseqs = sequences->size();
-    cout << numseqs << endl;
-    map<string,double> allmeans;
-    if(numseqs < 5000){
-	calculate_for_removal_quicktree(sequences,allmeans);
-    }else{
-	int NBREAKS = 10;
-	for (int i=0;i<NBREAKS;i++){
-	    vector<Sequence> tempsc1;
-	    if((i+1) < NBREAKS){
-		for(int j=(i*(numseqs/NBREAKS));j < ((numseqs/NBREAKS)*(i+1));j++){
-		    //TODO : there was a pointer problem here
-		    tempsc1.push_back(sequences->at(j));
-		}
-	    }else{
-		for(int j=(i*(numseqs/NBREAKS));j < numseqs;j++){
-		    //TODO : there was a pointer problem here
-		    tempsc1.push_back(sequences->at(j));
-		}
-	    }
-	    calculate_for_removal_quicktree(&tempsc1,allmeans);
-	}
-    }
-    /*
-     * calculate the means
-     */
-    vector<double> mns(numseqs);
-    for(int i=0;i<numseqs;i++){
-	//TODO : there was a pointer problem here
-	mns[i] = allmeans[sequences->at(i).get_id()];
-    }
-    double sd = stdev(mns);
-    double mn = mean(mns);
-    double dev = sd*1.5+mn;//obviously changeable
-    /*
-     * read in the fasta file
-     */
-    vector<Sequence> sc1;
-    for(int i=0;i<mns.size();i++){
-	if (mns[i] < dev){
-	    sc1.push_back(sequences->at(i));
-	}else{
-	    //cout << i << endl;
-	}
-    }
-    FastaUtil seqwriter;
-    const string fn1 = profilefoldername+"FINAL.aln.cln";
-    seqwriter.writeFileFromVector(fn1,sc1);
-}
-
-
 string SQLiteProfiler::get_name_from_tax_id(string taxid){
     Database conn(db);
     string sql = "SELECT name FROM taxonomy WHERE ncbi_id = "+taxid+" AND name_class = 'scientific name'";
@@ -905,3 +750,150 @@ void SQLiteProfiler::match_and_add_profile_alignment_to_db(int profileid){
     cout << "adding sequences to profile alignment table" << endl;
     gene_db.add_sequences_for_profile_alignment(profileid,seqs);
 }
+
+
+
+//THIS WAS THE OLD quicktree based outlier removal
+/*
+void SQLiteProfiler::calculate_for_removal_quicktree(vector<Sequence> * seqs,
+		map<string,double> & allmeans){
+    FastaUtil seqwriter;
+    const string fn1 = "TEMPFILES/tempremoval";
+    seqwriter.writeFileFromVector(fn1,*seqs);
+
+    string phcmd = "phyutility -concat -in TEMPFILES/tempremoval -out TEMPFILES/outfile.nex";
+    FILE *phfp = popen(phcmd.c_str(), "r" );
+    pclose( phfp );
+
+    cout << phcmd << endl;
+
+    ifstream infile;
+    ofstream outfile;
+    infile.open ("TEMPFILES/outfile.nex",ios::in);
+    outfile.open ("TEMPFILES/outfile.stoc",ios::out);
+    bool begin = false;
+    bool end = false;
+    string line;
+    // convert to stockholm format
+    while(getline(infile,line)){
+	if (line.find("MATRIX") != string::npos){
+	    begin = true;
+	}else if ((begin == true && end == false) && line.find_first_of(";") != string::npos){
+	    end = true;
+	}else if (begin == true && end == false){
+	    std::string::size_type begin = line.find_first_not_of("\t");
+	    //std::string::size_type end   = line.find_last_not_of("\t");
+	    std::string::size_type end = line.size();
+	    std::string trimmed = line.substr(begin, end-begin + 1);
+	    outfile << trimmed << endl;
+	}
+    }
+    infile.close();
+    outfile.close();
+
+    const char * cmd = "quicktree -in a -out m TEMPFILES/outfile.stoc > TEMPFILES/dist";
+    cout << "calculating distance" << endl;
+    FILE *fp = popen(cmd, "r" );
+    char buff[1000];
+    while ( fgets( buff, sizeof buff, fp ) != NULL ) {//doesn't exit out
+	string line(buff);
+    }
+    pclose( fp );
+
+    //new
+    vector<string> ids;
+    vector<vector<double> > nums;
+    bool first = true;
+
+    ifstream pfile ("TEMPFILES/dist");
+    vector<string> tokens;
+    int nspecies;
+    if (pfile.is_open()){
+	int curspecies = 0;
+	while (! pfile.eof() ){
+	    // record the id as the first token
+	    // and the numbers below as the numbers
+	    if (first == false){
+		getline (pfile,line);
+		string del(" \t");
+		tokens.clear();
+		Tokenize(line, tokens, del);
+		if(tokens.size() >= 1){
+		    ids[curspecies] = tokens.at(0);
+		    double n1;
+		    for(int j = curspecies; j < nspecies;j++){
+			n1 = atof(tokens.at(j+1).c_str());
+			nums[curspecies][j] = n1;
+			nums[j][curspecies] = n1;
+		    }
+		    curspecies += 1;
+		}
+	    }else{
+		first = false;
+		getline (pfile,line);
+		TrimSpaces(line);
+		nspecies = atoi(line.c_str());
+		vector<double> cols(nspecies, 0);
+		nums = vector< vector<double> >(nspecies, cols);
+		ids = vector<string>(nspecies);
+	    }
+	}
+	pfile.close();
+    }
+// calculate the means
+    vector<double> mns(ids.size());
+    for(int i=0;i<nums.size();i++){
+	allmeans[ids[i]] = mean(nums[i]);
+    }
+}
+
+void SQLiteProfiler::remove_outliers(){
+    FastaUtil seqreader;
+    vector<Sequence> * sequences = new vector<Sequence>();
+    seqreader.readFile(profilefoldername+"FINAL.aln", *sequences);
+    int numseqs = sequences->size();
+    cout << numseqs << endl;
+    map<string,double> allmeans;
+    if(numseqs < 5000){
+	calculate_for_removal_quicktree(sequences,allmeans);
+    }else{
+	int NBREAKS = 10;
+	for (int i=0;i<NBREAKS;i++){
+	    vector<Sequence> tempsc1;
+	    if((i+1) < NBREAKS){
+		for(int j=(i*(numseqs/NBREAKS));j < ((numseqs/NBREAKS)*(i+1));j++){
+		    //TODO : there was a pointer problem here
+		    tempsc1.push_back(sequences->at(j));
+		}
+	    }else{
+		for(int j=(i*(numseqs/NBREAKS));j < numseqs;j++){
+		    //TODO : there was a pointer problem here
+		    tempsc1.push_back(sequences->at(j));
+		}
+	    }
+	    calculate_for_removal_quicktree(&tempsc1,allmeans);
+	}
+    }
+    // calculate the means
+    vector<double> mns(numseqs);
+    for(int i=0;i<numseqs;i++){
+	//TODO : there was a pointer problem here
+	mns[i] = allmeans[sequences->at(i).get_id()];
+    }
+    double sd = stdev(mns);
+    double mn = mean(mns);
+    double dev = sd*1.5+mn;//obviously changeable
+    // read in the fasta file
+    vector<Sequence> sc1;
+    for(int i=0;i<mns.size();i++){
+	if (mns[i] < dev){
+	    sc1.push_back(sequences->at(i));
+	}else{
+	    //cout << i << endl;
+	}
+    }
+    FastaUtil seqwriter;
+    const string fn1 = profilefoldername+"FINAL.aln.cln";
+    seqwriter.writeFileFromVector(fn1,sc1);
+}
+*/
