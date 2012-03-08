@@ -123,7 +123,7 @@ void SQLiteProfiler::prelimalign(){
 	gene_db.get_alignment_names(align_names);
 	profile_id_name_map = map<int,string>();
 	gene_db.copy_alignments_to_first_profiles(profile_id_name_map);
-	gene_db.get_alignment_nums(align_nums);
+	gene_db.get_profile_alignment_nums(align_nums);
     }else{//updaterun
 	//only copy over the ones that are updated
 	//only align those files that are updated
@@ -477,10 +477,12 @@ void SQLiteProfiler::clean_before_profile(string filename){
 	    if (count(removeem.begin(),removeem.end(),j)==0)
 		a += tempalseqs[i].get_sequence()[j];
 	}
+	cout <<tempalseqs[i].get_sequence() << endl;
 	tempalseqs[i].set_sequence(a);
     }
     remove((profilefoldername+filename).c_str());
     fu.writeFileFromVector(profilefoldername+filename,tempalseqs);
+    exit(0);
 }
 
 /*
@@ -526,7 +528,7 @@ int SQLiteProfiler::profile(map<int, map<int,double> > numlist){
 	    int profileout = gene_db.add_profile_alignment(firstfile,secondfile);
 	    profile_files.push_back(profileout);
 	    int ts2 = make_muscle_profile(firstfile,secondfile,profileout);
-//	    clean_before_profile("TEMPOUT.PROFILE");
+	    clean_before_profile("TEMPOUT.PROFILE");
 	    last_profile_file = ts2;
 	    match_and_add_profile_alignment_to_db(profileout);
 	    if(already == false){
@@ -571,10 +573,10 @@ int SQLiteProfiler::profile(map<int, map<int,double> > numlist){
 		for(int i=0;i<profile_files.size();i++){cout << "profile_files: " << profile_files[i]<< endl;} 
 		int profileout = gene_db.add_profile_alignment(firstfile,secondfile);
 		int s = make_muscle_profile(firstfile,secondfile,profileout);
+		clean_before_profile("TEMPOUT.PROFILE");
 		match_and_add_profile_alignment_to_db(profileout);
 		//clean
 		profile_files.push_back(profileout);
-//		clean_before_profile(s);
 		last_profile_file = s;
 		vector<int>::iterator it;
 		it = find (newnums.begin(), newnums.end(), secondfile);
@@ -582,9 +584,9 @@ int SQLiteProfiler::profile(map<int, map<int,double> > numlist){
 	    }else{
 		int profileout = gene_db.add_profile_alignment(firstfile,secondfile);
 		int s2 = make_muscle_profile(firstfile,secondfile,profileout);
+		clean_before_profile("TEMPOUT.PROFILE");
 		match_and_add_profile_alignment_to_db(profileout);
 		profile_files.push_back(profileout);
-//		clean_before_profile(s2);
 		last_profile_file = s2;
 		vector<int>::iterator it;
 		it = find (profile_files.begin(), profile_files.end(), secondfile);
@@ -612,9 +614,9 @@ int SQLiteProfiler::profile(map<int, map<int,double> > numlist){
 	
 	int profileout = gene_db.add_profile_alignment(firstfile,secondfile);
 	int s2 = make_muscle_profile(firstfile,secondfile,profileout);
+	clean_before_profile("TEMPOUT.PROFILE");
 	match_and_add_profile_alignment_to_db(profileout);
 	profile_files.push_back(s2);
-//	clean_before_profile(s2);
 	last_profile_file = s2;
     }
 
