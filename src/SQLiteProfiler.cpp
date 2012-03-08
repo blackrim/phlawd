@@ -121,9 +121,9 @@ void SQLiteProfiler::prelimalign(){
 	align_nums = vector<int>();
 	cout << "getting alignments" << endl;
 	gene_db.get_alignment_names(align_names);
-	gene_db.get_alignment_nums(align_nums);
 	profile_id_name_map = map<int,string>();
 	gene_db.copy_alignments_to_first_profiles(profile_id_name_map);
+	gene_db.get_alignment_nums(align_nums);
     }else{//updaterun
 	//only copy over the ones that are updated
 	//only align those files that are updated
@@ -447,26 +447,40 @@ void SQLiteProfiler::get_shortest_distance_with_dicts(vector<int> & nums,
     }
 }
 
-void SQLiteProfiler::clean_before_profile(int infile){
-    //NEED TO work this out, would be great to remove phyutility requirement
 /*
-    string tfilen = infile;
-    fix_bad_chars(tfilen);
-    string cmd = "phyutility -clean 0.10 -in ";
-    cmd += profilefoldername;
-    cmd += tfilen;
-    cmd += " -out ";
-    cmd += profilefoldername;
-    cmd += tfilen;
-
-    cout << cmd << endl;
-    FILE *fp = popen(cmd.c_str(), "r" );
-    char buff[1000];
-    while ( fgets( buff, sizeof buff, fp ) != NULL ) {//doesn't exit out
-	string line(buff);
+ * just cleaning the file that is there
+ * 0.1 is the current limit
+ */
+void SQLiteProfiler::clean_before_profile(string filename){
+    double percent = 0.1;
+    FastaUtil fu;
+    vector<Sequence> tempalseqs;
+    fu.readFile(profilefoldername+filename,tempalseqs);
+    cout << "cleaning seqs" << endl;
+    int seqlength = tempalseqs[0].get_sequence().size();
+    float fseql = float(seqlength);
+    vector<int> removeem;
+    for(int j=0;j<seqlength;j++){
+	int gaps = 0;
+	for(int i=0;i<tempalseqs.size();i++){
+	    if(tempalseqs[i].get_sequence()[j] == '-' || tempalseqs[i].get_sequence()[j] == 'N' || tempalseqs[i].get_sequence()[j] == 'n')
+		gaps += 1;
+	}
+	double curp = gaps/fseql;
+	if (curp > percent){
+	    removeem.push_back(j);
+	}
     }
-    pclose( fp );
-*/
+    for(int i=0;i<tempalseqs.size();i++){
+	string a;
+	for (int j=0;j<seqlength;j++){
+	    if (count(removeem.begin(),removeem.end(),j)==0)
+		a += tempalseqs[i].get_sequence()[j];
+	}
+	tempalseqs[i].set_sequence(a);
+    }
+    remove((profilefoldername+filename).c_str());
+    fu.writeFileFromVector(profilefoldername+filename,tempalseqs);
 }
 
 /*
@@ -512,7 +526,7 @@ int SQLiteProfiler::profile(map<int, map<int,double> > numlist){
 	    int profileout = gene_db.add_profile_alignment(firstfile,secondfile);
 	    profile_files.push_back(profileout);
 	    int ts2 = make_muscle_profile(firstfile,secondfile,profileout);
-	    clean_before_profile(ts2);
+//	    clean_before_profile("TEMPOUT.PROFILE");
 	    last_profile_file = ts2;
 	    match_and_add_profile_alignment_to_db(profileout);
 	    if(already == false){
@@ -560,7 +574,7 @@ int SQLiteProfiler::profile(map<int, map<int,double> > numlist){
 		match_and_add_profile_alignment_to_db(profileout);
 		//clean
 		profile_files.push_back(profileout);
-		clean_before_profile(s);
+//		clean_before_profile(s);
 		last_profile_file = s;
 		vector<int>::iterator it;
 		it = find (newnums.begin(), newnums.end(), secondfile);
@@ -570,7 +584,7 @@ int SQLiteProfiler::profile(map<int, map<int,double> > numlist){
 		int s2 = make_muscle_profile(firstfile,secondfile,profileout);
 		match_and_add_profile_alignment_to_db(profileout);
 		profile_files.push_back(profileout);
-		clean_before_profile(s2);
+//		clean_before_profile(s2);
 		last_profile_file = s2;
 		vector<int>::iterator it;
 		it = find (profile_files.begin(), profile_files.end(), secondfile);
@@ -600,7 +614,7 @@ int SQLiteProfiler::profile(map<int, map<int,double> > numlist){
 	int s2 = make_muscle_profile(firstfile,secondfile,profileout);
 	match_and_add_profile_alignment_to_db(profileout);
 	profile_files.push_back(s2);
-	clean_before_profile(s2);
+//	clean_before_profile(s2);
 	last_profile_file = s2;
     }
 

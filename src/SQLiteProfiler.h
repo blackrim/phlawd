@@ -65,7 +65,7 @@ private:
 				    ,map<string,string> * namesnum, map<int, map<int,double> > * numlist);
     void get_shortest_distance_with_dicts(vector<int>& nums,map<int, map<int,double> > & numlist, int * shortestnameone, 
 					  vector<int> * shortestnametwo);
-    void clean_before_profile(int infile);
+    void clean_before_profile(string infile);
     int profile(map<int, map<int,double> > numlist);
     void copy_final_file(string filename);
     string get_name_from_tax_id(string taxid);

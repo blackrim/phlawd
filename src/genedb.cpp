@@ -450,7 +450,6 @@ void GeneDB::copy_alignments_to_first_profiles(map<int, string> & profile_id_nam
 	name = to_string(query.getstr());
 	aid.push_back(tid);
 	names.push_back(name);
-	profile_id_name_map[tid] = name;
     }
     query.free_result();
     //add the new alignment
@@ -466,6 +465,7 @@ void GeneDB::copy_alignments_to_first_profiles(map<int, string> & profile_id_nam
 	rc = sqlite3_exec(conn2, sql.c_str(), 0, 0, 0);
 	int pid = sqlite3_last_insert_rowid(conn2);
 	sqlite3_exec(conn2, "COMMIT TRANSACTION", NULL, NULL, NULL);
+	profile_id_name_map[pid] = names[i];
 
 	sql = "select sequence_id,sequence from sequence_alignment_map where alignment_id = ";
 	sql += to_string(aid[i])+";";
