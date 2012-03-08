@@ -636,37 +636,18 @@ int SQLiteProfiler::make_muscle_profile(int profile1,int profile2,int outfile){
     cmd += "TEMPOUT.PROFILE";
     cout << "aligning" << endl;
     cout << cmd << endl;
-    FILE *fp = popen(cmd.c_str(), "r" );
+/*    FILE *fp = popen(cmd.c_str(), "r" );
     char buff[1000];
     while ( fgets( buff, sizeof buff, fp ) != NULL ) {//doesn't exit out
 	string line(buff);
     }
     pclose( fp );
+*/
+    system(cmd.c_str());
     test_outfile_exists(profilefoldername+"TEMPOUT.PROFILE");
     return outfile;
 }
 
-/*
- * copy final file to FINAL.aln
- */
-
-void SQLiteProfiler::copy_final_file(string filename){
-    string tfilen = filename;
-    fix_bad_chars(tfilen);
-    string cmd = "cp ";
-    cmd += profilefoldername;
-    cmd += tfilen;
-    cmd += " ";
-    cmd += profilefoldername;
-    cmd += "FINAL.aln";
-    cout << cmd << endl;
-    FILE *fp = popen(cmd.c_str(), "r" );
-    char buff[1000];
-    while ( fgets( buff, sizeof buff, fp ) != NULL ) {//doesn't exit out
-	string line(buff);
-    }
-    pclose( fp );
-}
 
 string SQLiteProfiler::get_name_from_tax_id(string taxid){
     Database conn(db);

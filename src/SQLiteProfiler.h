@@ -67,12 +67,7 @@ private:
 					  vector<int> * shortestnametwo);
     void clean_before_profile(string infile);
     int profile(map<int, map<int,double> > numlist);
-    void copy_final_file(string filename);
     string get_name_from_tax_id(string taxid);
-    void calculate_for_removal(vector<Sequence> * seqs,
-			       map<string,double> & allmeans);
-    void calculate_for_removal_quicktree(vector<Sequence> * seqs, map<string,double> & allmeans);
-    void remove_outliers();
     void rename_final_alignment(int alignid);
     int make_muscle_profile(int profile1,int profile2,int outprofile);
     double get_muscle_spscore(string filename);

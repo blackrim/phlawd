@@ -33,22 +33,7 @@ if test "x${mafft_var}" = xno; then
 The mafft program is required to be in the path
 --------------------------------------------------------])
 fi
-AC_CHECK_PROG([quicktree_var],[quicktree],[yes],[no])
-#change to WARN when wrapped into make
-if test "x${quicktree_var}" = xno; then
-   AC_MSG_ERROR([
---------------------------------------------------------
-The quicktree program is required to be in the path
---------------------------------------------------------])
-fi
-AC_CHECK_PROG([phyutility_var],[phyutility],[yes],[no])
-#change to WARN when wrapped into make
-if test "x${phyutility_var}" = xno; then
-   AC_MSG_ERROR([
---------------------------------------------------------
-The phyutility program is required to be in the path
---------------------------------------------------------])
-fi
+
 
 # Checks for header files.
 AC_CHECK_HEADERS([float.h malloc.h stdint.h stdlib.h string.h syslog.h unistd.h])
