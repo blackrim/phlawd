@@ -90,6 +90,8 @@ SQLiteConstructor::SQLiteConstructor(string cn, vector <string> searchstr, strin
 	gene_db.initialize(false);
     else
 	gene_db.initialize(true);
+	
+    genefoldername = genen+"_TEMPFILES/";
 
     known_seqs = new vector<Sequence>();
     user_seqs = new vector<Sequence>();
@@ -301,7 +303,7 @@ int SQLiteConstructor::run(){
 	}
     }
 
-    mkdir("TEMPFILES",S_IRWXU | S_IRWXG | S_IROTH | S_IWOTH);
+    mkdir(genefoldername.c_str(),S_IRWXU | S_IRWXG | S_IROTH | S_IWOTH);
 
     vector<vector<string> > start_res;
     vector<Sequence> startseqs; 
@@ -1172,7 +1174,7 @@ void SQLiteConstructor::reduce_genomes(vector<Sequence> * keep_seqs){
 	    /*
 	     * shrink with phyutility
 	     */
-	    const string tempfile = "TEMPFILES/genome_shrink";
+	    const string tempfile = genefoldername+"genome_shrink";
 	    vector<Sequence> sc1; 
 	    FastaUtil seqwriter;
 	    sc1.push_back(keep_seqs->at(i));
@@ -1180,28 +1182,22 @@ void SQLiteConstructor::reduce_genomes(vector<Sequence> * keep_seqs){
 	    sc1.push_back(known_seqs->at(maxknown));
 	    //}
 	    seqwriter.writeFileFromVector(tempfile,sc1);
-	    const char * cmd = "mafft --thread 2 --auto TEMPFILES/genome_shrink > TEMPFILES/genome_shrink_aln";
+	    string cmd = "mafft --thread 2 --auto ";
+	    cmd += genefoldername+"genome_shrink > ";
+	    cmd += genefoldername+"genome_shrink_aln";
 	    cout << "aligning" << endl;
-	    FILE *fp = popen(cmd, "r" );
-	    char buff[1000];
-	    while ( fgets( buff, sizeof buff, fp ) != NULL ) {//doesn't exit out
-		string line(buff);
-	    }
-	    pclose( fp );
-	    const char * cmd2 = "phyutility -clean 0.5 -in TEMPFILES/genome_shrink_aln -out TEMPFILES/genome_shrink_out";
+	    system(cmd.c_str());
+	    string cmd2 = "phyutility -clean 0.5 -in ";
+	    cmd2 += genefoldername+"genome_shrink_aln -out ";
+	    cmd2 += genefoldername+"genome_shrink_out";
 	    cout << "cleaning" << endl;
-	    FILE *fp2 = popen(cmd2, "r" );
-	    char buff2[1000];
-	    while ( fgets( buff2, sizeof buff2, fp2 ) != NULL ) {//doesn't exit out
-		string line(buff2);
-	    }
-	    pclose( fp2 );
+	    system(cmd2.c_str());
 	    /*
 	     * reading in the sequencing and replacing
 	     */
 	    FastaUtil seqreader;
 	    vector<Sequence> sequences;
-	    seqreader.readFile("TEMPFILES/genome_shrink_out", sequences);
+	    seqreader.readFile((genefoldername+"genome_shrink_out").c_str(), sequences);
 	    for (int j=0;j<sequences.size();j++){
 		if (sequences.at(j).get_id() ==  keep_seqs->at(i).get_id()){
 		    keep_seqs->at(i).set_sequence(sequences.at(j).get_sequence());
@@ -1378,31 +1374,37 @@ void SQLiteConstructor::make_mafft_multiple_alignment(vector<Sequence> * inseqs,
     for(unsigned int i=0;i<inuserseqs->size();i++){
 	sc1.push_back(inuserseqs->at(i));
     }
-    const string fn1 = "TEMPFILES/tempfile";
+    const string fn1 = genefoldername+"tempfile";
     seqwriter1.writeFileFromVector(fn1,sc1);
 
     //make alignment
     string cmd = "mafft --thread " + to_string(omp_get_max_threads());
-    cmd += " --auto TEMPFILES/tempfile > TEMPFILES/outfile";
+    cmd += " --auto ";
+    cmd += genefoldername+"tempfile > ";
+    cmd += genefoldername+"outfile 2> ";
+    cmd += genefoldername+"mafft.out";
     cout << "aligning" << endl;
+    /*
     FILE *fp = popen(cmd.c_str(), "r" );
     char buff[1000];
     while ( fgets( buff, sizeof buff, fp ) != NULL ) {//doesn't exit out
 	string line(buff);
     }
     pclose( fp );
-    
+    */
+    system(cmd.c_str());
 }
 
 double SQLiteConstructor::calculate_MAD_quicktree(){
-    const char * phcmd = "phyutility -concat -in TEMPFILES/outfile -out TEMPFILES/outfile.nex";
-    FILE *phfp = popen(phcmd, "r" );
-    pclose( phfp );
-
+    string phcmd = "phyutility -concat -in ";
+    phcmd += genefoldername+"outfile -out ";
+    phcmd += genefoldername+"outfile.nex";
+    
+	system(phcmd.c_str());
     ifstream infile;
     ofstream outfile;
-    infile.open ("TEMPFILES/outfile.nex",ios::in);
-    outfile.open ("TEMPFILES/outfile.stoc",ios::out);
+    infile.open ((genefoldername+"outfile.nex").c_str(),ios::in);
+    outfile.open ((genefoldername+"outfile.stoc").c_str(),ios::out);
     bool begin = false;
     bool end = false;
     string line;
@@ -1425,14 +1427,11 @@ double SQLiteConstructor::calculate_MAD_quicktree(){
     infile.close();
     outfile.close();
 
-    const char * cmd = "quicktree -in a -out m TEMPFILES/outfile.stoc > TEMPFILES/dist";
+    string cmd = "quicktree -in a -out m ";
+    cmd += genefoldername+"outfile.stoc > ";
+    cmd += genefoldername+"dist";
     cout << "calculating distance" << endl;
-    FILE *fp = popen(cmd, "r" );
-    char buff[1000];
-    while ( fgets( buff, sizeof buff, fp ) != NULL ) {//doesn't exit out
-	string line(buff);
-    }
-    pclose( fp );
+    system(cmd.c_str());
 
     vector<double> p_values;
     vector<double> jc_values;
@@ -1441,7 +1440,7 @@ double SQLiteConstructor::calculate_MAD_quicktree(){
      * read the matrix
      */
     //string line;
-    ifstream pfile ("TEMPFILES/dist");
+    ifstream pfile ((genefoldername+"dist").c_str());
     vector<string> tokens;
     int nspecies = 0;
     int curspecies = 0;
@@ -1964,7 +1963,7 @@ void SQLiteConstructor::remove_seq_from_seq_vector(vector<Sequence> * inseqs,str
 void SQLiteConstructor::match_aligned_file(vector<Sequence> * temp_seqs, vector<Sequence> * temp_user_seqs){
     FastaUtil fu;
     vector<Sequence> tempalseqs;
-    fu.readFile("TEMPFILES/outfile",tempalseqs);
+    fu.readFile(genefoldername+"outfile",tempalseqs);
     for(int i=0;i<tempalseqs.size();i++){
 	bool set = false;
 	for(int j=0;j<temp_seqs->size();j++){
@@ -1996,7 +1995,7 @@ void SQLiteConstructor::match_aligned_file(vector<Sequence> * temp_seqs, vector<
 void SQLiteConstructor::match_an_aligned_seq(Sequence * temp_seq){
     FastaUtil fu;
     vector<Sequence> tempalseqs;
-    fu.readFile("TEMPFILES/outfile",tempalseqs);
+    fu.readFile(genefoldername+"outfile",tempalseqs);
     bool set = false;
     for(int i=0;i<tempalseqs.size();i++){
 	if(tempalseqs[i].get_id() == to_string(temp_seq->get_sqlite_id())){
@@ -2014,7 +2013,7 @@ void SQLiteConstructor::match_an_aligned_seq(Sequence * temp_seq){
 void SQLiteConstructor::get_aligned_file(vector<Sequence> * temp_seqs){
     FastaUtil fu;
     vector<Sequence> tempalseqs;
-    fu.readFile("TEMPFILES/outfile",tempalseqs);
+    fu.readFile(genefoldername+"outfile",tempalseqs);
     for (int i=0;i<tempalseqs.size();i++){
 	tempalseqs[i].set_sqlite_id(atoi(tempalseqs[i].get_id().c_str()));
 	temp_seqs->push_back(tempalseqs[i]);

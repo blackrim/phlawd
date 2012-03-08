@@ -34,7 +34,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <limits>
-#include "DBSeq.h"
+#include "sequence.h" 
 
 using namespace std;
 
@@ -67,65 +67,62 @@ void Tokenize(const string& str, vector<string>& tokens,
 }
 
 void TrimSpaces( string& str)  {
-	// Trim Both leading and trailing spaces
-	size_t startpos = str.find_first_not_of(" \t\r\n"); // Find the first character position after excluding leading blank spaces
-	size_t endpos = str.find_last_not_of(" \t\r\n"); // Find the first character position from reverse af
+    // Trim Both leading and trailing spaces
+    size_t startpos = str.find_first_not_of(" \t\r\n"); // Find the first character position after excluding leading blank spaces
+    size_t endpos = str.find_last_not_of(" \t\r\n"); // Find the first character position from reverse af
 
-	// if all spaces or empty return an empty string
-	if(( string::npos == startpos ) || ( string::npos == endpos))
-	{
-		str = "";
-	}
-	else
-		str = str.substr( startpos, endpos-startpos+1 );
-
-	/*
-		    // Code for  Trim Leading Spaces only
-		    size_t startpos = str.find_first_not_of(� \t�); // Find the first character position after excluding leading blank spaces
-		    if( string::npos != startpos )
-		        str = str.substr( startpos );
-	 */
-
-	/*
-		    // Code for Trim trailing Spaces only
-		    size_t endpos = str.find_last_not_of(� \t�); // Find the first character position from reverse af
-		    if( string::npos != endpos )
-		        str = str.substr( 0, endpos+1 );
-	 */
+    // if all spaces or empty return an empty string
+    if(( string::npos == startpos ) || ( string::npos == endpos))
+    {
+	str = "";
+    }
+    else
+	str = str.substr( startpos, endpos-startpos+1 );
+    /*
+    // Code for  Trim Leading Spaces only
+    size_t startpos = str.find_first_not_of(� \t�); // Find the first character position after excluding leading blank spaces
+    if( string::npos != startpos )
+    str = str.substr( startpos );
+    */
+    /*
+    // Code for Trim trailing Spaces only
+    size_t endpos = str.find_last_not_of(� \t�); // Find the first character position from reverse af
+    if( string::npos != endpos )
+    str = str.substr( 0, endpos+1 );
+    */
 }
 
 double median(vector<double> x){
-	sort(x.begin(),x.end());
-	double n = x.size();
-	return ( x [ n / 2.0 ] + x [ n / 2.0 - 1.0] ) / 2.0F;
+    sort(x.begin(),x.end());
+    double n = x.size();
+    return ( x [ n / 2.0 ] + x [ n / 2.0 - 1.0] ) / 2.0F;
 }
 
 double mean(vector<double> & x){
-	double size = x.size();
-	double ret = 0;
-	for(int i=0;i<x.size();i++){
-		ret += x[i]/size;
-	}
-	return ret;
+    double size = x.size();
+    double ret = 0;
+    for(int i=0;i<x.size();i++){
+	ret += x[i]/size;
+    }
+    return ret;
 }
 
 double stdev(vector<double> & x){
-	double mn = mean(x);
-	vector <double> devs(x.size());
-	for(int i=0;i<x.size();i++){
-		devs[i] = x[i] - mn;
-		devs[i] = (devs[i]*devs[i]);
-	}
-	double sum = 0;
-	for(int i=0;i<x.size();i++){
-		sum += devs[i];
-	}
-	sum = (sum/(x.size()-1));
-	return sqrt(sum);
+    double mn = mean(x);
+    vector <double> devs(x.size());
+    for(int i=0;i<x.size();i++){
+	devs[i] = x[i] - mn;
+	devs[i] = (devs[i]*devs[i]);
+    }
+    double sum = 0;
+    for(int i=0;i<x.size();i++){
+	sum += devs[i];
+    }
+    sum = (sum/(x.size()-1));
+    return sqrt(sum);
 }
 
-int getdir (string dir, vector<string> &files)
-{
+int getdir (string dir, vector<string> &files){
     DIR *dp;
     struct dirent *dirp;
     if((dp  = opendir(dir.c_str())) == NULL) {
@@ -139,90 +136,84 @@ int getdir (string dir, vector<string> &files)
     	 */
     	bool test = false;
     	if(*(string(dirp->d_name).begin())=='\.')
-    		test = true;
+	    test = true;
     	if(test == false){
-    		files.push_back(string(dirp->d_name));
+	    files.push_back(string(dirp->d_name));
     	}
     }
     closedir(dp);
     return 0;
 }
 
-void splitstring(string str, string seperater, string &first, string &second) //will split a string into 2
-{
-     int i = (int)str.find(seperater); //find seperator
-     if(i != -1)
-     {
-          int y = 0;
-          if(!str.empty())
-          {
-               while(y != i)
-               {
-                    first += str[y++]; //creating first string
-               }
-               y = y+(int)seperater.length(); //jumping forward seperater length
-               while(y != str.length())
-               {
-                    second += str[y++]; //creating second string
-               }
+void splitstring(string str, string seperater, string &first, string &second){
+    int i = (int)str.find(seperater); //find seperator
+    if(i != -1){
+	int y = 0;
+	if(!str.empty()){
+	    while(y != i){
+		first += str[y++]; //creating first string
+	    }
+	    y = y+(int)seperater.length(); //jumping forward seperater length
+	    while(y != str.length()){
+		second += str[y++]; //creating second string
+	    }
 
-          }
-     }
-     else
-     {
-          first = str;
-          second = "NULL"; //if seperator is not there then second string == null
-     }
+	}
+    }
+    else{
+	first = str;
+	second = "NULL"; //if seperator is not there then second string == null
+    }
 }
 
 void fix_bad_chars(string & tfilen){
-	size_t found;
-	found = tfilen.find(" ");
-	while(found!=string::npos){
-		tfilen.replace(found,1,"\\ ");
-		found = tfilen.find(" ",found+2);
-	}
-	//(take out the parenthetical stuff too)
-	found = tfilen.find("(");
-	while(found!=string::npos){
-		tfilen.replace(found,1,"\\(");
-		found = tfilen.find("(",found+2);
-	}
-	found = tfilen.find(")");
-	while(found!=string::npos){
-		tfilen.replace(found,1,"\\)");
-		found = tfilen.find(")",found+2);
-	}
+    size_t found;
+    found = tfilen.find(" ");
+    while(found!=string::npos){
+	tfilen.replace(found,1,"\\ ");
+	found = tfilen.find(" ",found+2);
+    }
+    //(take out the parenthetical stuff too)
+    found = tfilen.find("(");
+    while(found!=string::npos){
+	tfilen.replace(found,1,"\\(");
+	found = tfilen.find("(",found+2);
+    }
+    found = tfilen.find(")");
+    while(found!=string::npos){
+	tfilen.replace(found,1,"\\)");
+	found = tfilen.find(")",found+2);
+    }
 }
 
 void fix_bad_chars_for_seq_names(string & tfilen){
-	size_t found;
-	found = tfilen.find(" ");
-	while(found!=string::npos){
-		tfilen.replace(found,1,"_");
-		found = tfilen.find(" ",found+2);
-	}
-	//(take out the parenthetical stuff too)
-	found = tfilen.find("(");
-	while(found!=string::npos){
-		tfilen.replace(found,1,"_");
-		found = tfilen.find("(",found+2);
-	}
-	found = tfilen.find(")");
-	while(found!=string::npos){
-		tfilen.replace(found,1,"_");
-		found = tfilen.find(")",found+2);
-	}
-	found = tfilen.find(".");
-	while(found!=string::npos){
-		tfilen.replace(found,1,"_");
-		found = tfilen.find(".",found+2);
-	}
-	found = tfilen.find("&");
-	while(found!=string::npos){
-		tfilen.replace(found,1,"_");
-		found = tfilen.find("&",found+2);
-	}
+    size_t found;
+    found = tfilen.find(" ");
+    while(found!=string::npos){
+	tfilen.replace(found,1,"_");
+	found = tfilen.find(" ",found+2);
+    }
+    //(take out the parenthetical stuff too)
+    found = tfilen.find("(");
+    while(found!=string::npos){
+	tfilen.replace(found,1,"_");
+	found = tfilen.find("(",found+2);
+    }
+    found = tfilen.find(")");
+    while(found!=string::npos){
+	tfilen.replace(found,1,"_");
+	found = tfilen.find(")",found+2);
+    }
+    found = tfilen.find(".");
+    while(found!=string::npos){
+	tfilen.replace(found,1,"_");
+	found = tfilen.find(".",found+2);
+    }
+    found = tfilen.find("&");
+    while(found!=string::npos){
+	tfilen.replace(found,1,"_");
+	found = tfilen.find("&",found+2);
+    }
 }
 
 string int_to_string(int n){
@@ -250,13 +241,13 @@ int get_swps3_score_and_rc_cstyle(SBMatrix mat,  Sequence * inseq1, Sequence * i
  * output = vector of the gi strings
  */
 vector<string> query_mask(string url){
-	string systemcall = "curl "+url;
-	systemcall += " > gbmask.downloaded";
-	cout << systemcall << endl;
-	//need a check here to make sure that it is valid
-	system(systemcall.c_str());
-	vector<string> returngis;
+    string systemcall = "curl "+url;
+    systemcall += " > gbmask.downloaded";
+    cout << systemcall << endl;
+    //need a check here to make sure that it is valid
+    system(systemcall.c_str());
+    vector<string> returngis;
 
-	return returngis;
+    return returngis;
 }
 

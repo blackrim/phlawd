@@ -66,7 +66,7 @@ SQLiteProfiler::SQLiteProfiler(string gn, string gene_dbn,string cn, string dbs,
                               gene_name(gn),gene_db_name(gene_dbn),
 			      use_orphan(false), cladename(cn),db(dbs),automated(autom),updatedb(updb),
 			      usertree(false){
-    profilefoldername = gene_name+"_PROFILE/";
+    profilefoldername = gene_name+"_TEMPFILES/";
     gene_db= GeneDB(gene_db_name);
 }
 
@@ -338,7 +338,7 @@ void SQLiteProfiler::create_distances(string clade_name,map<int, map<int,double>
 	Database conn(db);
 	//change to ncbi id
 	sql = "SELECT ncbi_id FROM taxonomy WHERE ncbi_id = "+(*it).second+";";//names[i]+";";
-	cout << sql << endl;
+//	cout << sql << endl;
 	Query query2(conn);
 	query2.get_result(sql);
 	string nameid = get_right_one(allids, query2);
@@ -442,7 +442,7 @@ void SQLiteProfiler::get_shortest_distance_with_dicts(vector<int> & nums,
     for(int j=0;j<align_nums.size();j++){
 	if(distances[align_nums[j]]==shortestdistance && distances[align_nums[j]]!=SIXES){
 	    shortestnumtwo->push_back(align_nums[j]);//should this be nums
-	    cout << "f " <<align_nums[j] << " " <<distances[align_nums[j]] << endl;
+//	    cout << "f " <<align_nums[j] << " " <<distances[align_nums[j]] << endl;
 	}
     }
 }
@@ -563,7 +563,7 @@ int SQLiteProfiler::profile(map<int, map<int,double> > numlist){
 			bestscore = score;
 			bestsn = shortestnamestwo->at(i);
 		    }
-		    cout << "score: " << score << endl;
+//		    cout << "score: " << score << endl;
 		}
 		secondfile = bestsn;
 		cout << "secondfile: " << secondfile << endl;
@@ -633,9 +633,10 @@ int SQLiteProfiler::make_muscle_profile(int profile1,int profile2,int outfile){
     cmd += profilefoldername;
     cmd += "TEMP2.profile -out ";
     cmd += profilefoldername;
-    cmd += "TEMPOUT.PROFILE";
+    cmd += "TEMPOUT.PROFILE 2> ";
+	cmd += profilefoldername+"muscle.out";
     cout << "aligning" << endl;
-    cout << cmd << endl;
+//    cout << cmd << endl;
 /*    FILE *fp = popen(cmd.c_str(), "r" );
     char buff[1000];
     while ( fgets( buff, sizeof buff, fp ) != NULL ) {//doesn't exit out
@@ -679,8 +680,10 @@ double SQLiteProfiler::get_muscle_spscore(string filename){
     string cmd = "muscle -spscore ";
     cmd += profilefoldername;
     cmd += filename;
-    cmd += " -log prlog";
-    cout << cmd << endl;
+    cmd += " -log ";
+	cmd += profilefoldername+"prlog 2> ";
+	cmd += profilefoldername+"muscle.out";
+//    cout << cmd << endl;
     FILE *fp = popen(cmd.c_str(), "r" );
     char buff[1000];
     while ( fgets( buff, sizeof buff, fp ) != NULL ) {//doesn't exit out
@@ -689,7 +692,7 @@ double SQLiteProfiler::get_muscle_spscore(string filename){
     pclose( fp );
     //read file
     double score = 0;
-    ifstream ifs("prlog");
+    ifstream ifs((profilefoldername+"prlog").c_str());
     string line;
     while(getline(ifs,line)){
 	TrimSpaces(line);

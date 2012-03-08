@@ -6,7 +6,6 @@
 #include <map>
 
 #include "utils.h"
-#include "DBSeq.h"
 #include "sequence.h"
 
 using namespace std;

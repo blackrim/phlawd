@@ -601,7 +601,7 @@ int GeneDB::add_profile_alignment(int child_id1, int child_id2){
     sql += to_string(child_id2)+",'";
     sql += to_string(0)+"');";//not an ncbi 
     rc = sqlite3_exec(conn2, sql.c_str(), 0, 0, 0);
-    cout << sql << " " << rc << endl;
+//    cout << sql << " " << rc << endl;
     int pid = sqlite3_last_insert_rowid(conn2);
     sqlite3_exec(conn2, "COMMIT TRANSACTION", NULL, NULL, NULL);
     return pid;
@@ -702,10 +702,10 @@ void GeneDB::get_updated_profs_names_delete_old(vector<string> & updatedprofs,ve
 	string name;
 	sid = queryt.getval();
 	name = to_string(queryt.getstr());
-	cout << "notupdatedsearch: " << sid << " " << name << endl;
+//	cout << "notupdatedsearch: " << sid << " " << name << endl;
 	if(count(updatedprofs.begin(),updatedprofs.end(),name)==0){
 	    notupdatedprofnums.push_back(int(sid));
-	    cout << "sid: " << sid << endl;
+//	    cout << "sid: " << sid << endl;
 	}
     }
     queryt.free_result();

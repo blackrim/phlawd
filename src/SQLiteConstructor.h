@@ -48,6 +48,7 @@ private:
     vector <string> search;
     string gene_name;
     string gene_db_name;
+	string genefoldername;
     GeneDB gene_db;
     double mad_cutoff;
     double coverage;
