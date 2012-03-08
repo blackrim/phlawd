@@ -301,7 +301,6 @@ int SQLiteConstructor::run(){
 	}
     }
 
-    // if temp directory doesn't exist
     mkdir("TEMPFILES",S_IRWXU | S_IRWXG | S_IROTH | S_IWOTH);
 
     vector<vector<string> > start_res;
@@ -379,15 +378,10 @@ int SQLiteConstructor::run(){
 
     //use blast to idenify seqs and rc
     vector<Sequence> * keep_seqs = new vector<Sequence>();
-
-    /*
-     * comparing the sequences
-     */
     get_same_seqs_openmp_SWPS3(startseqs,keep_seqs);
     cout << "blasted: "<< keep_seqs->size() << endl;
     //assuming for now that all the user seqs are hits
 
-    //remove duplicate names
     remove_duplicates_SWPS3(keep_seqs);
     cout << "dups: "<< keep_seqs->size() << endl;
     //if userguidetree overlaps with less than a certain percentage, usertree = false
@@ -402,7 +396,7 @@ int SQLiteConstructor::run(){
 	    exit(0);
 	}
     }
-    //reduce genome sequences to something a more manageable size for alignment programs
+
     reduce_genomes(keep_seqs);
 	
     //get the list of files and record the higher taxa name and 
@@ -442,7 +436,6 @@ int SQLiteConstructor::run(){
 	for(int j=0;j<toremove.size();j++){
 	    user_seqs->erase(user_seqs->begin()+toremove[toremove.size()-(j+1)]);
 	}
-	//end the program if there is nothing to update
 	if(user_seqs->size() == 0 ){
 	    cout << "There are no new user sequences to add." << endl;
 	    ufafile.close();
@@ -500,7 +493,6 @@ int SQLiteConstructor::run(){
 			    //add the sequences from the file into keep_seqs , this should be easier when moving to sqlite
 			    add_seqs_from_db_to_seqs_vector(align_names[i],keep_seqs,stored_seqs);
 			    gene_db.remove_alignment_by_name(align_names[i]);
-			    //delete the alignment and the sequence alignment maps
 			    cout << "deleting " << align_names[i] << endl;
 			}
 			break;
@@ -508,11 +500,6 @@ int SQLiteConstructor::run(){
 		}
 	    }
 	    cout <<"seqs to process: " << keep_seqs->size() << endl;
-//	    cout << "LIST OF SEQS" << endl;
-//	    for(int i=0;i<keep_seqs->size();i++){
-//		cout << keep_seqs->at(i).get_ncbi_tax_id() << " " << keep_seqs->at(i).get_ncbi_gi_id() << endl;
-//	    }
-//	    exit(0);
 	}else{//usertree == true
 	    //can do seq similarity, tree building distance, or ncbi
 	    //going to try ncbi first
@@ -603,8 +590,6 @@ int SQLiteConstructor::run(){
 
     //saturation tests
     if (updateDB == true) {
-	//using the snames as the list of clade names
-	//using the snames_ids as the list of ncbi_taxon_ids
 	saturation_tests(sname_ids, snames, keep_seqs);
     }else{
 	write_gi_numbers(keep_seqs);

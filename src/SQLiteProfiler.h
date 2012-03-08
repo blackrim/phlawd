@@ -51,9 +51,13 @@ private:
     bool updatedb;
     Tree * userguidetree;
     bool usertree;
+    map<int, string> profile_id_name_map;
+    vector<int> updatednums;
+    vector<int> updatedprofiles;
+
+//functions
     void get_children(string in_id, vector<string> * in_ids, vector<string> * in_keepids);
     vector<string> get_final_children(string id);
-    int count_seqs(string dirc, string file_name);
     string get_right_one(vector<string> allids,Query & res);
     vector<string> get_left_right_children(string id);
     void create_distances(string clade_name,map<int, map<int,double> > * numlist);
@@ -71,16 +75,6 @@ private:
     void remove_outliers();
     void rename_final_alignment(int alignid);
     int make_muscle_profile(int profile1,int profile2,int outprofile);
-
-    map<int, string> profile_id_name_map;
-
-    //updated runs things
-    vector<string> updatedfiles;
-    vector<string> profilerun;
-    map<string,vector<string> > profilekey;
-    vector<string> flaggedprofiles; // these are the ones that need to be rerun
-    void update_profile();
-    string get_profilekey_value(string profile_string);
     double get_muscle_spscore(string filename);
     void test_outfile_exists(string filename);
     void match_and_add_profile_alignment_to_db(int profileid);

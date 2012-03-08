@@ -73,82 +73,49 @@ SQLiteProfiler::SQLiteProfiler(string gn, string gene_dbn,string cn, string dbs,
 void SQLiteProfiler::prelimalign(){
     mkdir(profilefoldername.c_str(),S_IRWXU | S_IRWXG | S_IROTH | S_IWOTH);
     bool standard = true;
+    updatednums = vector<int> ();
     if(updatedb == true){
 	vector<string> samefiles; //files were not updated at all
 	bool newfiles=false; // if there are new files from MAD in align stage, kick out and tree as new for now 
 	vector<string> originalalnfiles;
 	vector<string> curproffiles;
-	//TODO: could do more for comparing these
 	gene_db.get_alignment_names(originalalnfiles);
 	gene_db.get_first_profile_alignments(curproffiles);
-	if (originalalnfiles.size() != curproffiles.size())
+	if (originalalnfiles.size() != curproffiles.size() || originalalnfiles.size() == 1)
 	    newfiles = true;
+	else{//double check that there aren't new ones
+	    std::sort(originalalnfiles.begin(), originalalnfiles.end());
+	    std::sort(curproffiles.begin(), curproffiles.end());
+	    std::vector<string> v3;
+	    std::set_intersection(originalalnfiles.begin(), originalalnfiles.end(), curproffiles.begin(), curproffiles.end(), std::back_inserter(v3));
+	    if (v3.size() != originalalnfiles.size())
+		newfiles = true;
+	}
 	if (newfiles == true){
 	    gene_db.remove_profile_alignments();
 	    standard = true;
 	    updatedb = false;
 	}else{//update the profiles
 	    standard = false;
-	    //files to skip are record.log, and the original alignment files, except for the updated ones
-	    //delete everything else
-	    //reading the record.log
-	    string tname = profilefoldername+"/record.log";
-	    ifstream ifs(tname.c_str());
-	    string line;
-	    while(getline(ifs,line)){
-		vector<string> tokens;
-		string del(",");
-		tokens.clear();
-		Tokenize(line,tokens,del);
-		for(int i=0;i<tokens.size();i++){TrimSpaces(tokens[i]);}
-		profilerun.push_back(tokens[0]);
-		vector<string> tokens2;
-		string del2("++");
-		tokens2.clear();
-		Tokenize(tokens[1],tokens2,del2);
-		//look to see if an updated file is in the profile
-		for(unsigned int i=0;i<updatedfiles.size();i++){
-		    size_t found1 = tokens2[0].find(updatedfiles[i]);
-		    size_t found2 = tokens2[1].find(updatedfiles[i]);
-		    //cout << found1 << " " << found2 << " " << tokens2[0] << " " << tokens2[1] << " " << updatedfiles[i] << endl;
-		    if(found1 != string::npos){// find it in the first part of the profile
-			string tname = profilefoldername+"/"+tokens[0];
-			cout << "removing profile file: " << tname << endl;
-			remove(tname.c_str());
-			flaggedprofiles.push_back(tokens[0]);
-		    }else if(found2 != string::npos){ //find it in the second part of the profile
-			string tname = profilefoldername+"/"+tokens[0];
-			cout << "removing profile file: " << tname << endl;
-			remove(tname.c_str());
-			flaggedprofiles.push_back(tokens[0]);
-		    }
+	    vector<string> updatedprofs;
+	    vector<int> updatedprofsnums;//these will be the profile ids that are updated
+	    vector<int> notupdatedprofsnums;//these will not be updated
+	    //TODO: start editing here, need the 
+	    gene_db.get_updated_profs_names_delete_old(updatedprofs,updatedprofsnums,notupdatedprofsnums);
+	    updatedprofiles.clear();
+	    for (int i=0;i<notupdatedprofsnums.size();i++){
+		int tid = gene_db.get_deepest_profile_for_alignment(notupdatedprofsnums[i]);
+		if (tid == -1){
+		    updatednums.push_back(notupdatedprofsnums[i]);
+		    cout << "id: " << notupdatedprofsnums[i] << endl;
 		}
-		vector<string> tvec;
-		tvec.push_back(tokens2[0]);
-		tvec.push_back(tokens2[1]);
-		profilekey[tokens[0]] =tvec;
-	    }
-	    //deleting things
-	    for(unsigned int i=0;i<updatedfiles.size();i++){
-		string tname = profilefoldername+"/"+updatedfiles[i];
-		cout << "removing updated file: " << tname << endl;
-		remove(tname.c_str());
-	    }
-	    //delete everything that isn't in the same file or in the profilerun vector
-	    for(unsigned int i=0;i<curproffiles.size();i++){
-		if(count(samefiles.begin(),samefiles.end(),curproffiles[i]) == 0){
-		    if(count(profilerun.begin(),profilerun.end(),curproffiles[i]) == 0){
-			if(curproffiles[i] != "record.log"){
-			    string tname = profilefoldername+"/"+curproffiles[i];
-			    cout << "removing file: "<< tname << endl;
-			    remove(tname.c_str());
-			}
-		    }
+		else if(count(updatedprofiles.begin(),updatedprofiles.end(),tid)==0){
+		    updatedprofiles.push_back(tid);
+		    cout << "tid: " << tid << endl;
 		}
 	    }
 	}
     }
-	
     if(standard == true){//not an update run
 	align_names = vector<string>();
 	align_nums = vector<int>();
@@ -158,78 +125,17 @@ void SQLiteProfiler::prelimalign(){
 	profile_id_name_map = map<int,string>();
 	gene_db.copy_alignments_to_first_profiles(profile_id_name_map);
     }else{//updaterun
+	//only copy over the ones that are updated
 	//only align those files that are updated
 	align_names = vector<string>();
-	cout << "aligning updated files" << endl;
-	for(unsigned int i=0;i<updatedfiles.size();i++){
-	    int intReturn = count_seqs(gene_name,updatedfiles[i]);
-	    bool many = false;
-	    if(intReturn > 1){
-		many = true;
-	    }
-	    if(many == false){
-		string cmd = "cp ";
-		cmd += gene_name+"/";
-		string tfilen = updatedfiles[i];
-		fix_bad_chars(tfilen);
-		cmd += tfilen;
-		cmd += " ";
-		cmd += profilefoldername;
-		cmd += tfilen;//fix spaces here
-		cout << "copying file with single fasta" << endl;
-		cout << cmd << endl;
-		FILE *fp = popen(cmd.c_str(), "r" );
-		char buff[1000];
-		while ( fgets( buff, sizeof buff, fp ) != NULL ) {//doesn't exit out
-		    string line(buff);
-		}
-		pclose( fp );
-	    }else{
-		cout << updatedfiles[i] << endl;
-		string cmd = "mafft --thread "+to_string(omp_get_max_threads());
-		cmd += " --auto ";
-		cmd += gene_name+"/";
-		string tfilen = updatedfiles[i];
-		fix_bad_chars(tfilen);
-		cmd += tfilen;
-		cmd += " > ";
-		cmd += profilefoldername;
-		cmd += tfilen;//fix spaces here
-		cout << "prelim aligning" << endl;
-		cout << cmd << endl;
-		FILE *fp = popen(cmd.c_str(), "r" );
-		char buff[1000];
-		while ( fgets( buff, sizeof buff, fp ) != NULL ) {//doesn't exit out
-		    string line(buff);
-		}
-		pclose( fp );
-	    }
-	    if(intReturn > 100){
-//TODO correct this
-//		clean_before_profile(updatedfiles[i]);
-		
-	    }
-	}
-    }
-}
+	align_nums = vector<int>();
+	cout << "getting updated alignment files" << endl;
+	profile_id_name_map = map<int,string>();
 
-//TODO: can use the database alignments for this query
-int SQLiteProfiler::count_seqs(string dirc, string file_name){
-    string cmd = "grep -c \\> ";
-    cmd += dirc+"/";
-    string tfilen = file_name;
-    fix_bad_chars(tfilen);
-    cmd += tfilen;
-    FILE *fp = popen(cmd.c_str(), "r" );
-    char buff[1000];
-    int intReturn;
-    while ( fgets( buff, sizeof buff, fp ) != NULL ) {//doesn't exit out
-	string line(buff);
-	intReturn = atoi(line.c_str());
-	break;
+	gene_db.copy_alignments_to_first_profiles_updated(profile_id_name_map,updatednums);
+	gene_db.get_alignment_names(align_names);
+	gene_db.get_profile_alignment_nums(align_nums);
     }
-    pclose( fp );
-    return intReturn;
 }
 
 void SQLiteProfiler::set_user_guide_tree(Tree * tree){
@@ -240,53 +146,28 @@ void SQLiteProfiler::set_user_guide_tree(Tree * tree){
 void SQLiteProfiler::run(){
     cout << "starting run" << endl;
     int finalaln;
-    if(updatedb == false){//standard
-	if(align_nums.size() > 1){
-	    map<string,string> numnames;
-	    map<string,string> namesnum;
-	    map<int, map<int,double> > numlist;
-	    //TODO: make sure that this works with update , incomplete user guide tree
-	    if(usertree == true){
-		cout << "user guide tree" << endl;
-		create_distances_user_tree(align_names,&numnames,&namesnum,&numlist);
-	    }else{//use ncbi tree
-		cout << "ncbi guide tree" << endl;
-		create_distances(cladename,&numlist);
-	    }
-	    //start profiling
-	    cout<<"profiling"<<endl;
-	    finalaln = profile(numlist);
-	}else{
-	    finalaln = 1;
+    if(align_nums.size() > 1){
+	map<string,string> numnames;
+	map<string,string> namesnum;
+	map<int, map<int,double> > numlist;
+	//TODO: make sure that this works with update , incomplete user guide tree
+	if(usertree == true){
+	    cout << "user guide tree" << endl;
+	    create_distances_user_tree(align_names,&numnames,&namesnum,&numlist);
+	}else{//use ncbi tree
+	    cout << "ncbi guide tree" << endl;
+	    create_distances(cladename,&numlist);
 	}
-    }else{//updatedb
-	update_profile();
+	//start profiling
+	cout<<"profiling"<<endl;
+	finalaln = profile(numlist);
+    }else{
+	finalaln = 1;
     }
+    if (updatedb == true)
+	gene_db.toggle_updated_all_off();
     rename_final_alignment(finalaln);//requires FINAL.aln
     //remove_outliers
-}
-
-//for updating alignments
-//send  the profile key and a profile strings
-//
-//return the string if there is no match
-//return the profile number (as a string if there is a match)
-string SQLiteProfiler::get_profilekey_value(string profile_string){
-	bool match = false;
-	string match_string;
-	for(unsigned int i= 0; i< profilerun.size(); i++){
-		vector<string> tstrings = profilekey[profilerun[i]];
-		string combined = tstrings[0]+"__"+tstrings[1];
-		if (combined == profile_string){
-			match = true;
-			match_string = profilerun[i];
-			break;
-		}
-	}
-	if(match == false){
-		return profile_string;
-	}
-	return match_string;
 }
 
 void SQLiteProfiler::get_children(string in_id, vector<string> * in_ids, vector<string> * in_keepids){
@@ -457,6 +338,7 @@ void SQLiteProfiler::create_distances(string clade_name,map<int, map<int,double>
 	Database conn(db);
 	//change to ncbi id
 	sql = "SELECT ncbi_id FROM taxonomy WHERE ncbi_id = "+(*it).second+";";//names[i]+";";
+	cout << sql << endl;
 	Query query2(conn);
 	query2.get_result(sql);
 	string nameid = get_right_one(allids, query2);
@@ -505,7 +387,7 @@ void SQLiteProfiler::create_distances(string clade_name,map<int, map<int,double>
 	    }
 	}
 	(*numlist)[(*it).first] = tdistance;
-	cout << "distances complete: "<< (*it).second << endl;
+	cout << "distances complete: "<< (*it).second << " " <<(*it).first << endl;
     }
 }
 
@@ -597,6 +479,14 @@ int SQLiteProfiler::profile(map<int, map<int,double> > numlist){
     bool muscle = true;
     vector<int> profile_files;
     vector<int> newnums(align_nums.begin(),align_nums.end());
+    if (updatedb == true){
+	//need to reduce the newnums to just those that have been updated
+	newnums = updatednums;
+	for (int i=0;i<newnums.size();i++){cout << "newnums: " << newnums[i]<< endl;}
+	//add the existing profiles to profile_files
+	profile_files = updatedprofiles;
+	for (int i=0;i<profile_files.size();i++){cout << "profile_files: " << profile_files[i]<< endl;}
+    }
     int last_profile_file; //for changing to FINAL.aln
     while (newnums.size() > 0){
 	int shortestnameone;
@@ -662,6 +552,9 @@ int SQLiteProfiler::profile(map<int, map<int,double> > numlist){
 		    cout << "score: " << score << endl;
 		}
 		secondfile = bestsn;
+		cout << "secondfile: " << secondfile << endl;
+		for(int i=0;i<newnums.size();i++){cout << "newnums: " << newnums[i]<< endl;} 
+		for(int i=0;i<profile_files.size();i++){cout << "profile_files: " << profile_files[i]<< endl;} 
 		int profileout = gene_db.add_profile_alignment(firstfile,secondfile);
 		int s = make_muscle_profile(firstfile,secondfile,profileout);
 		match_and_add_profile_alignment_to_db(profileout);
@@ -695,35 +588,6 @@ int SQLiteProfiler::profile(map<int, map<int,double> > numlist){
 
     while(profile_files.size() > 1){
 //TODO: choose the best, for now just choose any two
-/*
-	int shortestnameone;
-	vector<int> * shortestnamestwo = new vector<int>();
-	get_shortest_distance_with_dicts(align_nums,numlist, &shortestnameone, shortestnamestwo);
-	vector<string> tokens;
-	string del("_");
-	Tokenize(profile_files[0], tokens, del);
-	string test1 = tokens[0].c_str();
-	string numtest1 = namesnum[test1];
-	string bestfile = "";
-	double bestsc = 1000000;
-	for(int i=1;i<profile_files.size();i++){
-	    double tdis = 100000;
-	    tokens.clear();
-	    Tokenize(profile_files[i], tokens, del);
-	    for(int j=0;j<tokens.size();j++){
-		//cout << tokens[j] << endl;
-		//cout << numtest1 << "==" << namesnum[tokens[j]] <<endl;
-		//cout << numlist[atoi(numtest1.c_str())][atoi(namesnum[tokens[j]].c_str())] << endl;
-		if (tdis > numlist[atoi(numtest1.c_str())][atoi(namesnum[tokens[j]].c_str())]){
-		    tdis = numlist[atoi(numtest1.c_str())][atoi(namesnum[tokens[j]].c_str())];
-		}
-	    }
-	    if(tdis < bestsc){
-		bestsc = tdis;
-		bestfile = profile_files[i];
-	    }
-	}
-*/
 	int firstfile = profile_files[0];
 	int secondfile = profile_files[1];
 	vector<int>::iterator it;
@@ -741,35 +605,6 @@ int SQLiteProfiler::profile(map<int, map<int,double> > numlist){
     }
 
     return last_profile_file;
-}
-
-/*
- * The idea here is to run through the profilerun (and therefore profilekey)
- * rerunning all the flaggedprofiles (in the vector)
- *
- * They are already premapped so you are just rerunning the ones that have updated seqs
- */
-void SQLiteProfiler::update_profile(){
-    for(unsigned int i=0;i<profilerun.size();i++){
-	cout << count(flaggedprofiles.begin(),flaggedprofiles.end(),profilerun[i])  << " " << profilerun[i] << endl;
-	if(count(flaggedprofiles.begin(),flaggedprofiles.end(),profilerun[i]) > 0){
-	    cout << "reruning " << profilerun[i] << endl;
-	    string profile1 = get_profilekey_value(profilekey[profilerun[i]][0]);
-	    string profile2 = get_profilekey_value(profilekey[profilerun[i]][1]);
-	    cout << profile1 << " " << profile2 <<endl;
-//	    string ts2 = make_muscle_profile(profile1,profile2,profilerun[i]);
-//TODO: needs to be changed to int
-	    //clean
-//	    clean_before_profile(ts2);
-	}else{
-	    cout << "skipping " << profilerun[i] << endl;
-	}
-    }
-    if(profilerun.size() > 0){
-	copy_final_file(profilerun[profilerun.size()-1]);
-    }else{
-	copy_final_file(updatedfiles[0]); //should mean that there is only one file
-    }
 }
 
 int SQLiteProfiler::make_muscle_profile(int profile1,int profile2,int outfile){

@@ -6,6 +6,7 @@
 #include <sstream>
 #include <vector>
 #include <stack>
+#include <algorithm>
 
 #include "genedb.h"
 #include "libsqlitewrapped.h"
@@ -75,9 +76,6 @@ void GeneDB::initialize(bool overwrite){
 	query.execute("create table sequence_alignment_map(id INTEGER PRIMARY KEY, sequence_id INTEGER, alignment_id INTEGER, sequence TEXT);");
 	query.execute("create index sequence_alignment_map_sequence_id sequence_alignment_map(sequence_id);");
 	query.execute("create index sequence_alignment_map_alignment_id sequence_alignment_map(alignment_id);");
-	query.execute("create table alignment_alignment_map(id INTEGER PRIMARY KEY, parent_id INTEGER, child_id INTEGER);");
-	query.execute("create index alignment_alignment_map_parent_id alignment_alignment_map(parent_id);");
-	query.execute("create index alignment_alignment_map_child_id alignment_alignment_map(child_id);");
 	cout << "database created"<<endl;
     }
 }
@@ -422,6 +420,21 @@ void GeneDB::get_alignment_nums(vector<int> & nums){
     query.free_result();
 }
 
+/* 
+ * typically used for updating and should be called after moving over updated 
+ */
+void GeneDB::get_profile_alignment_nums(vector<int> & nums){
+    string sql = "select id from profile_alignments where child1 = 0 and child2 = 0;";
+    Database conn(name);
+    Query query(conn);
+    query.get_result(sql);
+    while(query.fetch_row()){
+	int num;
+	num = query.getval();
+	nums.push_back(num);
+    }
+    query.free_result();
+}
 
 void GeneDB::copy_alignments_to_first_profiles(map<int, string> & profile_id_name_map){
     string sql = "select id,alignname from alignments;";
@@ -479,6 +492,75 @@ void GeneDB::copy_alignments_to_first_profiles(map<int, string> & profile_id_nam
 	sqlite3_close(conn2);
 
     }
+}
+
+void GeneDB::copy_alignments_to_first_profiles_updated(map<int, string> & profile_id_name_map,vector<int>& updatedprofsnums){
+    string sql = "select id,alignname from alignments where updated = 1;";
+    Database conn(name);
+    Query query(conn);
+    query.get_result(sql);
+    vector<int> aid;
+    vector<string> names;
+    while(query.fetch_row()){
+	int iid;
+	string name;
+	iid = query.getval();
+	name = to_string(query.getstr());
+	aid.push_back(iid);
+	names.push_back(name);
+    }
+    query.free_result();
+    //add the new alignment
+    
+    
+    for (int i=0;i<names.size();i++){
+	sqlite3 *conn2;
+	int rc = sqlite3_open(name.c_str(), &conn2);
+	char *zErrMsg = 0;
+	sqlite3_exec(conn2, "BEGIN TRANSACTION", NULL, NULL, NULL);
+	string sql = "insert into profile_alignments (child1,child2,name) values (0,0,'";
+	sql += names[i]+"');";
+	rc = sqlite3_exec(conn2, sql.c_str(), 0, 0, 0);
+	int pid = sqlite3_last_insert_rowid(conn2);
+	sqlite3_exec(conn2, "COMMIT TRANSACTION", NULL, NULL, NULL);
+	updatedprofsnums.push_back(pid);
+
+	sql = "select sequence_id,sequence from sequence_alignment_map where alignment_id = ";
+	sql += to_string(aid[i])+";";
+	Query query2(conn);
+	query2.get_result(sql);
+	vector<int> sid;
+	vector<string> seqs;
+	while(query2.fetch_row()){
+	    sid.push_back(query2.getval());
+	    seqs.push_back(to_string(query2.getstr()));
+	}
+	query2.free_result();
+
+	//insert the seqs into profile_alignment sequences
+	sqlite3_exec(conn2, "BEGIN TRANSACTION", NULL, NULL, NULL);
+	for(int j=0;j<sid.size();j++){
+	    sql = "insert into sequence_profile_map (sequence_id,profile_id,sequence) values (";
+	    sql += to_string(sid[j])+",";
+	    sql += to_string(pid)+",'";
+	    sql += seqs[j]+"');";
+	    rc = sqlite3_exec(conn2, sql.c_str(), 0, 0, 0);
+	}
+	sqlite3_exec(conn2, "COMMIT TRANSACTION", NULL, NULL, NULL);
+	sqlite3_close(conn2);
+    }
+    sql = "select id,name from profile_alignments where name != 0;";
+    Query query3(conn);
+    query3.get_result(sql);
+    while(query3.fetch_row()){
+	int iid;
+	string name;
+	iid = query3.getval();
+	name = to_string(query3.getstr());
+	profile_id_name_map[iid] = name;
+    }
+    query3.free_result();
+
 }
 
 int GeneDB::get_deepest_profile_for_alignment(int alignid){
@@ -588,4 +670,96 @@ void GeneDB::add_sequences_for_profile_alignment(int profilealignid,vector<Seque
 	rc = sqlite3_exec(conn2, sql.c_str(), 0, 0, 0);
     }
     sqlite3_exec(conn2, "COMMIT TRANSACTION", NULL, NULL, NULL);
+}
+
+
+void GeneDB::get_updated_profs_names_delete_old(vector<string> & updatedprofs,vector<int> & updatedprofsnums, vector<int>&notupdatedprofnums){
+    //get the updated names
+    string sql = "select alignments.id,alignments.alignname,profile_alignments.id from alignments,profile_alignments where alignments.alignname=profile_alignments.name and alignments.updated = 1;";
+    Database conn(name);
+    Query query(conn);
+    query.get_result(sql);
+    stack<int> retstack;
+    vector<int> todelete;
+    while(query.fetch_row()){
+	int sid;
+	string name;
+	int aid;
+	sid = query.getval();
+	name = to_string(query.getstr());
+	aid = query.getval();
+	updatedprofs.push_back(name);
+	updatedprofsnums.push_back(aid);
+	retstack.push(aid);
+	todelete.push_back(int(aid));
+    }
+    query.free_result();
+    sql = "select id,name from profile_alignments where child1 = 0 and child2 = 0;";
+    Query queryt(conn);
+    queryt.get_result(sql);
+    while(queryt.fetch_row()){
+	int sid;
+	string name;
+	sid = queryt.getval();
+	name = to_string(queryt.getstr());
+	cout << "notupdatedsearch: " << sid << " " << name << endl;
+	if(count(updatedprofs.begin(),updatedprofs.end(),name)==0){
+	    notupdatedprofnums.push_back(int(sid));
+	    cout << "sid: " << sid << endl;
+	}
+    }
+    queryt.free_result();
+
+    //get all the profiles involving these names
+    int finalret = -1;
+    while(!retstack.empty()){
+	int curid = retstack.top();
+	retstack.pop();
+	string sql = "select id from profile_alignments where child1 = ";
+	sql += to_string(curid) +" or child2 = ";
+	sql += to_string(curid) +";";
+	Database conn(name);
+	Query query(conn);
+	query.get_result(sql);
+	while(query.fetch_row()){
+	    int tid;
+	    string name;
+	    tid = query.getval();
+	    if (count(todelete.begin(),todelete.end(),int(tid)) ==0)
+		todelete.push_back(tid);
+	    retstack.push(tid);
+	}
+	query.free_result();
+    }
+
+    //remove all the profiles that involve the names
+    //TODO: could get the process
+    for(int i=0;i<todelete.size();i++){
+	sqlite3 *conn2;
+	int rc = sqlite3_open(name.c_str(), &conn2);
+	char *zErrMsg = 0;
+	sqlite3_exec(conn2, "BEGIN TRANSACTION", NULL, NULL, NULL);
+	sql = "delete from sequence_profile_map where profile_id =";
+	sql += to_string(todelete[i])+";";
+	rc = sqlite3_exec(conn2, sql.c_str(), 0, 0, 0);
+	sqlite3_exec(conn2, "COMMIT TRANSACTION", NULL, NULL, NULL);
+	
+	sqlite3_exec(conn2, "BEGIN TRANSACTION", NULL, NULL, NULL);
+	sql = "delete from profile_alignments where id =";
+	sql += to_string(todelete[i])+";";
+	rc = sqlite3_exec(conn2, sql.c_str(), 0, 0, 0);
+	sqlite3_exec(conn2, "COMMIT TRANSACTION", NULL, NULL, NULL);
+    }
+    get_profile_alignment_nums(updatedprofsnums);
+}
+
+void GeneDB::toggle_updated_all_off(){
+    sqlite3 *conn;
+    int rc = sqlite3_open(name.c_str(), &conn);
+    char *zErrMsg = 0;
+    
+    sqlite3_exec(conn, "BEGIN TRANSACTION", NULL, NULL, NULL);
+    string sql = "update alignments set updated = 0;";
+    rc = sqlite3_exec(conn, sql.c_str(), 0, 0, 0);
+    sqlite3_exec(conn, "COMMIT TRANSACTION", NULL, NULL, NULL);
 }

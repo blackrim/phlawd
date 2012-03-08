@@ -35,13 +35,17 @@ public:
     void get_first_profile_alignments(vector<string> & names);
     void get_alignment_names(vector<string> & names);
     void get_alignment_nums(vector<int> & nums);
+    void get_profile_alignment_nums(vector<int>&);
     void remove_profile_alignments();
     void copy_alignments_to_first_profiles(map<int,string> & profile_id_name_map);
+    void copy_alignments_to_first_profiles_updated(map<int, string> & profile_id_name_map,vector<int>& updatedprofsnums);
     int get_deepest_profile_for_alignment(int alignid);
     int add_profile_alignment(int child1, int child2);
     void add_sequences_for_profile_alignment(int profilealignid,vector<Sequence> & seqs);
     void write_profile_alignment_to_file(int alignid,string filename);
     void write_profile_alignment_with_names_to_file(int alignid, string filename,bool ncbi);
+    void get_updated_profs_names_delete_old(vector<string> & updatedprofs,vector<int> & updatedprofsnums,vector<int> & notupdatedprofnums);
+    void toggle_updated_all_off();
 };
 
 #endif
