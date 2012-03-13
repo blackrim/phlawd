@@ -56,6 +56,7 @@ using namespace std;
 
 //the number for the mafft alignment sample
 #define RANDNUM 1000
+#define ALIGNLIMIT 7000
 
 //public
 
@@ -86,13 +87,7 @@ SQLiteConstructor::SQLiteConstructor(string cn, vector <string> searchstr, strin
     }
     //initialize gene database
     gene_db= GeneDB(gene_db_name);
-    if (updateDB == true)
-	gene_db.initialize(false);
-    else
-	gene_db.initialize(true);
-	
     genefoldername = genen+"_TEMPFILES/";
-
     known_seqs = new vector<Sequence>();
     user_seqs = new vector<Sequence>();
     seqReader.readFile(known_seq_filen, *known_seqs);
@@ -282,6 +277,10 @@ int SQLiteConstructor::run(){
     vector<string> stored_seqs_ncbis;
     vector<string> stored_user_seqnames;
     write_EDNAFILE();//if it doesn't exist
+    if (updateDB == true)
+	gene_db.initialize(false);
+    else
+	gene_db.initialize(true);
     if(updateDB == true){
 	cout << "processing existing seqs" << endl;
 	gene_db.get_all_sequences(stored_seqs);
@@ -1064,6 +1063,8 @@ void SQLiteConstructor::get_same_seqs_openmp_SWPS3(vector<Sequence> & seqs,  vec
 		maxide = tsc;
 		rc = trc;
 	    }
+	    if(maxide >= min(identity+(identity*0.5),.99))
+	       break;
 	}
 	if (maxide >= identity){
 	    keep_seqs_rc_map[&seqs[i]] = rc;
@@ -1602,7 +1603,7 @@ void SQLiteConstructor::saturation_tests(vector<string> name_ids, vector<string>
 		cout << name << ": " << name_id << " " << temp_seqs->size() << " "<< temp_user_seqs->size() << endl;
 		double mad;
 		if(temp_seqs->size() + temp_user_seqs->size() > 2){
-		    if (temp_seqs->size() +temp_user_seqs->size() < 10000){
+		    if (temp_seqs->size() +temp_user_seqs->size() < ALIGNLIMIT){
 			make_mafft_multiple_alignment(temp_seqs,temp_user_seqs);
 			mad = calculate_MAD_quicktree();
 /*		    }else if(temp_seqs->size() +temp_user_seqs->size() < 10000){
@@ -1735,7 +1736,7 @@ void SQLiteConstructor::saturation_tests(vector<string> name_ids, vector<string>
 		cout << curnode->getName() << " " << temp_seqs->size() << endl;
 		double mad;
 		if(temp_seqs->size()+temp_user_seqs->size() > 2){
-		    if (temp_seqs->size() +temp_user_seqs->size()< 10000){
+		    if (temp_seqs->size() +temp_user_seqs->size()< ALIGNLIMIT){
 			//TODO: add input tree for mafft
 			make_mafft_multiple_alignment(temp_seqs,temp_user_seqs);
 			mad = calculate_MAD_quicktree();

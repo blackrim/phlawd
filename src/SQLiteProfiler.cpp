@@ -627,7 +627,7 @@ int SQLiteProfiler::make_muscle_profile(int profile1,int profile2,int outfile){
     remove((profilefoldername+"TEMPOUT.PROFILE").c_str());
     gene_db.write_profile_alignment_to_file(profile1,profilefoldername+"TEMP1.profile");
     gene_db.write_profile_alignment_to_file(profile2,profilefoldername+"TEMP2.profile");
-    string cmd = "muscle -profile -in1 ";
+    string cmd = "muscle -profile -maxmb 5000 -in1 ";
     cmd += profilefoldername;
     cmd += "TEMP1.profile -in2 ";
     cmd += profilefoldername;
