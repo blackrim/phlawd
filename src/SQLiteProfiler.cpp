@@ -166,8 +166,10 @@ void SQLiteProfiler::run(){
     }
     if (updatedb == true)
 	gene_db.toggle_updated_all_off();
+    cout << "writing final alignment" << endl;
     rename_final_alignment(finalaln);//requires FINAL.aln
     //remove_outliers
+    cout << "profile run completed" << endl;
 }
 
 void SQLiteProfiler::get_children(string in_id, vector<string> * in_ids, vector<string> * in_keepids){
@@ -452,13 +454,13 @@ void SQLiteProfiler::get_shortest_distance_with_dicts(vector<int> & nums,
  * 0.1 is the current limit
  */
 void SQLiteProfiler::clean_before_profile(string filename){
-    double percent = 0.1;
+    double percent = 0.9;
     FastaUtil fu;
     vector<Sequence> tempalseqs;
     fu.readFile(profilefoldername+filename,tempalseqs);
     cout << "cleaning seqs" << endl;
     int seqlength = tempalseqs[0].get_sequence().size();
-    float fseql = float(seqlength);
+    float fseql = float(tempalseqs.size());
     vector<int> removeem;
     for(int j=0;j<seqlength;j++){
 	int gaps = 0;
@@ -636,7 +638,7 @@ int SQLiteProfiler::make_muscle_profile(int profile1,int profile2,int outfile){
     cmd += "TEMPOUT.PROFILE 2> ";
 	cmd += profilefoldername+"muscle.out";
     cout << "aligning" << endl;
-//    cout << cmd << endl;
+    cout << cmd << endl;
 /*    FILE *fp = popen(cmd.c_str(), "r" );
     char buff[1000];
     while ( fgets( buff, sizeof buff, fp ) != NULL ) {//doesn't exit out
@@ -677,7 +679,7 @@ void SQLiteProfiler::rename_final_alignment(int alignid){
 
 double SQLiteProfiler::get_muscle_spscore(string filename){
     remove("prolog");
-    string cmd = "muscle -spscore ";
+    string cmd = "muscle -maxmb 5000 -spscore ";
     cmd += profilefoldername;
     cmd += filename;
     cmd += " -log ";

@@ -1183,14 +1183,16 @@ void SQLiteConstructor::reduce_genomes(vector<Sequence> * keep_seqs){
 	    sc1.push_back(known_seqs->at(maxknown));
 	    //}
 	    seqwriter.writeFileFromVector(tempfile,sc1);
-	    string cmd = "mafft --thread 2 --auto ";
+	    string cmd = "mafft ";
 	    cmd += genefoldername+"genome_shrink > ";
 	    cmd += genefoldername+"genome_shrink_aln";
+	    cout << cmd << endl;
 	    cout << "aligning" << endl;
 	    system(cmd.c_str());
 	    string cmd2 = "phyutility -clean 0.5 -in ";
 	    cmd2 += genefoldername+"genome_shrink_aln -out ";
 	    cmd2 += genefoldername+"genome_shrink_out";
+	    cout << cmd << endl;
 	    cout << "cleaning" << endl;
 	    system(cmd2.c_str());
 	    /*
@@ -1379,12 +1381,12 @@ void SQLiteConstructor::make_mafft_multiple_alignment(vector<Sequence> * inseqs,
     seqwriter1.writeFileFromVector(fn1,sc1);
 
     //make alignment
-    string cmd = "mafft --thread " + to_string(omp_get_max_threads());
-    cmd += " --auto ";
+    string cmd = "mafft ";//--thread " + to_string(omp_get_max_threads());
     cmd += genefoldername+"tempfile > ";
     cmd += genefoldername+"outfile 2> ";
     cmd += genefoldername+"mafft.out";
     cout << "aligning" << endl;
+    cout << cmd << endl;
     /*
     FILE *fp = popen(cmd.c_str(), "r" );
     char buff[1000];
