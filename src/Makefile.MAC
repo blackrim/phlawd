@@ -1,14 +1,14 @@
 CC = g++
-CFLAGS = -msse3 -DSSE2 -O3 -g -w -Wall
+CFLAGS = -msse3 -DSSE2 -O3 -g -w -Wall -arch x86_64 -fopenmp
 
 CPP_SRCS += \
+genedb.cpp \
 sequence.cpp \
 tree.cpp \
 tree_reader.cpp \
 node.cpp \
 tree_utils.cpp \
 fasta_util.cpp \
-DBSeq.cpp \
 SQLiteDBController.cpp \
 SQLiteConstructor.cpp \
 SQLiteProfiler.cpp \
@@ -16,24 +16,22 @@ SQLiteTreeNameConvertor.cpp \
 SWPS3_DynProgr_scalar.cpp \
 SWPS3_DynProgr_sse_byte.cpp \
 SWPS3_DynProgr_sse_short.cpp \
-SWPS3_Same_seq_pthread.cpp \
 SWPS3_debug.cpp \
 SWPS3_fasta.cpp \
 SWPS3_matrix.cpp \
 SWPS3_swps3.cpp \
-Same_seq_pthread.cpp \
 SmithWatermanGotoh.cpp \
 main.cpp \
 utils.cpp 
 
 OBJS += \
+genedb.o \
 sequence.o \
 tree.o \
 tree_reader.o \
 node.o \
 tree_utils.o \
 fasta_util.o \
-./DBSeq.o \
 ./SQLiteDBController.o \
 ./SQLiteConstructor.o \
 ./SQLiteProfiler.o \
@@ -41,17 +39,16 @@ fasta_util.o \
 ./SWPS3_DynProgr_scalar.o \
 ./SWPS3_DynProgr_sse_byte.o \
 ./SWPS3_DynProgr_sse_short.o \
-./SWPS3_Same_seq_pthread.o \
 ./SWPS3_debug.o \
 ./SWPS3_fasta.o \
 ./SWPS3_matrix.o \
 ./SWPS3_swps3.o \
-./Same_seq_pthread.o \
 ./SmithWatermanGotoh.o \
 ./main.o \
 ./utils.o 
 
 CPP_DEPS += \
+genedb.d \
 sequence.d \
 tree.d \
 tree_reader.d \
@@ -66,12 +63,10 @@ fasta_util.d \
 ./SWPS3_DynProgr_scalar.d \
 ./SWPS3_DynProgr_sse_byte.d \
 ./SWPS3_DynProgr_sse_short.d \
-./SWPS3_Same_seq_pthread.d \
 ./SWPS3_debug.d \
 ./SWPS3_fasta.d \
 ./SWPS3_matrix.d \
 ./SWPS3_swps3.d \
-./Same_seq_pthread.d \
 ./SmithWatermanGotoh.d \
 ./main.d \
 ./utils.d 
@@ -93,7 +88,7 @@ all: PHLAWD
 # Tool invocations
 PHLAWD: $(OBJS) $(USER_OBJS)
 	@echo 'Building target: $@'
-	$(CC) -msse3 -DSSE2 -L../deps/mac -L/usr/local/lib -o "PHLAWD" $(OBJS) $(USER_OBJS) $(LIBS)
+	$(CC) $(CFLAGS) -L../deps/mac -L/usr/local/lib -L/usr/lib -o "PHLAWD" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
