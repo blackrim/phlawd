@@ -45,6 +45,7 @@ int main(int argc, char* argv[]){
 	cout << "you need more arguments." << endl;
 	cout << "usage: PHLAWD task configfile" << endl;
 	cout << "possible tasks include:" << endl;
+	cout << "	seqquery -- just get the distribution of best hits to get cutoffs" << endl;
 	cout << "	assemble -- includes assembling and profiling" << endl;
 	cout << "	justprofile -- just profiles (assumes you have assembled)" << endl;
 	cout << "	justassemble -- just assembles (assumes you will profile with justprofile" << endl;
@@ -58,6 +59,7 @@ int main(int argc, char* argv[]){
 	bool prof = false;
 	bool chnames = false;
 	bool setupdb = false;
+	bool seqquery = false;
 	string argvstr(argv[1]);
 	if(argvstr == "assemble"){
 	    asse = true;
@@ -70,6 +72,9 @@ int main(int argc, char* argv[]){
 	    chnames = true;
 	}else if(argvstr == "setupdb"){
 	    setupdb = true;
+	}else if(argvstr == "seqquery"){
+	    seqquery = true;
+	    asse = true;
 	}else{
 	    cout << "you entered an option that doesn't exist: " << argvstr << endl;
 	    cout << "try one of these: " <<endl;
@@ -264,6 +269,9 @@ int main(int argc, char* argv[]){
 		}
 		if(userskipsearch == true){
 		    a->set_user_skip_search();
+		}
+		if(seqquery == true){
+		    a->set_justseqquery(true);
 		}
 		int ret = a->run();
 		if (ret == 2){

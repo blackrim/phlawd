@@ -79,6 +79,7 @@ private:
     string userfastafile;
     bool userskipsearchdb;
     bool skipdbcheck;
+    bool justseqquery;
     int main_left; // left value for clade id
     int main_right; // right value for clade id
     map<Sequence*,Node*> user_fasta_node_map; 
@@ -127,6 +128,7 @@ public:
     void set_user_guide_tree(string filename, bool skipcheckdb);
     void set_user_fasta_file(string filename, bool skipcheckdb);
     void set_user_skip_search();
+    void set_justseqquery(bool);
     int run(); //0 = success, 2 = update>20%
     string get_cladename();
     vector <string> get_search();

@@ -94,6 +94,7 @@ SQLiteConstructor::SQLiteConstructor(string cn, vector <string> searchstr, strin
     ncbi_saturation = true;
     userskipsearchdb = false;
     skipdbcheck = false;
+    justseqquery = false;
 }
 
 /*
@@ -127,6 +128,10 @@ void SQLiteConstructor::set_include_gi_from_file(string filename){
 
 void SQLiteConstructor::set_user_skip_search(){
     userskipsearchdb = true;
+}
+
+void SQLiteConstructor::set_justseqquery(bool setit){
+    justseqquery = setit;
 }
 
 /*
@@ -381,6 +386,10 @@ int SQLiteConstructor::run(){
     vector<Sequence> * keep_seqs = new vector<Sequence>();
     get_same_seqs_openmp_SWPS3(startseqs,keep_seqs);
     cout << "blasted: "<< keep_seqs->size() << endl;
+    if (justseqquery == true){
+	cout << "scores written to seqquery.txt" << endl;
+	exit(0);
+    }
     //assuming for now that all the user seqs are hits
 
     remove_duplicates_SWPS3(keep_seqs);
@@ -1043,9 +1052,12 @@ void SQLiteConstructor::get_same_seqs_openmp_SWPS3(vector<Sequence> & seqs,  vec
 	known_scores.push_back(get_swps3_score_and_rc_cstyle(mat,&known_seqs->at(i),&known_seqs->at(i)));
     }
     map<Sequence*,bool> keep_seqs_rc_map;
-#pragma omp parallel for shared(keep_seqs_rc_map)
+    vector<double> justqueryvec;
+    vector<double> justqueryvec2;
+#pragma omp parallel for shared(keep_seqs_rc_map,justqueryvec)
     for (int i=0;i<seqs.size();i++){
 	double maxide = 0;
+	double maxcov = 0;
 	bool rc = false;
 	for (int j=0;j<known_seqs->size();j++){
 	    bool trc = false;
@@ -1054,19 +1066,31 @@ void SQLiteConstructor::get_same_seqs_openmp_SWPS3(vector<Sequence> & seqs,  vec
 	    seqs[i].perm_reverse_complement();//make reverse complement
 	    int retrc = get_swps3_score_and_rc_cstyle(mat,&known_seqs->at(j), &seqs[i]);
 	    seqs[i].perm_reverse_complement();//make it back to original
-	    //cout <<i << " " << j << " " << ret << " " << retrc << " " << known_scores[j] << " " <<  tsc << endl;
+	    int setsc = get_swps3_score_and_rc_cstyle(mat,&seqs[i],&seqs[i]);
+	    double fsetsc = double(ret)/double(setsc);
+//	    cout <<i << " " << j << " " << setsc << " " << ret << " " << retrc << " " << known_scores[j] << " " <<  tsc << " " << double(ret)/double(setsc) << endl;
+//	    cout << seqs[i].get_sequence() << endl;
+//	    cout << known_seqs->at(j).get_sequence() << endl;
+//	    cout << seqs[i].get_sequence().size() << endl;
+//	    cout << known_seqs->at(j).get_sequence().size() << endl;
+//	    exit(0);
 	    if(retrc > ret){
 		trc = true;
 		tsc = double(retrc)/double(known_scores[j]);
 	    }
 	    if (tsc > maxide && std::numeric_limits<double>::infinity() != tsc){
 		maxide = tsc;
+		maxcov = fsetsc;
 		rc = trc;
 	    }
-	    if(maxide >= min(identity+(identity*0.5),.99))
+	    if(maxide >= min(identity+(identity*0.5),.99) && justseqquery == false)
 	       break;
 	}
-	if (maxide >= identity){
+	if(justseqquery == true){
+	    justqueryvec.push_back(maxide);
+	    justqueryvec2.push_back(maxcov);
+	}
+	if (maxide >= identity && maxcov >= coverage){
 	    keep_seqs_rc_map[&seqs[i]] = rc;
 	    //with this we don't have to keep track of rc anymore unless we want to
 	    if (rc == true)
@@ -1076,6 +1100,14 @@ void SQLiteConstructor::get_same_seqs_openmp_SWPS3(vector<Sequence> & seqs,  vec
     map<Sequence*,bool>::iterator it;
     for(it = keep_seqs_rc_map.begin(); it != keep_seqs_rc_map.end(); it++){
 	keep_seqs->push_back(*(*it).first);
+    }
+    if(justseqquery == true){
+	ofstream outfile;
+	outfile.open ((genefoldername+"seqquery.txt").c_str(),ios::out);
+	for (int i=0;i<justqueryvec.size();i++){
+	    outfile << justqueryvec[i] << "\t" << justqueryvec2[i] << endl;
+	}
+	outfile.close();
     }
 }
 
