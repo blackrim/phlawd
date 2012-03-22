@@ -1,7 +1,7 @@
 #clade = Streptophytina
-clade = campanulids
+#clade = campanulids
 #clade = Asterales
-#clade = Dipsacales
+clade = Dipsacales
 #clade = Caryophyllales
 search = rbcL
 gene = rbcL_0_1

@@ -50,7 +50,7 @@ int main(int argc, char* argv[]){
 	cout << "	justprofile -- just profiles (assumes you have assembled)" << endl;
 	cout << "	justassemble -- just assembles (assumes you will profile with justprofile" << endl;
 	//cout << "	changenames -- changes from ncbi numbers to names for a file (newick, fasta, newick, phylip)" <<endl;
-	//	cout << "	setupdb -- tasks performed on the SQLite database" << endl;
+	cout << "	setupdb -- tasks performed on the SQLite database" << endl;
     }else{
 	/*
 	 * code to parse through the tasks
@@ -78,11 +78,12 @@ int main(int argc, char* argv[]){
 	}else{
 	    cout << "you entered an option that doesn't exist: " << argvstr << endl;
 	    cout << "try one of these: " <<endl;
+	    cout << "	seqquery -- just get the distribution of best hits to get cutoffs" << endl;
 	    cout << "	assemble -- includes assembling and profiling" << endl;
 	    cout << "	justprofile -- just profiles (assumes you have assembled)" << endl;
 	    cout << "	justassemble -- just assembles (assumes you will profile with justprofile" << endl;
 	    //cout << "	changenames -- changes from ncbi numbers to names for a file (newick, fasta, newick, phylip)" <<endl;
-	    //	cout << "	setupdb -- tasks performed on the SQLite database" << endl;
+	    cout << "	setupdb -- tasks performed on the SQLite database" << endl;
 	}
 
 	if(asse == true || prof == true){
@@ -307,7 +308,7 @@ int main(int argc, char* argv[]){
 	     * this needs a lot of editing -- need multiple trees, fasta files
 	     */
 	}else if (chnames == true){//change names == true
-	    cout << "changing name of tree" << endl;
+	    cout << "changing names in tree" << endl;
 	    string dbtype;
 	    string db;
 	    string infile;
@@ -340,7 +341,6 @@ int main(int argc, char* argv[]){
 	    c->convert();
 	    c->writetree(outfile);
 	    delete c;
-
 	}
 	else if(setupdb == true){
 	    cout << "setting up database" << endl;
@@ -368,8 +368,6 @@ int main(int argc, char* argv[]){
 	    }
 	    ifs.close();
 
-
-	    //need to add initializing database
 	    SQLiteDBController * c;
 	    c = new SQLiteDBController(dbname);
 	    bool ret = c->initiate();
