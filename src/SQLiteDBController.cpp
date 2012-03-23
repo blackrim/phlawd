@@ -28,7 +28,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <iostream>
-#include <vector>
 #include <algorithm>
 #include <string>
 #include <stdlib.h>
@@ -37,13 +36,16 @@
 #include <time.h>
 #include <cstring>
 #include <sstream>
+#include <stdio.h>
+#include <regex.h>
+#include <unistd.h>
 
 using namespace std;
 
 
 #include "libsqlitewrapped.h"
 #include <sqlite3.h>
-
+#include "GenBankReader.h"
 #include "SQLiteDBController.h"
 #include "utils.h"
 
@@ -209,27 +211,24 @@ void SQLiteDBController::load_seqs(string div,bool downl){
     if (downl == true){
 	string cmd = "wget ftp://ftp.ncbi.nih.gov/genbank/gb"+division+"*.seq.gz";
 	cout << "downloading with wget" << endl;
-	FILE *fp = popen(cmd.c_str(), "r" );
-	char buff[1000];
-	while ( fgets( buff, sizeof buff, fp ) != NULL ) {//doesn't exit out
-	    string line(buff);
-	}
-	pclose( fp );
+	system(cmd.c_str());
 	cmd = "gunzip -d gb"+division+"*.seq.gz";
 	cout << "uncompressing" << endl;
-	fp = popen(cmd.c_str(), "r" );
-	while ( fgets( buff, sizeof buff, fp ) != NULL ) {//doesn't exit out
-	    string line(buff);
-	}
-	pclose( fp );
+	system(cmd.c_str());
+    }else{
+	cmd = "gunzip -d gb"+division+"*.seq.gz";
+	cout << "uncompressing" << endl;
+	system(cmd.c_str());
     }
     vector<string> file_names;
     cout << "getting file names" << endl;
     getdir(".",file_names);
     for(int i=0;i<file_names.size();i++){
-	if(file_names[i].find("gb"+div) != string::npos && file_names[i].find(".seq") != string::npos){
+	if(file_names[i].find("gb"+div) != string::npos && file_names[i].substr(file_names[i].size()-4,4)==".seq"){
 	    string filen = file_names[i];
 	    cout << filen << endl;
+	    GenBankReader gbr;
+	    gbr.parse_file(filen,db_name);
 	}
     }
     /*handle = open(filen,"rU")

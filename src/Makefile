@@ -1,6 +1,8 @@
-CC = g++
-CFLAGS = -msse3 -DSSE2 -O3 -g -w -Wall -fopenmp
+CP := g++
+CPFLAGS := -msse3 -DSSE2 -O3 -g -w -Wall -fopenmp
+
 prefix = /usr/bin/
+
 CPP_SRCS += \
 sequence.cpp \
 tree.cpp \
@@ -21,8 +23,9 @@ SWPS3_fasta.cpp \
 SWPS3_matrix.cpp \
 SWPS3_swps3.cpp \
 SmithWatermanGotoh.cpp \
+GenBankReader.cpp \
 main.cpp \
-utils.cpp 
+utils.cpp
 
 OBJS += \
 sequence.o \
@@ -44,6 +47,7 @@ SWPS3_fasta.o \
 SWPS3_matrix.o \
 SWPS3_swps3.o \
 SmithWatermanGotoh.o \
+GenBankReader.o \
 main.o \
 utils.o 
 
@@ -67,13 +71,13 @@ SWPS3_fasta.d \
 SWPS3_matrix.d \
 SWPS3_swps3.d \
 SmithWatermanGotoh.d \
+GenBankReader.d \
 main.d \
 utils.d 
 
-
 # Each subdirectory must supply rules for building sources it contributes
 %.o: ./%.cpp
-	$(CC) $(CFLAGS)  -L../deps/linux/ -c -fmessage-length=0 -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -o"$@" "$<"
+	$(CP) $(CPFLAGS)  -L../deps/linux/ -c -fmessage-length=0 -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -o"$@" "$<"
 
 LIBS := -lm -lsqlitewrapped -lsqlite3 -fopenmp
 
@@ -85,9 +89,9 @@ RM := rm -rf
 all: PHLAWD
 
 # Tool invocations
-PHLAWD: $(OBJS)
+PHLAWD: $(OBJS) $(COBJS)
 	@echo 'Building target: $@'
-	$(CC) -msse3 -DSSE2 -L../deps/linux -o "PHLAWD" $(OBJS) $(LIBS)
+	$(CP) -msse3 -DSSE2 -L../deps/linux -o "PHLAWD" $(OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
