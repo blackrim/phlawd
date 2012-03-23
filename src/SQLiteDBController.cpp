@@ -103,24 +103,92 @@ static int callback(void *NotUsed, int argc, char **argv, char **azColName){
     return 0;
 }
 
+string SQLiteDBController::create_name(string & tfilen){
+    size_t found;
+    found = tfilen.find("\"");
+    while(found!=string::npos){
+	tfilen.replace(found,1,"'");
+	found = tfilen.find("\"",found+1);
+    }
+    return tfilen;
+}
+
+string SQLiteDBController::create_edited_name(string & tfilen){
+    size_t found;
+    found = tfilen.find(" ");
+    while(found!=string::npos){
+	tfilen.replace(found,1,"_");
+	found = tfilen.find(" ",found+2);
+    }
+    //(take out the parenthetical stuff too)
+    found = tfilen.find("(");
+    while(found!=string::npos){
+	tfilen.replace(found,1,"_");
+	found = tfilen.find("(",found+1);
+    }
+    found = tfilen.find(")");
+    while(found!=string::npos){
+	tfilen.replace(found,1,"_");
+	found = tfilen.find(")",found+1);
+    }
+    found = tfilen.find("\"");
+    while(found!=string::npos){
+	tfilen.replace(found,1,"_");
+	found = tfilen.find("\"",found+1);
+    }
+    found = tfilen.find("'");
+    while(found!=string::npos){
+	tfilen.replace(found,1,"_");
+	found = tfilen.find("'",found+1);
+    }
+    found = tfilen.find(".");
+    while(found!=string::npos){
+	tfilen.replace(found,1,"_");
+	found = tfilen.find(".",found+1);
+    }
+    found = tfilen.find("&");
+    while(found!=string::npos){
+	tfilen.replace(found,1,"_");
+	found = tfilen.find("&",found+1);
+    }
+    found = tfilen.find(",");
+    while(found!=string::npos){
+	tfilen.replace(found,1,"_");
+	found = tfilen.find(",",found+1);
+    }
+    found = tfilen.find("\\");
+    while(found!=string::npos){
+	tfilen.replace(found,1,"_");
+	found = tfilen.find("\\",found+1);
+    }
+    found = tfilen.find("/");
+    while(found!=string::npos){
+	tfilen.replace(found,1,"_");
+	found = tfilen.find("/",found+1);
+    }
+    return tfilen;
+}
+
+/*ednm = spls[1].replace('\"',"_").strip()
+		ednm = ednm.replace("\'","_")
+		ednm = ednm.replace("\\","_")
+		ednm = ednm.replace("/","_")
+		ednm = ednm.replace("(","_")
+		ednm = ednm.replace(")","_")
+		ednm = ednm.replace(".","_")
+		ednm = ednm.replace("&","_")
+		ednm = ednm.replace(",","_")
+		ednm = ednm.replace(" ","_")
+*/
 void SQLiteDBController::load_seqs(string div,bool downl){
     cout << "loading taxonomy" << endl;
     if (downl == true){
 	const char * cmd = "wget ftp://ftp.ncbi.nih.gov/pub/taxonomy/taxdump.tar.gz";
 	cout << "downloading with wget" << endl;
-	FILE *fp = popen(cmd, "r" );
-	char buff[1000];
-	while ( fgets( buff, sizeof buff, fp ) != NULL ) {//doesn't exit out
-	    string line(buff);
-	}
-	pclose( fp );
+	system(cmd);
 	cmd = "tar -xzvf taxdump.tar.gz";
 	cout << "untaring" << endl;
-	fp = popen(cmd, "r" );
-	while ( fgets( buff, sizeof buff, fp ) != NULL ) {//doesn't exit out
-	    string line(buff);
-	}
-	pclose( fp );
+	system(cmd);
     }
     //read the nodes.dmp
     map<string,string> rank;
@@ -162,18 +230,21 @@ void SQLiteDBController::load_seqs(string div,bool downl){
 		TrimSpaces(tokens[i]);
 	    }
 	    string gin = tokens[0];
-	    string nm = tokens[1];//need to double quote the single quotes and backslash the quotes
+	    string nm = create_name(tokens[1]);//need to double quote the single quotes and backslash the quotes
 	    string nm_class = tokens[3];
-	    string ednm = tokens[1];//need to edit the names
+	    string ednm = create_edited_name(tokens[1]);//need to edit the names
 	    string sql = "insert into taxonomy (ncbi_id,name,name_class,node_rank,parent_ncbi_id,edited_name) values (";
-	    sql += gin+",'";
-	    sql += nm+"','";
+	    sql += gin+",\"";
+	    sql += nm+"\",'";
 	    sql += nm_class+"','";
 	    sql += rank[gin]+"',";
 	    sql += parent_id[gin]+",'";
 	    sql += ednm+"');";
 	    //query.execute(sql);
 	    rc = sqlite3_exec(conn, sql.c_str(), 0, 0, 0);
+	    //uncomment to get the names that don't commit, mostly bad quotes
+//	    if (rc != 0)
+//		cout << sql << endl;
 	}
 	count += 1;
     }
@@ -198,6 +269,19 @@ void SQLiteDBController::load_seqs(string div,bool downl){
 
 	}
     }
+/*
+remove file
+citations.dmp
+delnodes.dmp
+division.dmp
+gc.prt
+gencode.dmp
+merged.dmp
+names.dmp
+nodes.dmp
+readme.txt
+ */
+
     //get the root and send to rebuild
     count = 0;
     rc = sqlite3_open(db_name.c_str(), &conn);

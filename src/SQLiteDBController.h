@@ -35,17 +35,18 @@ using namespace std;
 
 class SQLiteDBController{
 private:
-	string db_name;
-	string division;
-	int count;
-	map<int,vector<int> > parent_ncbi_map;
-	int rebuild_tree(int,int,sqlite3 *);
-
+    string db_name;
+    string division;
+    int count;
+    map<int,vector<int> > parent_ncbi_map;
+    int rebuild_tree(int,int,sqlite3 *);
+    string create_name(string & tfilen);
+    string create_edited_name(string & tfilen);
 
 public:
-	SQLiteDBController(string dbn);
-	bool initiate();
-	void load_seqs(string div,bool downl);
+    SQLiteDBController(string dbn);
+    bool initiate();
+    void load_seqs(string div,bool downl);
 };
 
 #endif /* SQLITEDBCONTROLLER_H_ */
