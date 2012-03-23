@@ -387,7 +387,7 @@ int SQLiteConstructor::run(){
     get_same_seqs_openmp_SWPS3(startseqs,keep_seqs);
     cout << "blasted: "<< keep_seqs->size() << endl;
     if (justseqquery == true){
-	cout << "scores written to seqquery.txt" << endl;
+	cout << "scores written to "<< gene_name<<".seqquery" << endl;
 	exit(0);
     }
     //assuming for now that all the user seqs are hits
@@ -1103,7 +1103,7 @@ void SQLiteConstructor::get_same_seqs_openmp_SWPS3(vector<Sequence> & seqs,  vec
     }
     if(justseqquery == true){
 	ofstream outfile;
-	outfile.open ((genefoldername+"seqquery.txt").c_str(),ios::out);
+	outfile.open ((gene_name+".seqquery").c_str(),ios::out);
 	for (int i=0;i<justqueryvec.size();i++){
 	    outfile << justqueryvec[i] << "\t" << justqueryvec2[i] << endl;
 	}

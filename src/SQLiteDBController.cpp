@@ -269,18 +269,12 @@ void SQLiteDBController::load_seqs(string div,bool downl){
 
 	}
     }
-/*
-remove file
-citations.dmp
-delnodes.dmp
-division.dmp
-gc.prt
-gencode.dmp
-merged.dmp
-names.dmp
-nodes.dmp
-readme.txt
- */
+    //remove files
+    remove("citations.dmp");
+    remove("division.dmp");
+    remove("gc.prt");
+    remove("gencode.dmp");
+    remove("readme.txt");
 
     //get the root and send to rebuild
     count = 0;
@@ -313,24 +307,43 @@ readme.txt
 	    cout << filen << endl;
 	    GenBankReader gbr;
 	    gbr.parse_file(filen,db_name);
+	    remove(filen.c_str());
 	}
     }
-    /*handle = open(filen,"rU")
-      con = sqlite3.connect(database)
-      curup = con.cursor()
-      for i in SeqIO.parse(handle,"gb"):
-      acc = i.id
-      iden = i.annotations['gi']
-      seq = i.seq.tostring()
-      desc = i.description
-      ncbi_id = ""
-      a = i.features[0].qualifiers['db_xref']
-      for j in a:
-      if 'taxon' in j:
-      ncbi_id = j[6:]
-      curup.execute("insert into sequence (ncbi_id,accession_id,identifier,description,seq) values (?,?,?,?,?);",(ncbi_id,acc,iden,desc,seq))
-      con.commit()*/
+    
+    cout << "merging old names with new names" << endl;
+    ifstream infile3 ("merged.dmp",ios::in);
+    rc = sqlite3_open(db_name.c_str(), &conn);
+    sqlite3_exec(conn, "BEGIN TRANSACTION", NULL, NULL, NULL);
+    count = 0;
+    while(getline(infile3,line)){
+	if (count % 100000 == 0){
+	    cout << count << endl;
+	}
+	string del("|");
+	tokens.clear();
+	Tokenize(line, tokens, del);
+	for(int i = 0;i<tokens.size();i++){TrimSpaces(tokens[i]);}
+	if(tokens.size() > 1){
+	    string sql = "update sequence set ncbi_id = ";
+	    sql += tokens[1];
+	    sql += " where ncbi_id = ";
+	    sql += tokens[0];
+	    sql += ";";
+	    rc = sqlite3_exec(conn, sql.c_str(), 0, 0, 0);
+	    if (rc != 0)
+		cout << sql << endl;
+	}
+	count += 1;
+    }
+    infile3.close();
+    sqlite3_exec(conn, "COMMIT TRANSACTION", NULL, NULL, NULL);
+    sqlite3_close(conn);
 
+    remove("merged.dmp");
+    remove("names.dmp");
+    remove("nodes.dmp");
+    remove("delnodes.dmp");
     cout << "finished loading" << endl;
 }
 
