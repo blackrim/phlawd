@@ -671,9 +671,9 @@ string SQLiteProfiler::get_name_from_tax_id(string taxid){
  * rename the FINAL.aln.cln file to FINAL.aln.cln.rn using the table in ITS.gi
  */
 void SQLiteProfiler::rename_final_alignment(int alignid){
-    string fn1 = profilefoldername+"FINAL.aln.rn";
+    string fn1 = gene_name+".FINAL.aln.rn";
     gene_db.write_profile_alignment_with_names_to_file(alignid,fn1,false);
-    fn1 = profilefoldername+"FINAL.aln";
+    fn1 = gene_name+".FINAL.aln";
     gene_db.write_profile_alignment_with_names_to_file(alignid,fn1,true);
 }
 
