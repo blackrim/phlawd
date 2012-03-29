@@ -21,6 +21,7 @@ SWPS3_fasta.cpp \
 SWPS3_matrix.cpp \
 SWPS3_swps3.cpp \
 SmithWatermanGotoh.cpp \
+GenBankReader.cpp \
 main.cpp \
 utils.cpp 
 
@@ -44,6 +45,7 @@ fasta_util.o \
 ./SWPS3_matrix.o \
 ./SWPS3_swps3.o \
 ./SmithWatermanGotoh.o \
+GenBankReader.o \
 ./main.o \
 ./utils.o 
 
@@ -68,6 +70,7 @@ fasta_util.d \
 ./SWPS3_matrix.d \
 ./SWPS3_swps3.d \
 ./SmithWatermanGotoh.d \
+GenBankReader.d \
 ./main.d \
 ./utils.d 
 
