@@ -89,7 +89,7 @@ RM := rm -rf
 all: PHLAWD
 
 # Tool invocations
-PHLAWD: $(OBJS) $(COBJS)
+PHLAWD: $(OBJS)
 	@echo 'Building target: $@'
 	$(CP) -msse3 -DSSE2 -L../deps/linux -o "PHLAWD" $(OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
