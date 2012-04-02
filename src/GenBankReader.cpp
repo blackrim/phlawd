@@ -111,18 +111,29 @@ void GenBankReader::parse_file(string fl, string db_name){
 	    if(seq == true){
 		if(tokens[0] == "//"){
 		    //cout << "next seq" << endl;
-		    //cout << locus << " " << taxid << " " << gin << " " << descrst << endl;
+		//    cout << locus << " " << taxid << " " << gin << " " << descrst << endl;
 //		    cout << seqst << endl;
+			bool deposit = true;
 		    if(locus.size() == 0){
-			exit(0);
+			cout<<"locus" << endl;
+			deposit = false;
+		//	exit(0);
 		    }else if(taxid.size() ==0){
-			exit(0);
+				cout<<"taxid" << endl;
+				deposit = false;
+		//	exit(0);
 		    }else if(gin.size() ==0){
-			exit(0);
+				cout<<"gin" << endl;
+				deposit = false;
+		//	exit(0);
 		    }else if(descrst.size() ==0){
-			exit(0);
+				cout<<"descr" << endl;
+				deposit = false;
+		//	exit(0);
 		    }else if(seqst.size() ==0){
-			exit(0);
+				cout<<"seqst" << endl;
+				deposit = false;
+		//	exit(0);
 		    }
 		    string sql = "insert into sequence (ncbi_id,accession_id,identifier,description,seq) values (";
 		    sql += taxid+",'";
@@ -131,7 +142,10 @@ void GenBankReader::parse_file(string fl, string db_name){
 		    sql += descrst +"','";
 		    std::transform(seqst.begin(), seqst.end(), seqst.begin(), upper);
 		    sql += seqst+"');";
-		    rc = sqlite3_exec(conn, sql.c_str(), 0, 0, 0);
+			//cout << sql << endl;
+		if(deposit == true)
+			rc = sqlite3_exec(conn, sql.c_str(), 0, 0, 0);\
+		//	cout << "rc:" << rc << endl;
 		    seqst = "";
 		    descrst = "";
 		    locus = "";
