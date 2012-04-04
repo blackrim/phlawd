@@ -82,6 +82,8 @@ bool SQLiteDBController::initiate(){
     query.free_result();
     query.get_result("CREATE INDEX taxonomy_right_value on taxonomy(right_value);");
     query.free_result();
+    query.get_result("CREATE INDEX taxonomy_edited_name on taxonomy(edited_name);");
+    query.free_result();
 
     query.get_result("create table sequence (id INTEGER PRIMARY KEY,ncbi_id INTEGER,accession_id VARCHAR(128),identifier VARCHAR(40),description TEXT,seq LONGTEXT);");
     query.free_result();
@@ -286,28 +288,43 @@ void SQLiteDBController::load_seqs(string div,bool downl){
 
     cout << "loading seqs" << endl;
     division = div;
-    if (downl == true){
-	string cmd = "wget ftp://ftp.ncbi.nih.gov/genbank/gb"+division+"*.seq.gz";
-	cout << "downloading with wget" << endl;
-	system(cmd.c_str());
-	cmd = "gunzip -d gb"+division+"*.seq.gz";
-	cout << "uncompressing" << endl;
-	system(cmd.c_str());
+    vector<string> runall;
+    if(division == "met" || division == "all"){
+	runall.push_back("pri");runall.push_back("rod");runall.push_back("mam");runall.push_back("vrt");runall.push_back("inv");
+	if (division == "all")
+	    runall.push_back("pln");runall.push_back("bct");
     }else{
-	cmd = "gunzip -d gb"+division+"*.seq.gz";
-	cout << "uncompressing" << endl;
-	system(cmd.c_str());
+	runall.push_back(division);
+    }
+    if (downl == true){
+	string cmd;
+	for(int i = 0;i<runall.size();i++){
+	    cmd = "wget ftp://ftp.ncbi.nih.gov/genbank/gb"+runall[i]+"*.seq.gz";
+	    cout << "downloading with wget" << endl;
+	    system(cmd.c_str());
+	    cmd = "gunzip -d gb"+runall[i]+"*.seq.gz";
+	    cout << "uncompressing" << endl;
+	    system(cmd.c_str());
+	}
+    }else{
+	for(int i = 0;i<runall.size();i++){
+	    cmd = "gunzip -d gb"+runall[i]+"*.seq.gz";
+	    cout << "uncompressing" << endl;
+	    system(cmd.c_str());
+	}
     }
     vector<string> file_names;
     cout << "getting file names" << endl;
     getdir(".",file_names);
     for(int i=0;i<file_names.size();i++){
-	if(file_names[i].find("gb"+div) != string::npos && file_names[i].substr(file_names[i].size()-4,4)==".seq"){
-	    string filen = file_names[i];
-	    cout << filen << endl;
-	    GenBankReader gbr;
-	    gbr.parse_file(filen,db_name);
-	    remove(filen.c_str());
+	for(int j=0;j<runall.size();j++){
+	    if(file_names[i].find("gb"+runall[j]) != string::npos && file_names[i].substr(file_names[i].size()-4,4)==".seq"){
+		string filen = file_names[i];
+		cout << filen << endl;
+		GenBankReader gbr;
+		gbr.parse_file(filen,db_name);
+		remove(filen.c_str());
+	    }
 	}
     }
     
