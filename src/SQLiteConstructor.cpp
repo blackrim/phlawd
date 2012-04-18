@@ -351,6 +351,18 @@ int SQLiteConstructor::run(){
 
 	cout << "first: " << startseqs.size() << endl;
 
+	//if excluding gi's from file
+	if(excludegifromfile == true){
+	    startseqs = exclude_gis_from_file(startseqs);
+	    cout << "after excluding gis: " << startseqs.size() << endl;
+	}
+
+	//if including gi's from file
+	if(includegifromfile == true){
+	    startseqs = include_gis_from_file(startseqs);
+	    cout << "after including gis: " << startseqs.size() << endl;
+	}
+
 	//if only using the names from a list
 	if(onlynamesfromfile == true){
 	    startseqs = use_only_names_from_file(startseqs);
@@ -364,18 +376,6 @@ int SQLiteConstructor::run(){
 	    cout << "after excluding names: " << startseqs.size() << endl;
 	}
 
-	//if excluding gi's from file
-	if(excludegifromfile == true){
-	    startseqs = exclude_gis_from_file(startseqs);
-	    cout << "after excluding gis: " << startseqs.size() << endl;
-	}
-
-	//if including gi's from file
-	if(includegifromfile == true){
-	    startseqs = include_gis_from_file(startseqs);
-	    cout << "after including gis: " << startseqs.size() << endl;
-	}
-
 	if (startseqs.size() == 0){
 	    cout << "there were no seqs left after blast" << endl;
 	    exit(0);
@@ -384,7 +384,10 @@ int SQLiteConstructor::run(){
 
     //use blast to idenify seqs and rc
     vector<Sequence> * keep_seqs = new vector<Sequence>();
-    get_same_seqs_openmp_SWPS3(startseqs,keep_seqs);
+    if(justseqquery == true)
+	get_same_seqs_openmp_SWPS3_justquery(startseqs,keep_seqs);
+    else 
+	get_same_seqs_openmp_SWPS3(startseqs,keep_seqs);
     cout << "blasted: "<< keep_seqs->size() << endl;
     if (justseqquery == true){
 	cout << "scores written to "<< gene_name<<".seqquery" << endl;
@@ -975,8 +978,14 @@ vector<Sequence> SQLiteConstructor::exclude_names_from_file(vector<Sequence>& se
     vector<Sequence> seqs_fn;
     for(int i=0;i<seqs.size();i++){
 	string taxid = seqs[i].get_ncbi_tax_id();
-	int scount = count(taxa_ids->begin(),taxa_ids->end(),taxid);
-	if(scount == 0){
+	bool found = false;
+	for(int j=0;j<taxa_ids->size();j++){
+	    if (taxa_ids->at(j) == taxid){
+		found = true;
+		break;
+	    }
+	}
+	if(found == false){
 	    seqs_fn.push_back(seqs[i]);
 	}
     }
@@ -1002,8 +1011,14 @@ vector<Sequence> SQLiteConstructor::exclude_gis_from_file(vector<Sequence> &seqs
     vector<Sequence> seqs_fn;
     for(int i=0;i<seqs.size();i++){
 	string giid = seqs[i].get_ncbi_gi_id();
-	int scount = count(gi_ids->begin(),gi_ids->end(),giid);
-	if(scount == 0){
+	bool found = false;
+	for(int j=0;j<gi_ids->size();j++){
+	    if (gi_ids->at(j) == giid){
+		found = true;
+		break;
+	    }
+	}
+	if(found == false){
 	    seqs_fn.push_back(seqs[i]);
 	}
     }
@@ -1030,8 +1045,14 @@ vector <Sequence> SQLiteConstructor::include_gis_from_file(vector<Sequence> & se
     for(int i=0;i<seqs.size();i++){
 	//string giid = seqs[i].get_accession();
 	string giid = seqs[i].get_ncbi_gi_id();
-	int scount = count(gi_ids->begin(),gi_ids->end(),giid);
-	if(scount == 1){
+	bool found = false;
+	for(int j=0;j<gi_ids->size();j++){
+	    if(gi_ids->at(j)==giid){
+		found = true;
+		break;
+	    }
+	}
+	if(found == true){
 	    seqs_fn.push_back(seqs[i]);
 	}
     }
@@ -1044,7 +1065,7 @@ vector <Sequence> SQLiteConstructor::include_gis_from_file(vector<Sequence> & se
 /*
  * OPENMP version
  */
-void SQLiteConstructor::get_same_seqs_openmp_SWPS3(vector<Sequence> & seqs,  vector<Sequence> * keep_seqs){
+void SQLiteConstructor::get_same_seqs_openmp_SWPS3_justquery(vector<Sequence> & seqs,  vector<Sequence> * keep_seqs){
     vector<int> known_scores;
     SBMatrix mat = swps3_readSBMatrix( "EDNAFULL" );
     //SBMatrix mat = swps3_get_premade_SBMatrix( "EDNAFULL" );
@@ -1086,10 +1107,8 @@ void SQLiteConstructor::get_same_seqs_openmp_SWPS3(vector<Sequence> & seqs,  vec
 	    if(maxide >= min(identity+(identity*0.5),.99) && justseqquery == false)
 	       break;
 	}
-	if(justseqquery == true){
-	    justqueryvec.push_back(maxide);
-	    justqueryvec2.push_back(maxcov);
-	}
+	justqueryvec.push_back(maxide);
+	justqueryvec2.push_back(maxcov);
 	if (maxide >= identity && maxcov >= coverage){
 	    keep_seqs_rc_map[&seqs[i]] = rc;
 	    //with this we don't have to keep track of rc anymore unless we want to
@@ -1101,13 +1120,64 @@ void SQLiteConstructor::get_same_seqs_openmp_SWPS3(vector<Sequence> & seqs,  vec
     for(it = keep_seqs_rc_map.begin(); it != keep_seqs_rc_map.end(); it++){
 	keep_seqs->push_back(*(*it).first);
     }
-    if(justseqquery == true){
-	ofstream outfile;
-	outfile.open ((gene_name+".seqquery").c_str(),ios::out);
-	for (int i=0;i<justqueryvec.size();i++){
-	    outfile << justqueryvec[i] << "\t" << justqueryvec2[i] << endl;
+    ofstream outfile;
+    outfile.open ((gene_name+".seqquery").c_str(),ios::out);
+    for (int i=0;i<justqueryvec.size();i++){
+	outfile << justqueryvec[i] << "\t" << justqueryvec2[i] << endl;
+    }
+    outfile.close();
+}
+
+void SQLiteConstructor::get_same_seqs_openmp_SWPS3(vector<Sequence> & seqs,  vector<Sequence> * keep_seqs){
+    vector<int> known_scores;
+    SBMatrix mat = swps3_readSBMatrix( "EDNAFULL" );
+    //SBMatrix mat = swps3_get_premade_SBMatrix( "EDNAFULL" );
+    for(int i=0;i<known_seqs->size();i++){
+	known_scores.push_back(get_swps3_score_and_rc_cstyle(mat,&known_seqs->at(i),&known_seqs->at(i)));
+    }
+    map<Sequence*,bool> keep_seqs_rc_map;
+#pragma omp parallel for shared(keep_seqs_rc_map)
+    for (int i=0;i<seqs.size();i++){
+	double maxide = 0;
+	double maxcov = 0;
+	bool rc = false;
+	for (int j=0;j<known_seqs->size();j++){
+	    bool trc = false;
+	    int ret = get_swps3_score_and_rc_cstyle(mat,&known_seqs->at(j), &seqs[i]);
+	    double tsc = double(ret)/double(known_scores[j]);
+	    seqs[i].perm_reverse_complement();//make reverse complement
+	    int retrc = get_swps3_score_and_rc_cstyle(mat,&known_seqs->at(j), &seqs[i]);
+	    seqs[i].perm_reverse_complement();//make it back to original
+	    int setsc = get_swps3_score_and_rc_cstyle(mat,&seqs[i],&seqs[i]);
+	    double fsetsc = double(ret)/double(setsc);
+//	    cout <<i << " " << j << " " << setsc << " " << ret << " " << retrc << " " << known_scores[j] << " " <<  tsc << " " << double(ret)/double(setsc) << endl;
+//	    cout << seqs[i].get_sequence() << endl;
+//	    cout << known_seqs->at(j).get_sequence() << endl;
+//	    cout << seqs[i].get_sequence().size() << endl;
+//	    cout << known_seqs->at(j).get_sequence().size() << endl;
+//	    exit(0);
+	    if(retrc > ret){
+		trc = true;
+		tsc = double(retrc)/double(known_scores[j]);
+	    }
+	    if (tsc > maxide && std::numeric_limits<double>::infinity() != tsc){
+		maxide = tsc;
+		maxcov = fsetsc;
+		rc = trc;
+	    }
+	    if(maxide >= min(identity+(identity*0.5),.99) && justseqquery == false)
+	       break;
 	}
-	outfile.close();
+	if (maxide >= identity && maxcov >= coverage){
+	    keep_seqs_rc_map[&seqs[i]] = rc;
+	    //with this we don't have to keep track of rc anymore unless we want to
+	    if (rc == true)
+		seqs[i].perm_reverse_complement();//the sequence is suppose to be reverse complement
+	}
+    }
+    map<Sequence*,bool>::iterator it;
+    for(it = keep_seqs_rc_map.begin(); it != keep_seqs_rc_map.end(); it++){
+	keep_seqs->push_back(*(*it).first);
     }
 }
 

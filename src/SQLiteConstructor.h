@@ -93,6 +93,7 @@ private:
     void first_seq_search_for_gene_left_right(vector<vector<string> >  &);
     vector<Sequence> first_get_seqs_for_name_use_left_right(int name_id, vector<vector<string> > & results);
     void get_same_seqs_openmp_SWPS3(vector<Sequence> & seqs,  vector<Sequence> * keep_seqs);
+    void get_same_seqs_openmp_SWPS3_justquery(vector<Sequence> & seqs,  vector<Sequence> * keep_seqs);
     double get_usertree_keepseq_overlap(vector<Sequence> * keep_seqs);
     void remove_duplicates_SWPS3(vector<Sequence> * keep_seqs);
     void reduce_genomes(vector<Sequence> * keep_seqs);

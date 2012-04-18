@@ -163,6 +163,7 @@ void SQLiteProfiler::run(){
 	finalaln = profile(numlist);
     }else{
 	finalaln = 1;
+	clean_dbseqs(1);
     }
     if (updatedb == true)
 	gene_db.toggle_updated_all_off();
@@ -483,6 +484,40 @@ void SQLiteProfiler::clean_before_profile(string filename){
     }
     remove((profilefoldername+filename).c_str());
     fu.writeFileFromVector(profilefoldername+filename,tempalseqs);
+}
+
+void SQLiteProfiler::clean_dbseqs(int alignid){
+    double percent = 0.9;
+    gene_db.write_profile_alignment_with_names_to_file(alignid,profilefoldername+"TEMPOUT.OUT",true);
+    FastaUtil fu;
+    vector<Sequence> tempalseqs;
+    fu.readFile(profilefoldername+"TEMPOUT.OUT",tempalseqs);
+    cout << "cleaning seqs" << endl;
+    int seqlength = tempalseqs[0].get_sequence().size();
+    float fseql = float(tempalseqs.size());
+    vector<int> removeem;
+    for(int j=0;j<seqlength;j++){
+	int gaps = 0;
+	for(int i=0;i<tempalseqs.size();i++){
+	    if(tempalseqs[i].get_sequence()[j] == '-' || tempalseqs[i].get_sequence()[j] == 'N' || tempalseqs[i].get_sequence()[j] == 'n')
+		gaps += 1;
+	}
+	double curp = gaps/fseql;
+	if (curp > percent){
+	    removeem.push_back(j);
+	}
+    }
+    for(int i=0;i<tempalseqs.size();i++){
+	string a;
+	for (int j=0;j<seqlength;j++){
+	    if (count(removeem.begin(),removeem.end(),j)==0)
+		a += tempalseqs[i].get_sequence()[j];
+	}
+	tempalseqs[i].set_sequence(a);
+    }
+    remove((profilefoldername+"TEMPOUT.OUT").c_str());
+    fu.writeFileFromVector(profilefoldername+"TEMPOUT.OUT",tempalseqs);
+    match_and_add_profile_alignment_to_db(alignid);
 }
 
 /*

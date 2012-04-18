@@ -93,6 +93,9 @@ bool SQLiteDBController::initiate(){
     query.free_result();
     query.get_result("CREATE INDEX sequence_identifier on sequence(identifier);");
     query.free_result();
+
+    query.get_result("create table information (id INTEGER PRIMARY KEY, name VARCHAR(128), value VARCHAR(128));");
+    query.free_result();
     return ret;
 }
 

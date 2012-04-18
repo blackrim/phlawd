@@ -66,6 +66,7 @@ private:
     void get_shortest_distance_with_dicts(vector<int>& nums,map<int, map<int,double> > & numlist, int * shortestnameone, 
 					  vector<int> * shortestnametwo);
     void clean_before_profile(string infile);
+    void clean_dbseqs(int alignid);
     int profile(map<int, map<int,double> > numlist);
     string get_name_from_tax_id(string taxid);
     void rename_final_alignment(int alignid);
