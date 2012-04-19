@@ -26,10 +26,12 @@ public:
     void remove_alignment_by_name(string alignname);
     void add_seq_to_alignment(int alignid,Sequence inseq);
     void get_align_seqs(int alignid, vector<Sequence> & seqs);
+    void get_profile_align_seqs(int alignid, vector<Sequence> & seqs);
     void get_align_seqs_unaligned(int alignid, vector<Sequence> & seqs);
     void get_align_seq_unaligned_fully_initialized(string alignname,vector<Sequence> & seqs);
     void initialize(bool overwrite);
     void update_align_seqs(int alignid,vector<Sequence> & seqs);
+    void update_profile_align_seqs(int alignid, vector<Sequence> & seqs);
     void get_all_sequences(vector<Sequence> & seqs);
     void get_first_profile_alignments(vector<string> & names);
     void get_alignment_names(vector<string> & names);

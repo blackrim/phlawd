@@ -1501,35 +1501,15 @@ void SQLiteConstructor::make_mafft_multiple_alignment(vector<Sequence> * inseqs,
 }
 
 double SQLiteConstructor::calculate_MAD_quicktree(){
-    string phcmd = "phyutility -concat -in ";
-    phcmd += genefoldername+"outfile -out ";
-    phcmd += genefoldername+"outfile.nex";
-    
-	system(phcmd.c_str());
-    ifstream infile;
-    ofstream outfile;
-    infile.open ((genefoldername+"outfile.nex").c_str(),ios::in);
-    outfile.open ((genefoldername+"outfile.stoc").c_str(),ios::out);
-    bool begin = false;
-    bool end = false;
     string line;
-    /*
-     * convert to stockholm format
-     */
-    while(getline(infile,line)){
-	if (line.find("MATRIX") != string::npos){
-	    begin = true;
-	}else if ((begin == true && end == false) && line.find_first_of(";") != string::npos){
-	    end = true;
-	}else if (begin == true && end == false){
-	    std::string::size_type begin = line.find_first_not_of("\t");
-	    //std::string::size_type end   = line.find_last_not_of("\t");
-	    std::string::size_type end = line.size();
-	    std::string trimmed = line.substr(begin, end-begin + 1);
-	    outfile << trimmed << endl;
-	}
+    ofstream outfile;
+    outfile.open ((genefoldername+"outfile.stoc").c_str(),ios::out);
+    FastaUtil fu;
+    vector<Sequence> tempseqs;
+    fu.readFile(genefoldername+"outfile",tempseqs);
+    for(int i=0;i<tempseqs.size();i++){
+	outfile << tempseqs[i].get_id() << "\t" << tempseqs[i].get_sequence() << endl;
     }
-    infile.close();
     outfile.close();
 
     string cmd = "quicktree -in a -out m ";
@@ -1549,7 +1529,7 @@ double SQLiteConstructor::calculate_MAD_quicktree(){
     vector<string> tokens;
     int nspecies = 0;
     int curspecies = 0;
-    begin = true;
+    bool begin = true;
     if (pfile.is_open()){
 	while (! pfile.eof() ){
 	    getline (pfile,line);
@@ -2121,6 +2101,7 @@ void SQLiteConstructor::get_aligned_file(vector<Sequence> * temp_seqs){
     fu.readFile(genefoldername+"outfile",tempalseqs);
     for (int i=0;i<tempalseqs.size();i++){
 	tempalseqs[i].set_sqlite_id(atoi(tempalseqs[i].get_id().c_str()));
+	tempalseqs[i].set_aligned_seq(tempalseqs[i].get_sequence());
 	temp_seqs->push_back(tempalseqs[i]);
     }
 }

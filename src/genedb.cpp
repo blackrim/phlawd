@@ -273,8 +273,30 @@ void GeneDB::get_align_seqs(int alignid, vector<Sequence> & seqs){
 	string id;
 	string seq;
 	id = to_string(query.getval());
-	seq = to_string(query.getval());
+	seq = to_string(query.getstr());
 	Sequence tseq(id,seq);
+	seqs.push_back(tseq);
+    }
+    query.free_result();
+}
+
+void GeneDB::get_profile_align_seqs(int alignid, vector<Sequence> & seqs){
+    
+    string alignids = to_string(alignid);
+    string sql = "select sequence_id,sequence from sequence_profile_map where profile_id = ";
+    sql += alignids+";";
+
+    Database conn(name);
+    Query query(conn);
+    query.get_result(sql);
+    while(query.fetch_row()){
+	string id;
+	string seq;
+	id = to_string(query.getval());
+	seq = to_string(query.getstr());
+	Sequence tseq(id,seq);
+	tseq.set_sqlite_id(atoi(id.c_str()));
+	tseq.set_aligned_seq(seq);
 	seqs.push_back(tseq);
     }
     query.free_result();
@@ -339,6 +361,8 @@ void GeneDB::get_align_seq_unaligned_fully_initialized(string alignname,vector<S
     query.free_result();
 }
 
+
+
 /*
  * uses the get_sqlite_id and the get_aligned_seq
  */
@@ -351,10 +375,32 @@ void GeneDB::update_align_seqs(int alignid,vector<Sequence> & seqs){
     for(int i=0;i<seqs.size();i++){
 	string sql = "update sequence_alignment_map set sequence = '";
 	sql += seqs[i].get_aligned_seq()+"'";
-	sql += "' where alignment_id = ";
+	sql += " where alignment_id = ";
 	sql += to_string(alignid)+" and sequence_id = ";
 	sql += to_string(seqs[i].get_sqlite_id())+";";
 	rc = sqlite3_exec(conn, sql.c_str(), 0, 0, 0);
+//	cout << rc << " "<< sql << endl;
+    }
+    sqlite3_exec(conn, "COMMIT TRANSACTION", NULL, NULL, NULL);
+}
+
+/*
+ * uses the get_sqlite_id and the get_aligned_seq
+ */
+void GeneDB::update_profile_align_seqs(int alignid,vector<Sequence> & seqs){
+    sqlite3 *conn;
+    int rc = sqlite3_open(name.c_str(), &conn);
+    char *zErrMsg = 0;
+    
+    sqlite3_exec(conn, "BEGIN TRANSACTION", NULL, NULL, NULL);
+    for(int i=0;i<seqs.size();i++){
+	string sql = "update sequence_profile_map set sequence = '";
+	sql += seqs[i].get_aligned_seq()+"'";
+	sql += " where profile_id = ";
+	sql += to_string(alignid)+" and sequence_id = ";
+	sql += to_string(seqs[i].get_sqlite_id())+";";
+	rc = sqlite3_exec(conn, sql.c_str(), 0, 0, 0);
+	//cout << rc << " " << sql << endl;
     }
     sqlite3_exec(conn, "COMMIT TRANSACTION", NULL, NULL, NULL);
 }
@@ -619,6 +665,7 @@ void GeneDB::write_profile_alignment_to_file(int alignid, string filename){
 	string seq;
 	name = to_string(query.getval());
 	seq = to_string(query.getstr());
+//	cout << sql << " " << name << " " << seq << endl;
 	Sequence tseq (name,seq);
 	seqs.push_back(tseq);
     }

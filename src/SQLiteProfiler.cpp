@@ -488,18 +488,16 @@ void SQLiteProfiler::clean_before_profile(string filename){
 
 void SQLiteProfiler::clean_dbseqs(int alignid){
     double percent = 0.9;
-    gene_db.write_profile_alignment_with_names_to_file(alignid,profilefoldername+"TEMPOUT.OUT",true);
-    FastaUtil fu;
     vector<Sequence> tempalseqs;
-    fu.readFile(profilefoldername+"TEMPOUT.OUT",tempalseqs);
+    gene_db.get_profile_align_seqs(alignid,tempalseqs);
     cout << "cleaning seqs" << endl;
-    int seqlength = tempalseqs[0].get_sequence().size();
+    int seqlength = tempalseqs[0].get_aligned_seq().size();
     float fseql = float(tempalseqs.size());
     vector<int> removeem;
     for(int j=0;j<seqlength;j++){
 	int gaps = 0;
 	for(int i=0;i<tempalseqs.size();i++){
-	    if(tempalseqs[i].get_sequence()[j] == '-' || tempalseqs[i].get_sequence()[j] == 'N' || tempalseqs[i].get_sequence()[j] == 'n')
+	    if(tempalseqs[i].get_aligned_seq()[j] == '-' || tempalseqs[i].get_aligned_seq()[j] == 'N' || tempalseqs[i].get_aligned_seq()[j] == 'n')
 		gaps += 1;
 	}
 	double curp = gaps/fseql;
@@ -511,13 +509,11 @@ void SQLiteProfiler::clean_dbseqs(int alignid){
 	string a;
 	for (int j=0;j<seqlength;j++){
 	    if (count(removeem.begin(),removeem.end(),j)==0)
-		a += tempalseqs[i].get_sequence()[j];
+		a += tempalseqs[i].get_aligned_seq()[j];
 	}
-	tempalseqs[i].set_sequence(a);
+	tempalseqs[i].set_aligned_seq(a);
     }
-    remove((profilefoldername+"TEMPOUT.OUT").c_str());
-    fu.writeFileFromVector(profilefoldername+"TEMPOUT.OUT",tempalseqs);
-    match_and_add_profile_alignment_to_db(alignid);
+    gene_db.update_profile_align_seqs(alignid,tempalseqs);
 }
 
 /*
@@ -674,13 +670,7 @@ int SQLiteProfiler::make_muscle_profile(int profile1,int profile2,int outfile){
 	cmd += profilefoldername+"muscle.out";
     cout << "aligning" << endl;
     cout << cmd << endl;
-/*    FILE *fp = popen(cmd.c_str(), "r" );
-    char buff[1000];
-    while ( fgets( buff, sizeof buff, fp ) != NULL ) {//doesn't exit out
-	string line(buff);
-    }
-    pclose( fp );
-*/
+
     system(cmd.c_str());
     test_outfile_exists(profilefoldername+"TEMPOUT.PROFILE");
     return outfile;
