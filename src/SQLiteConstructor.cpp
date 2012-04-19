@@ -1274,9 +1274,6 @@ void SQLiteConstructor::reduce_genomes(vector<Sequence> * keep_seqs){
 		    maxknown = j;
 		}
 	    }
-	    /*
-	     * shrink with phyutility
-	     */
 	    const string tempfile = genefoldername+"genome_shrink";
 	    vector<Sequence> sc1; 
 	    FastaUtil seqwriter;
