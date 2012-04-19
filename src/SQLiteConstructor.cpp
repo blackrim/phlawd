@@ -1316,7 +1316,7 @@ void SQLiteConstructor::reduce_genomes(vector<Sequence> * keep_seqs){
     }
 }
 
-void SQLiteProfiler::clean_for_genome(){
+void SQLiteConstructor::clean_for_genome(){
     double percent = 0.5;//missing more than this, then remove
     FastaUtil fu;
     vector<Sequence> tempalseqs;

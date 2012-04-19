@@ -48,7 +48,7 @@ private:
     vector <string> search;
     string gene_name;
     string gene_db_name;
-	string genefoldername;
+    string genefoldername;
     GeneDB gene_db;
     double mad_cutoff;
     double coverage;
@@ -97,6 +97,7 @@ private:
     double get_usertree_keepseq_overlap(vector<Sequence> * keep_seqs);
     void remove_duplicates_SWPS3(vector<Sequence> * keep_seqs);
     void reduce_genomes(vector<Sequence> * keep_seqs);
+    void clean_for_genome();
     void get_seqs_for_names(string name_id, vector<Sequence> * seqs, vector<Sequence> * temp_seqs);
     void get_seqs_for_names_user(string name_id, vector<Sequence> * seqs);
     void get_seqs_for_nodes(Node * node, vector<Sequence> * seqs, vector<Sequence> * temp_seqs);
