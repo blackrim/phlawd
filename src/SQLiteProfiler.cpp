@@ -453,9 +453,10 @@ void SQLiteProfiler::get_shortest_distance_with_dicts(vector<int> & nums,
 /*
  * just cleaning the file that is there
  * 0.1 is the current limit
+ * percent should be, if you are missing more than this, than remove, so 0.9 is now and 0.5 is genome removal
  */
 void SQLiteProfiler::clean_before_profile(string filename){
-    double percent = 0.9;
+    double percent = 0.9;//missing more than this, then remove
     FastaUtil fu;
     vector<Sequence> tempalseqs;
     fu.readFile(profilefoldername+filename,tempalseqs);

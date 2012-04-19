@@ -1291,12 +1291,15 @@ void SQLiteConstructor::reduce_genomes(vector<Sequence> * keep_seqs){
 	    cout << cmd << endl;
 	    cout << "aligning" << endl;
 	    system(cmd.c_str());
-	    string cmd2 = "phyutility -clean 0.5 -in ";
+	    /*string cmd2 = "phyutility -clean 0.5 -in ";
 	    cmd2 += genefoldername+"genome_shrink_aln -out ";
 	    cmd2 += genefoldername+"genome_shrink_out";
 	    cout << cmd << endl;
 	    cout << "cleaning" << endl;
 	    system(cmd2.c_str());
+	    */
+	    //instead of phyutility
+	    clean_for_genome();
 	    /*
 	     * reading in the sequencing and replacing
 	     */
@@ -1311,6 +1314,38 @@ void SQLiteConstructor::reduce_genomes(vector<Sequence> * keep_seqs){
 	    cout << "shrunk size: "<< keep_seqs->at(i).get_id() << endl;
 	}
     }
+}
+
+void SQLiteProfiler::clean_for_genome(){
+    double percent = 0.5;//missing more than this, then remove
+    FastaUtil fu;
+    vector<Sequence> tempalseqs;
+    fu.readFile(genefoldername+"genome_shrink_aln",tempalseqs);
+    cout << "cleaning seqs" << endl;
+    int seqlength = tempalseqs[0].get_sequence().size();
+    float fseql = float(tempalseqs.size());
+    vector<int> removeem;
+    for(int j=0;j<seqlength;j++){
+	int gaps = 0;
+	for(int i=0;i<tempalseqs.size();i++){
+	    if(tempalseqs[i].get_sequence()[j] == '-' || tempalseqs[i].get_sequence()[j] == 'N' || tempalseqs[i].get_sequence()[j] == 'n')
+		gaps += 1;
+	}
+	double curp = gaps/fseql;
+	if (curp > percent){
+	    removeem.push_back(j);
+	}
+    }
+    for(int i=0;i<tempalseqs.size();i++){
+	string a;
+	for (int j=0;j<seqlength;j++){
+	    if (count(removeem.begin(),removeem.end(),j)==0)
+		a += tempalseqs[i].get_sequence()[j];
+	}
+	tempalseqs[i].set_sequence(a);
+    }
+    remove((genefoldername+"genome_shrink_aln").c_str());
+    fu.writeFileFromVector(genefoldername+"genome_shrink_out",tempalseqs);
 }
 
 vector<string> SQLiteConstructor::get_final_children(string inname_id){
