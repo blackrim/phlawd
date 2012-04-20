@@ -140,6 +140,7 @@ void Tree::reRoot(Node * inroot){
 		processReRoot(newRoot);
 		setRoot(newRoot);
 		processRoot();
+		newRoot->setAsRoot();
 	}
 }
 

@@ -22,14 +22,14 @@ using namespace std;
 
 Node::Node():BL(0.0),height(0.0),number(0),name(""),parent(NULL),
 	     children(vector<Node *> ()), assoc(map<string,NodeObject *>()),
-	     comment(""){}
+	     comment(""),color(""){}
 
 Node::Node(Node * inparent):BL(0.0),height(0.0),number(0),name(""),parent(inparent),
 	     children(vector<Node *> ()), assoc(map<string,NodeObject *>()),
-	     comment(""){}
+			    comment(""),color(""){}
 
 Node::Node(double bl,int innumber,string inname, Node * inparent):BL(bl),height(0.0),
-		number(innumber),name(inname),parent(inparent),children(vector<Node *> ()),assoc(map<string,NodeObject *>()),comment(""){}
+								  number(innumber),name(inname),parent(inparent),children(vector<Node *> ()),assoc(map<string,NodeObject *>()),comment(""),color(""){}
 
 
 vector<Node*> Node::getChildren(){
@@ -56,6 +56,10 @@ bool Node::isRoot(){
 		return true;
 	else
 		return false;
+}
+
+void Node::setAsRoot(){
+    parent = NULL;
 }
 
 bool Node::hasParent(){
@@ -169,6 +173,29 @@ string Node::getNewick(bool bl){
 	return ret;
 }
 
+string Node::getNewickColor(){
+    string ret = "";
+    for(int i=0;i<this->getChildCount();i++){
+	if(i==0)
+	    ret = ret+"(";
+	ret = ret+this->getChild(i)->getNewickColor();
+	std::ostringstream o;
+	o << this->getChild(i)->getBL();
+	ret = ret +":"+o.str();
+	if(i == this->getChildCount()-1)
+	    ret =ret +")";
+	else
+	    ret = ret+",";
+    }
+    if(this->getChildCount() > 0){
+	ret += "[&!name=\""+name+"\",!color="+color+"]";
+    }else{
+	ret += name;
+	ret += "[&!color="+color+"]";
+    }
+    return ret;
+}
+
 /*
  * should be returning the stringnodeobjects as the names for internal
  * nodes
@@ -262,6 +289,17 @@ vector<Node*> Node::get_leaves(){
 		}
 	}
 	return retnodes;
+}
+
+Node * Node::getSister(){
+    for (int i=0;i<parent->getChildren().size();i++){
+	if (parent->getChildren()[i] != this)
+	    return parent->getChildren()[i];
+    }
+}
+
+void Node::setColor(string col){
+    color = col;
 }
 
 /*

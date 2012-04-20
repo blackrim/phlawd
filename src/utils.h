@@ -31,7 +31,9 @@
 using namespace std;
 
 #include "sequence.h"
+#include "tree.h"
 #include "SWPS3_matrix.h"
+#include "libsqlitewrapped.h"
 
 template <class T>
 inline std::string to_string (const T& t);
@@ -50,6 +52,13 @@ typedef int8_t * SBMatrix;
 int get_swps3_score_and_rc_cstyle(SBMatrix mat, Sequence * inseq1, Sequence * inseq2);
 
 vector<string> query_mask(string url);
-
+void convert_to_phylip(string,string);
+void get_earliest_branch_representation(string ncbidb,string rootid, Tree * tree);
+vector<int> get_left_right_exclude(vector<int> * lefts, vector<int> * rights, vector<int> * exlefts, vector<int> * exrights);
+int get_distance_from_child_to_parent(Query * qu, string child, string parent);
+void get_suggested_clips(map<Node *, int> * distances, Tree * tree, double meand,map<Node *,int> *marked, map<string, int>* finallvs, double cutoff);
+void get_taxonomic_outliers(Tree * tree, string ncbidb,double taxcutoff,string gene);
+void get_distances(Node * curnode,map<Node *,int> * distances,map<Node*,vector<int> > * trleft_right,Query * qu);
+void get_branch_length_outliers(Tree * tree,double blcutoff,string gene);
 
 #endif

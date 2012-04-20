@@ -27,6 +27,7 @@ private:
 	vector<Node *> children;
 	map<string,NodeObject *> assoc;
 	string comment;
+	string color;
 
 public:
 	Node();
@@ -41,10 +42,12 @@ public:
 	bool isExternal();
 	bool isInternal();
 	bool isRoot();
+	void setAsRoot();
 	bool hasParent();
 	void setParent(Node & p);
 	int getNumber();
 	void setNumber(int n);
+	void setColor(string);
 	double getBL();
 	void setBL(double bl);
 	double getHeight();
@@ -59,9 +62,11 @@ public:
 	void setComment(string s);
 	string getNewick(bool bl);
 	string getNewick(bool bl,string obj);
+	string getNewickColor();
 	Node * getParent();
 	int getChildCount();
 	void assocObject(string name,NodeObject & obj);
+	Node * getSister();
 	NodeObject * getObject(string name);
 
 

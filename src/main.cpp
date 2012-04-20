@@ -35,22 +35,24 @@ using namespace std;
 #include "SmithWatermanGotoh.h"
 
 #include "tree.h"
+#include "tree_reader.h"
 #include "sequence.h"
 #include "omp.h"
 #include "SWPS3_matrix.h"
 
 int main(int argc, char* argv[]){
     if(argc != 3){
-	cout << "PHLAWD 3.0a" << endl;
+	cout << "PHLAWD 3.1a" << endl;
 	cout << "you need more arguments." << endl;
 	cout << "usage: PHLAWD task configfile" << endl;
 	cout << "possible tasks include:" << endl;
-	cout << "	seqquery -- just get the distribution of best hits to get cutoffs" << endl;
-	cout << "	assemble -- includes assembling and profiling" << endl;
-	cout << "	justprofile -- just profiles (assumes you have assembled)" << endl;
+	cout << "	seqquery     -- just get the distribution of best hits to get cutoffs" << endl;
+	cout << "	assemble     -- includes assembling and profiling" << endl;
+	cout << "	justprofile  -- just profiles (assumes you have assembled)" << endl;
 	cout << "	justassemble -- just assembles (assumes you will profile with justprofile" << endl;
 	//cout << "	changenames -- changes from ncbi numbers to names for a file (newick, fasta, newick, phylip)" <<endl;
-	cout << "	setupdb -- tasks performed on the SQLite database" << endl;
+	cout << "	setupdb      -- tasks performed on the SQLite database" << endl;
+	cout << "	outlier      -- analyses on the detection of outliers" << endl;
     }else{
 	/*
 	 * code to parse through the tasks
@@ -60,6 +62,7 @@ int main(int argc, char* argv[]){
 	bool chnames = false;
 	bool setupdb = false;
 	bool seqquery = false;
+	bool outlier = false;
 	string argvstr(argv[1]);
 	if(argvstr == "assemble"){
 	    asse = true;
@@ -75,18 +78,20 @@ int main(int argc, char* argv[]){
 	}else if(argvstr == "seqquery"){
 	    seqquery = true;
 	    asse = true;
+	}else if(argvstr == "outlier"){
+	    outlier = true;
 	}else{
 	    cout << "you entered an option that doesn't exist: " << argvstr << endl;
 	    cout << "try one of these: " <<endl;
-	    cout << "	seqquery -- just get the distribution of best hits to get cutoffs" << endl;
-	    cout << "	assemble -- includes assembling and profiling" << endl;
-	    cout << "	justprofile -- just profiles (assumes you have assembled)" << endl;
+	    cout << "	seqquery     -- just get the distribution of best hits to get cutoffs" << endl;
+	    cout << "	assemble     -- includes assembling and profiling" << endl;
+	    cout << "	justprofile  -- just profiles (assumes you have assembled)" << endl;
 	    cout << "	justassemble -- just assembles (assumes you will profile with justprofile" << endl;
-	    //cout << "	changenames -- changes from ncbi numbers to names for a file (newick, fasta, newick, phylip)" <<endl;
-	    cout << "	setupdb -- tasks performed on the SQLite database" << endl;
+	    cout << "	setupdb      -- tasks performed on the SQLite database" << endl;
+	    cout << "	outlier      -- analyses on the detection of outliers" << endl;
 	}
 
-	if(asse == true || prof == true){
+	if(asse == true || prof == true || outlier == true){
 	    /*
 	     *
 	     */
@@ -124,6 +129,12 @@ int main(int argc, char* argv[]){
 	    string userfastafile = "";
 	    bool userskipdb = false;
 	    bool userskipsearch = false;
+	    //for outlier
+	    double taxcutoff = 4;//number above
+	    double blcutoff = 100;//proportion above the mean that is considered outlier so 100 times the mean is default
+	    bool outliertreerooted = false;
+	    string outliertreefile = "";//set below if here
+	    bool outliertreecalculated = false;
 	    //read file
 	    ifstream ifs(argv[2]);
 	    string line;
@@ -206,11 +217,22 @@ int main(int argc, char* argv[]){
 		}else if(!strcmp(tokens[0].c_str(),"userskipsearch")){
 		    userskipsearch = true;
 		    cout << "skipping ncbi database search all together" << endl;
+		}else if(!strcmp(tokens[0].c_str(), "outliertreefile")){
+		    outliertreecalculated = true;
+		    outliertreefile = tokens[1];
+		    cout << "outlier tree file: "<< outliertreefile <<endl;
+		}else if(!strcmp(tokens[0].c_str(), "taxcutoff")){
+		    taxcutoff = atof(tokens[1].c_str());
+		    cout << "setting taxcutoff: " << taxcutoff << endl;
+		}else if(!strcmp(tokens[0].c_str(), "blcutoff")){
+		    blcutoff = atof(tokens[1].c_str());
+		    cout << "setting blcutoff: "<< blcutoff << endl;
+		}else if(!strcmp(tokens[0].c_str(),"outliertreerooted")){
+		    outliertreerooted = true;
+		    cout << "the outlier tree is rooted" << endl;
 		}
 	    }
 	    ifs.close();
-	    //sqlite // NEW
-	    cout << "using sqlite" << endl;
 	    /*
 	     * checks before moving forward
 	     */
@@ -307,6 +329,42 @@ int main(int argc, char* argv[]){
 	    /*
 	     * this needs a lot of editing -- need multiple trees, fasta files
 	     */
+	    if(outlier == true){
+		cout << "attempting outlier detection" << endl;
+		//use the major clade group to pick an outgroup which would just be a random child that has taxa
+		string treefile;
+		if(outliertreecalculated == false){
+		    cout << "converting "<< gene <<".FINAL.aln to phylip format for tree building"<<   endl;
+		    convert_to_phylip((gene+".FINAL.aln"),(gene+".FINAL.phy"));
+		    cout << "constructing a tree for detection" << endl;
+		    remove(("RAxML_info."+gene+".outlierdet").c_str());
+		    string treerunstr = "raxmlHPC-PTHREADS-SSE3 -T "+int_to_string(numthreads)+" -m GTRCAT -s "+(gene+".FINAL.phy")+" -n "+gene+".outlierdet";
+		    system(treerunstr.c_str());
+		    treefile = "RAxML_result."+gene+".outlierdet";
+		}else{
+		    treefile = outliertreefile;
+		}
+		TreeReader nw;
+		cout << "outlier reading tree file" << endl;
+		ifstream tinfile(treefile.c_str());
+		if (!tinfile){
+		    cerr <<"outlier tree: "<<treefile<< " doesn't exist"<<endl;
+		    exit(0);
+		}
+		string line;
+		getline(tinfile,line);
+		tinfile.close();
+		Tree * outliertree = nw.readTree(line);
+		if (outliertreerooted == false){
+		    cout << "attempting to root based on taxonomy" << endl;	
+		    get_earliest_branch_representation(db,clade,outliertree);
+		}
+		cout << "calculating taxonomic outliers" << endl;
+		get_taxonomic_outliers(outliertree,db,taxcutoff,gene);
+		cout << "calculating branch length outliers" << endl;
+		get_branch_length_outliers(outliertree,blcutoff,gene);
+		cout << "generating outfile with outliers removed" << endl;
+	    }
 	}else if (chnames == true){//change names == true
 	    cout << "changing names in tree" << endl;
 	    string dbtype;
@@ -341,8 +399,7 @@ int main(int argc, char* argv[]){
 	    c->convert();
 	    c->writetree(outfile);
 	    delete c;
-	}
-	else if(setupdb == true){
+	}else if(setupdb == true){
 	    cout << "setting up database" << endl;
 	    string dbname;
 	    string division = "";
