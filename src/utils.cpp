@@ -283,6 +283,7 @@ void get_earliest_branch_representation(string ncbidb,string root, Tree * tree){
 	rootid = to_string(query.getval());
 	break;
     }
+    cout << root << endl;
     query.free_result();
     vector<string> trncbis;
     vector<int> trleft;
