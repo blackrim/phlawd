@@ -540,6 +540,7 @@ void get_taxonomic_outliers(Tree * tree, string ncbidb, double cutoff,string gen
 	while(query.fetch_row()){
 	    commonparent = atoi(to_string(query.getval()).c_str());
 	    ed_name = to_string(query.getstr());
+	    break;
 	}
         labelnames[to_string(commonparent)] = ed_name;
 	tree->getInternalNode(i)->setName(to_string(commonparent));
