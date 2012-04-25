@@ -447,8 +447,7 @@ void get_distances(Node * curnode,map<Node *,int> * distances,map<Node*,vector<i
     vector<int> lf_rt = get_left_right_exclude(&lefts,&rights,&exlefts,&exrights);
     string sqlstring = "select ncbi_id from taxonomy where left_value < "+to_string(lf_rt[0])+" and right_value > "+to_string(lf_rt[1])+" LIMIT 1;";
     cout << sqlstring << endl;
-    int rc = qu->get_result(sqlstring);
-    cout << rc << endl;
+    cout << qu->get_result(sqlstring) << endl;
     string commonparent;
     while(qu->fetch_row()){
 	cout << "fetching" << endl;
