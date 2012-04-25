@@ -338,9 +338,9 @@ int main(int argc, char* argv[]){
 		    convert_to_phylip((gene+".FINAL.aln"),(gene+".FINAL.phy"));
 		    cout << "constructing a tree for detection" << endl;
 		    remove(("RAxML_info."+gene+".outlierdet").c_str());
-		    string treerunstr = "raxmlHPC-PTHREADS-SSE3 -T "+int_to_string(numthreads)+" -p 12345 -f E -m GTRCAT -c 8 -s "+(gene+".FINAL.phy")+" -n "+gene+".outlierdet";
+		    string treerunstr = "raxmlHPC-PTHREADS-SSE3 -T "+int_to_string(numthreads)+" -p 12345 -m GTRCAT -c 8 -s "+(gene+".FINAL.phy")+" -n "+gene+".outlierdet";
 		    system(treerunstr.c_str());
-		    treefile = "RAxML_fastTree."+gene+".outlierdet";
+		    treefile = "RAxML_bestTree."+gene+".outlierdet";
 		}else{
 		    treefile = outliertreefile;
 		}
