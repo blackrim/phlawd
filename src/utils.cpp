@@ -388,6 +388,7 @@ int get_distance_from_child_to_parent(Query * qu, string child, string parent){
     string curid = child;
     while (curid != "1"){
         string sqlsearch = "select parent_ncbi_id from taxonomy where ncbi_id = "+curid+";";
+	cout << sqlsearch << endl;
         qu->get_result(sqlsearch);
         string nid;
 	while(qu->fetch_row()){
