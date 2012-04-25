@@ -371,14 +371,14 @@ vector<int> get_left_right_exclude(vector<int> * lefts, vector<int> * rights, ve
     for (int i=0;i<lefts->size();i++){
         if (count(exlefts->begin(), exlefts->end(),lefts->at(i))==0)
 	    if (lefts->at(i) < lf_rt[0])
-		   lf_rt[0] = lefts->at(i);
+		lf_rt[0] = lefts->at(i);
     }
     for (int i=0;i<rights->size();i++){
         if (count(exrights->begin(),exrights->end(),rights->at(i))==0)
             if (rights->at(i) > lf_rt[1])
-	lf_rt[1] = i;
-}
-return lf_rt;
+		lf_rt[1] = i;
+    }
+    return lf_rt;
 }
 //for distance for taxonomic outliers
 int get_distance_from_child_to_parent(Query * qu, string child, string parent){
@@ -447,7 +447,6 @@ void get_distances(Node * curnode,map<Node *,int> * distances,map<Node*,vector<i
     vector<int> lf_rt = get_left_right_exclude(&lefts,&rights,&exlefts,&exrights);
     string sqlstring = "select ncbi_id from taxonomy where left_value < "+to_string(lf_rt[0])+" and right_value > "+to_string(lf_rt[1])+" LIMIT 1;";
     cout << sqlstring << endl;
-    cout << qu->get_result(sqlstring) << endl;
     string commonparent;
     while(qu->fetch_row()){
 	cout << "fetching" << endl;
@@ -548,6 +547,7 @@ void get_taxonomic_outliers(Tree * tree, string ncbidb, double cutoff,string gen
         labelnames[to_string(commonparent)] = ed_name;
 	tree->getInternalNode(i)->setName(to_string(commonparent));
     }
+    query.free_result();
     map<Node *,int> distances;
     cout << "distances" << endl;
     get_distances(tree->getRoot(),&distances,&trleft_right,&query);
