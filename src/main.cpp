@@ -340,7 +340,7 @@ int main(int argc, char* argv[]){
 		    remove(("RAxML_info."+gene+".outlierdet").c_str());
 		    string treerunstr = "raxmlHPC-PTHREADS-SSE3 -T "+int_to_string(numthreads)+" -p 12345 -f E -m GTRCAT -c 8 -s "+(gene+".FINAL.phy")+" -n "+gene+".outlierdet";
 		    system(treerunstr.c_str());
-		    treefile = "RAxML_bestTree."+gene+".outlierdet";
+		    treefile = "RAxML_fastTree."+gene+".outlierdet";
 		}else{
 		    treefile = outliertreefile;
 		}
