@@ -449,6 +449,7 @@ void get_distances(Node * curnode,map<Node *,int> * distances,map<Node*,vector<i
     string commonparent;
     while(qu->fetch_row()){
 	commonparent = to_string(qu->getval());
+	break;
     }
     qu->free_result();
     int distance = get_distance_from_child_to_parent(qu,commonparent,testnode->getName());
