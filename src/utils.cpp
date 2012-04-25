@@ -451,6 +451,7 @@ void get_distances(Node * curnode,map<Node *,int> * distances,map<Node*,vector<i
     }
     vector<int> lf_rt = get_left_right_exclude(&lefts,&rights,&exlefts,&exrights);
     string sqlstring = "select ncbi_id from taxonomy where left_value < "+to_string(lf_rt[0])+" and right_value > "+to_string(lf_rt[1])+" LIMIT 1;";
+    qu.get_result(sqlstring);
     string commonparent;
     while(qu.fetch_row()){
 	commonparent = to_string(qu.getval());
