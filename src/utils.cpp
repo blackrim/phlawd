@@ -385,13 +385,11 @@ int get_distance_from_child_to_parent(string ncbidb, string child, string parent
     Database conn(ncbidb);
     Query qu(conn);
     int distance = 0;
-    cout << child << " " << parent << endl;
     if (child == parent)
         return 0;
     string curid = child;
     while (curid != "1"){
         string sqlsearch = "select parent_ncbi_id from taxonomy where ncbi_id = "+curid+";";
-	cout << sqlsearch << endl;
         qu.get_result(sqlsearch);
         string nid;
 	while(qu.fetch_row()){
