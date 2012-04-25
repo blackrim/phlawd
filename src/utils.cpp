@@ -383,6 +383,7 @@ vector<int> get_left_right_exclude(vector<int> * lefts, vector<int> * rights, ve
 //for distance for taxonomic outliers
 int get_distance_from_child_to_parent(Query * qu, string child, string parent){
     int distance = 0;
+    cout << child << " " << parent << endl;
     if (child == parent)
         return 0;
     string curid = child;
