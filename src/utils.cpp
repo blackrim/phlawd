@@ -536,7 +536,6 @@ void get_taxonomic_outliers(Tree * tree, string ncbidb, double cutoff,string gen
 	}
         string searchstr = "select ncbi_id,edited_name from taxonomy where left_value < "+to_string(lowestleft)+" and right_value > "+to_string(highestright)+" and name_class = 'scientific name' LIMIT 1;";
 	query.get_result(searchstr);
-	cout << searchstr << endl;
 	int commonparent;
 	string ed_name;
 	while(query.fetch_row()){
@@ -546,7 +545,6 @@ void get_taxonomic_outliers(Tree * tree, string ncbidb, double cutoff,string gen
 	}
         labelnames[to_string(commonparent)] = ed_name;
 	tree->getInternalNode(i)->setName(to_string(commonparent));
-	cout << i << endl;
     }
     map<Node *,int> distances;
     cout << "distances" << endl;
