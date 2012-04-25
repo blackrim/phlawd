@@ -358,7 +358,7 @@ int main(int argc, char* argv[]){
 		if (outliertreerooted == false){
 		    cout << "attempting to root based on taxonomy" << endl;	
 		    get_earliest_branch_representation(db,clade,outliertree);
-		    cout << outliertree->getRoot()->getNewick()<<endl;
+		    cout << outliertree->getRoot()->getNewick(false)<<endl;
 		}
 		cout << "calculating taxonomic outliers" << endl;
 		get_taxonomic_outliers(outliertree,db,taxcutoff,gene);
