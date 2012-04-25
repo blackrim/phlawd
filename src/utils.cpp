@@ -381,7 +381,9 @@ vector<int> get_left_right_exclude(vector<int> * lefts, vector<int> * rights, ve
     return lf_rt;
 }
 //for distance for taxonomic outliers
-int get_distance_from_child_to_parent(Query * qu, string child, string parent){
+int get_distance_from_child_to_parent(string ncbidb, string child, string parent){
+    Database conn(ncbidb);
+    Query qu(conn);
     int distance = 0;
     cout << child << " " << parent << endl;
     if (child == parent)
@@ -390,12 +392,12 @@ int get_distance_from_child_to_parent(Query * qu, string child, string parent){
     while (curid != "1"){
         string sqlsearch = "select parent_ncbi_id from taxonomy where ncbi_id = "+curid+";";
 	cout << sqlsearch << endl;
-        qu->get_result(sqlsearch);
+        qu.get_result(sqlsearch);
         string nid;
-	while(qu->fetch_row()){
-	    nid = to_string(qu->getval());
+	while(qu.fetch_row()){
+	    nid = to_string(qu.getval());
 	}
-	qu->free_result();
+	qu.free_result();
         distance += 1;
         if (nid == parent)
             break;
@@ -405,9 +407,11 @@ int get_distance_from_child_to_parent(Query * qu, string child, string parent){
 }
 
 //postorder calculator
-void get_distances(Node * curnode,map<Node *,int> * distances,map<Node*,vector<int> > * trleft_right, Query * qu){
+void get_distances(Node * curnode,map<Node *,int> * distances,map<Node*,vector<int> > * trleft_right, string ncbidb){
+    Database conn(ncbidb);
+    Query qu(conn);
     for(int i=0;i<curnode->getChildCount();i++){
-	get_distances(curnode->getChild(i),distances,trleft_right,qu);
+	get_distances(curnode->getChild(i),distances,trleft_right,ncbidb);
     }
     if (curnode->hasParent() == false)
 	return;
@@ -447,14 +451,12 @@ void get_distances(Node * curnode,map<Node *,int> * distances,map<Node*,vector<i
     }
     vector<int> lf_rt = get_left_right_exclude(&lefts,&rights,&exlefts,&exrights);
     string sqlstring = "select ncbi_id from taxonomy where left_value < "+to_string(lf_rt[0])+" and right_value > "+to_string(lf_rt[1])+" LIMIT 1;";
-    cout << sqlstring << endl;
     string commonparent;
-    while(qu->fetch_row()){
-	cout << "fetching" << endl;
-	commonparent = to_string(qu->getval());
+    while(qu.fetch_row()){
+	commonparent = to_string(qu.getval());
     }
-    qu->free_result();
-    int distance = get_distance_from_child_to_parent(qu,commonparent,testnode->getName());
+    qu.free_result();
+    int distance = get_distance_from_child_to_parent(ncbidb,commonparent,testnode->getName());
     (*distances)[curnode] = distance;
 }
 
@@ -551,7 +553,7 @@ void get_taxonomic_outliers(Tree * tree, string ncbidb, double cutoff,string gen
     query.free_result();
     map<Node *,int> distances;
     cout << "distances" << endl;
-    get_distances(tree->getRoot(),&distances,&trleft_right,&query);
+    get_distances(tree->getRoot(),&distances,&trleft_right,ncbidb);
     cout << "end distances" << endl;
     map<Node *,int>::iterator it;
     double meandistance = 0;
