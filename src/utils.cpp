@@ -399,7 +399,6 @@ int get_distance_from_child_to_parent(Query * qu, string child, string parent){
         if (nid == parent)
             break;
         curid = nid;
-	cout << curid << endl;
     }
     return distance;
 }
@@ -451,8 +450,8 @@ void get_distances(Node * curnode,map<Node *,int> * distances,map<Node*,vector<i
     qu->get_result(sqlstring);
     string commonparent;
     while(qu->fetch_row()){
+	cout << "fetching" << endl;
 	commonparent = to_string(qu->getval());
-	break;
     }
     qu->free_result();
     int distance = get_distance_from_child_to_parent(qu,commonparent,testnode->getName());
