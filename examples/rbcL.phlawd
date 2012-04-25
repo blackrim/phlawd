@@ -1,7 +1,7 @@
 #clade = Streptophytina
 #clade = campanulids
-#clade = Asterales
-clade = Dipsacales
+clade = Asterales
+#clade = Dipsacales
 #clade = Caryophyllales
 search = rbcL
 gene = rbcL
@@ -26,5 +26,5 @@ excludelistfile = exclude
 #userguidetree = RAxML_MajorityRuleConsensusTree.MR_rapid_500.rr.tre
 #userfasta = rbcL.user
 #outliertreefile = RAxML_result.rbcL.outlierdet
-taxcutoff = 3
-blcutoff = 10
+#taxcutoff = 3
+#blcutoff = 10
