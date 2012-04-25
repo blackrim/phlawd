@@ -398,6 +398,7 @@ int get_distance_from_child_to_parent(Query * qu, string child, string parent){
         if (nid == parent)
             break;
         curid = nid;
+	cout << curid << endl;
     }
     return distance;
 }
@@ -407,7 +408,7 @@ void get_distances(Node * curnode,map<Node *,int> * distances,map<Node*,vector<i
     for(int i=0;i<curnode->getChildCount();i++){
 	get_distances(curnode->getChild(i),distances,trleft_right,qu);
     }
-    if (curnode->getParent() == NULL)
+    if (curnode->hasParent() == false)
 	return;
     vector<string> leaves_to_ex;
     string ilabel;
@@ -428,9 +429,9 @@ void get_distances(Node * curnode,map<Node *,int> * distances,map<Node*,vector<i
     vector<int>exrights;
     Node * testnode = curnode->getParent();
     if (curnode->getParent()->get_num_leaves() == 2 || (curnode->getParent()->get_num_leaves()-leaves_to_ex.size() == 1)){
-	Node *testnode = curnode->getParent()->getParent();
-	if (testnode == NULL)
+	if (curnode->getParent()->hasParent()==false)
 	    return;
+	Node *testnode = curnode->getParent()->getParent();
     }
     vector<Node *> tleaves = testnode->get_leaves();
     for(int j=0;j<tleaves.size();j++){
@@ -445,6 +446,7 @@ void get_distances(Node * curnode,map<Node *,int> * distances,map<Node*,vector<i
     }
     vector<int> lf_rt = get_left_right_exclude(&lefts,&rights,&exlefts,&exrights);
     string sqlstring = "select ncbi_id from taxonomy where left_value < "+to_string(lf_rt[0])+" and right_value > "+to_string(lf_rt[1])+" LIMIT 1;";
+    cout << sqlstring << endl;
     qu->get_result(sqlstring);
     string commonparent;
     while(qu->fetch_row()){
