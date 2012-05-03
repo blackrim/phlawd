@@ -329,7 +329,7 @@ void get_earliest_branch_representation(string ncbidb,string root, Tree * tree){
 	    going = false;
 	    break;
 	}else{//has to be one
-	    curid = ncbis[0];
+	    curid = to_string(ncbis[0]);
 	    ncbis.clear();
 	    ncbis_l.clear();
 	    ncbis_r.clear();
