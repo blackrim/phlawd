@@ -1,11 +1,11 @@
 #clade = Streptophytina
 #clade = campanulids
-clade = Asterales
-#clade = Dipsacales
+#clade = Asterales
+clade = Dipsacales
 #clade = Caryophyllales
 search = rbcL
 gene = rbcL
-mad =  0.01
+mad =  0.05
 #mad = 0.1
 coverage = 0.2
 identity = 0.2
@@ -14,13 +14,13 @@ db = /media/data/all.db
 knownfile = rbcL.keep
 numthreads = 4
 #listfile = includefile
-excludelistfile = exclude
+#excludelistfile = exclude
 #listfile = include_wild
 #containshigher
 #containswild
 #excludegilistfile = ex_gi
 #gbmask = http://127.0.0.1:8000/gbmask/mask/dump_mask
-#updateDB
+updateDB
 #updateFILE = rbcl.mine
 #userguidetree = rbcL.phy.rn.tre
 #userguidetree = RAxML_MajorityRuleConsensusTree.MR_rapid_500.rr.tre
