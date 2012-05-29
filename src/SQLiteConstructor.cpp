@@ -958,7 +958,7 @@ vector<Sequence> SQLiteConstructor::exclude_names_from_file(vector<Sequence>& se
 	string sql;
 	if (line[0]=='*') { //this indicates a wildcard and will ignore any taxa with this in the name
 	    string trimline = line.substr(1,line.size());
-	    sql = "SELECT ncbi_id FROM taxonomy WHERE left_value > "+int_to_string(main_left)+" AND right_value < "+int_to_string(main_right)+" AND name like '%"+trimline+"%'";
+	    sql = "SELECT ncbi_id FROM taxonomy WHERE left_value > "+int_to_string(main_left)+" AND right_value < "+int_to_string(main_right)+" AND name like '%"+trimline+"%'  and name_class == 'scientific name'";
 	}else{
 
 	    sql = "SELECT ncbi_id FROM taxonomy WHERE name = '"+line+"'";
