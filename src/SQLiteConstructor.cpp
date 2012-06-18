@@ -1075,6 +1075,7 @@ void SQLiteConstructor::get_same_seqs_openmp_SWPS3_justquery(vector<Sequence> & 
     map<Sequence*,bool> keep_seqs_rc_map;
     vector<double> justqueryvec;
     vector<double> justqueryvec2;
+    vector<string> justqueryname;
 #pragma omp parallel for shared(keep_seqs_rc_map,justqueryvec)
     for (int i=0;i<seqs.size();i++){
 	double maxide = 0;
@@ -1109,6 +1110,7 @@ void SQLiteConstructor::get_same_seqs_openmp_SWPS3_justquery(vector<Sequence> & 
 	}
 	justqueryvec.push_back(maxide);
 	justqueryvec2.push_back(maxcov);
+	justqueryname.push_back(seqs[i].get_id());
 	if (maxide >= identity && maxcov >= coverage){
 	    keep_seqs_rc_map[&seqs[i]] = rc;
 	    //with this we don't have to keep track of rc anymore unless we want to
@@ -1123,7 +1125,7 @@ void SQLiteConstructor::get_same_seqs_openmp_SWPS3_justquery(vector<Sequence> & 
     ofstream outfile;
     outfile.open ((gene_name+".seqquery").c_str(),ios::out);
     for (int i=0;i<justqueryvec.size();i++){
-	outfile << justqueryvec[i] << "\t" << justqueryvec2[i] << endl;
+	outfile << justqueryname[i] << "\t" << justqueryvec[i] << "\t" << justqueryvec2[i] << endl;
     }
     outfile.close();
 }
