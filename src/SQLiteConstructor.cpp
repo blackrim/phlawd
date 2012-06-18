@@ -67,10 +67,10 @@ inline std::string to_string (const T& t){
     return ss.str();
 }
 
-SQLiteConstructor::SQLiteConstructor(string cn, vector <string> searchstr, string genen, string genedb,
+SQLiteConstructor::SQLiteConstructor(string cn, vector <string> searchstr, bool searchlit, string genen, string genedb,
              double mad_cut,double cover, double ident, string dbs, 
              string known_seq_filen, bool its, int numt,bool autom,
-             bool inupdatedb, string inupdatefile): clade_name(cn),search(searchstr),
+             bool inupdatedb, string inupdatefile): clade_name(cn),search(searchstr),searchliteral(searchlit),
                       gene_name(genen), gene_db_name(genedb),
                       mad_cutoff(mad_cut),coverage(cover),
                       identity(ident),db(dbs),useITS(its),
@@ -662,6 +662,9 @@ int SQLiteConstructor::get_numthreads(){
 void SQLiteConstructor::first_seq_search_for_gene_left_right(vector<vector<string> > & retvals){
     Database conn(db);
     string sql;
+    if(searchliteral){
+		sql = "SELECT id,ncbi_id FROM sequence WHERE "+search[0]+" ;";
+	}else{
     if (search.size() == 1){
 	sql = "SELECT id,ncbi_id FROM sequence WHERE description LIKE '%"+search[0]+"%'";
     }else{
@@ -670,6 +673,7 @@ void SQLiteConstructor::first_seq_search_for_gene_left_right(vector<vector<strin
 	    sql = sql + "description LIKE '%"+search[i]+"%' OR ";
 	}
 	sql = sql + "description LIKE '%"+search[search.size()-1]+"%';";
+    }
     }
     //string sql = "SELECT * FROM bioentry WHERE description LIKE '%"+search+"%'";
 //	sql = "SELECT * FROM bioentry WHERE description LIKE '%"+search+"%' OR description LIKE '%trnK%'"

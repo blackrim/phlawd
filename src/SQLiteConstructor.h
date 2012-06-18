@@ -46,6 +46,7 @@ private:
     fstream ufafile;
     string clade_name;
     vector <string> search;
+    bool searchliteral;
     string gene_name;
     string gene_db_name;
     string genefoldername;
@@ -118,7 +119,7 @@ private:
     void match_an_aligned_seq(Sequence * temp_seq);
     void get_aligned_file(vector<Sequence> * temp_seqs);
 public:
-    SQLiteConstructor(string cn, vector <string> searchstr, string genen, string genedb,
+    SQLiteConstructor(string cn, vector <string> searchstr, bool searchlit, string genen, string genedb,
 		      double mad_cut,double cover, double ident, string dbs,
 		      string known_seq_filen, bool its, int numt,bool autom,
 		      bool updb, string updf);
