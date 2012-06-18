@@ -1110,7 +1110,7 @@ void SQLiteConstructor::get_same_seqs_openmp_SWPS3_justquery(vector<Sequence> & 
 	}
 	justqueryvec.push_back(maxide);
 	justqueryvec2.push_back(maxcov);
-	justqueryname.push_back(seqs[i].get_ncbi_gi_id());
+	justqueryname.push_back(seqs[i].get_name());
 	if (maxide >= identity && maxcov >= coverage){
 	    keep_seqs_rc_map[&seqs[i]] = rc;
 	    //with this we don't have to keep track of rc anymore unless we want to
