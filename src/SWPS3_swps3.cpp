@@ -127,9 +127,10 @@ int swps3_maxscores ( SBMatrix matrix , Sequence * known, Sequence * test){
 	Options options = {-12,-2,DBL_MAX};
 
 	char * x1;
+        bool validKnownSeq;
 	x1 = (char*)malloc(sizeof(char)*known->get_sequence().size());
 	memcpy(x1, known->get_sequence().c_str(), known->get_sequence().size());
-	swps3_translateSequence(x1,known->get_sequence().size(),NULL);
+	validKnownSeq = swps3_translateSequence(x1,known->get_sequence().size(),NULL);
 	query = x1;
 	//query = known->toString().c_str();
 	queryLen = known->get_sequence().size();
@@ -142,12 +143,18 @@ int swps3_maxscores ( SBMatrix matrix , Sequence * known, Sequence * test){
 	const char * db;
 
 	char * x2;
+        bool validTestSeq;
 	x2 = (char*)malloc(sizeof(char)*test->get_sequence().size());
 	memcpy(x2, test->get_sequence().c_str(), test->get_sequence().size());
-	swps3_translateSequence(x2,test->get_sequence().size(),NULL);
-	db = x2;
-	//db=test->toString().c_str();
-	dbLen = test->get_sequence().size();
+	validTestSeq = swps3_translateSequence(x2,test->get_sequence().size(),NULL);
+        if (validTestSeq) {
+                db = x2;
+                //db=test->toString().c_str();
+                dbLen = test->get_sequence().size();
+        } else {
+                printf("sequence %s is corrupt\n", test->get_ncbi_gi_id().c_str());
+                throw 1;
+        }
 
 #ifdef DEBUG
 	for(i=0; i<queryLen; ++i) printf("\t%c",query[i]);

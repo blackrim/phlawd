@@ -428,19 +428,6 @@ void SQLiteProfiler::create_distances_user_tree(vector<string> ifile_names,map<s
     }
 }
 
-/* need to identify the source of this weird profile deleting mismatch problem...
- * 
- * one possibility is that the profile alignments are not getting stored properly, but the
- * original alignments are getting deleted. so when we search the hash, we don't find a 
- * profile alignment, but when we attempt to delete it from the original_alns_to_profile, it doesn't exist
- * there. we need to trace back through the process to make sure that the profile is getting
- * stored correctly. the alignment that is failing in the test case is number 115. presumably
- * this is an original alignment, not a profile... 
- * 
- * update 7/21 it looks like some alignments are getting added to the original_alns_to_profile
- * array more than once. in the instance I am considering now, its alignment id 169 that appears to
- * be in that array twice... unless I am doing something wrong viewing the contents of that array in gdb...  */
-
 void SQLiteProfiler::get_shortest_distance_with_dicts(
                 vector<int> & nums,
 				map<int, map<int, double> > & numlist,
@@ -567,11 +554,11 @@ int SQLiteProfiler::profile(map<int, map<int,double> > numlist) {
     /* this processes through numlist (a list of database alignment ids), profile-aligning them to
      * one another until all alignments have been profiled.
      * 
-     * we keep track of original and profile alignments in two lists: original_alns_to_profile and
-     * profile_alns_to_profile, which store the alignments' database ids. we process through these
-     * lists, deleting the alignment ids (from whichever list they came) as they are added to a new
-     * profile alignment, and adding the id of the resulting profile alignment to the profile_alns_to_profile list.
-     * we stop when original_alns_to_profile is empty and only one profile id remains; the
+     * we keep track of original and profile alignments in two vectors: original_alns_to_profile and
+     * profile_alns_to_profile, which store the alignments' database ids. we process through these,
+     * deleting the alignment ids (from the respective vector) as they are combined into a new profile
+     * alignment, and adding the id of the new profile alignment to the profile_alns_to_profile
+     * list. we stop when original_alns_to_profile is empty and only one profile id remains; the
      * corresponding final alignment contains all the original alignments referenced in numlist. */
 
     cout << "writing everything to record.log" << endl; // really? this may not actually be the case...
@@ -581,17 +568,17 @@ int SQLiteProfiler::profile(map<int, map<int,double> > numlist) {
     bool muscle = true;
 
     // initiate arrays to store alignment ids to profile.
-    // all ids are database record ids from the profile_alignments table.
+    // all ids are database row ids from the profile_alignments table.
     vector<int> profile_alns_to_profile;
 
-    // the original alignments have been copied to the profile_alignments table.
-    // this array stores their dbids there.
+    // the original alignments have been copied to the profile_alignments table in the database.
+    // this array stores their row ids in that table.
     vector<int> original_alns_to_profile(first_profiles_dbids.begin(), first_profiles_dbids.end());
 
     // DEBUG: logging output
-    cout << "dbids for starting profiles (original alignments): " << endl;
-    for(int i = 0; i < original_alns_to_profile.size(); i++) {
-        cout << original_alns_to_profile[i] << endl;}
+//    cout << "dbids for starting profiles (original alignments): " << endl;
+//    for(int i = 0; i < original_alns_to_profile.size(); i++) {
+//        cout << original_alns_to_profile[i] << endl;}
 
 //    exit(0);
 
@@ -599,26 +586,28 @@ int SQLiteProfiler::profile(map<int, map<int,double> > numlist) {
 
         // reduce the alignments to profile to just those that have been updated
         original_alns_to_profile = updatednums;
-
-        cout << "original alignments remaining to profile: " << endl;    
-        for (int i = 0; i < original_alns_to_profile.size(); i++) {
-            cout << original_alns_to_profile[i] << endl;}
+        cout << "original alignments remaining to profile: ";
+        for (int i = 0; i < original_alns_to_profile.size(); i++)
+            cout << original_alns_to_profile[i] << " ";
+        cout << endl;
 
         // add the existing profiles to profile_alns_to_profile
         profile_alns_to_profile = updatedprofiles;
-        for (int i = 0; i < profile_alns_to_profile.size(); i++) {
-            cout << "intermediate profile alignments remaining to cross-align: " << profile_alns_to_profile[i]<< endl;}
+        cout << "intermediate profile alignments remaining to cross-align: ";
+        for (int i = 0; i < profile_alns_to_profile.size(); i++)
+            cout << profile_alns_to_profile[i] << " ";
+        cout << endl;
     }
 
-    // so we know when to change the output name to FINAL.aln
+    // use this to flag when to change the output name to FINAL.aln
     int last_profile_file;
 
     // first, profile all the original alignments
     while (original_alns_to_profile.size() > 0) {
 
-        // first, find the alignment pairs separated by the shortest taxonomic distance
-        int shortest_dist_aln1;
+        // find the alignment pairs separated by the shortest taxonomic distance
         // more than one alignment may be equally close to shortest_dist_aln1
+        int shortest_dist_aln1;
         vector<int> * shortest_dist_alns2 = new vector<int>();
         get_shortest_distance_with_dicts(
                     original_alns_to_profile,
@@ -627,19 +616,19 @@ int SQLiteProfiler::profile(map<int, map<int,double> > numlist) {
                     shortest_dist_alns2);
 
         // DEBUG: log closest alignment pairs
-        cout << "first alignment to profile: " << shortest_dist_aln1 << endl;
-        cout << "shortest_dist_alns2 = ";
-        for (int i = 0; i < shortest_dist_alns2->size(); i++)
-            cout << shortest_dist_alns2->at(i) << " ";
-        cout << endl;
+//        cout << "first alignment to profile: " << shortest_dist_aln1 << endl;
+//        cout << "shortest_dist_alns2 = ";
+//        for (int i = 0; i < shortest_dist_alns2->size(); i++)
+//            cout << shortest_dist_alns2->at(i) << " ";
+//        cout << endl;
 
         // remove the starting alignment from the set of alignments to profile
-        // (I think this may be better at the end of this section....)
         vector<int>::iterator it;
         it = find(original_alns_to_profile.begin(), original_alns_to_profile.end(), shortest_dist_aln1);
         original_alns_to_profile.erase(it);
 
-        if(shortest_dist_alns2->size() == 1) { // if there is only one closest match to shortest_dist_aln1
+        if(shortest_dist_alns2->size() == 1) {
+            // if there is only one closest match to shortest_dist_aln1
 
             int firstfile = shortest_dist_aln1;
             int secondfile;
@@ -648,7 +637,7 @@ int SQLiteProfiler::profile(map<int, map<int,double> > numlist) {
             // see if this match is already within a profile alignment
             secondfile = gene_db.get_deepest_profile_for_alignment(shortest_dist_alns2->at(0));
             if (secondfile != -1)
-                // if it is, use the containing profile alignment
+                // if it is, use the containing profile alignment (secondfile)
                 sd_aln2_already_profiled = true;
 
             // if not, use the original alignment
@@ -689,56 +678,28 @@ int SQLiteProfiler::profile(map<int, map<int,double> > numlist) {
             int secondfile;
             bool sd_aln2_already_profiled = false;
 
-            // confused by this next section... looks like we are just trying to find an alignment
-            // in the list of closest matches that is a profile alignment... but why are we walking
-            // the list of profile alignments? this seems unecessary...
+            // walk the alignments in the list of equally closest matches...
+            for(int j = 0; j < shortest_dist_alns2->size(); j++) {
+                // ...and check if each is a profile alignment
+                secondfile = gene_db.get_deepest_profile_for_alignment(shortest_dist_alns2->at(j));
 
-            // for each intermediate profile alignment
-//            for(int i = 0; i < profile_alns_to_profile.size(); i++) { // IS THIS NECESSARY?
+                // DEBUG
+//                cout << "Attempting to compare secondfile = " << secondfile << " == -1. Result is: ";
 
-                // walk the alignments in the list of equally closest matches...
-                for(int j = 0; j < shortest_dist_alns2->size(); j++) {
-                    // ...and check if each is a profile alignment
+                if (secondfile != -1) {
+//                    cout << "FALSE" << endl; // DEBUG
+//                    cout << "Found a matching profile alignment with id " << secondfile;
+//                    cout << " for sd_aln id " << shortest_dist_alns2->at(j) << endl;
+                    // when we find a profile alignment, break
+                    sd_aln2_already_profiled = true;
+                    break;
 
-// previous line
-/*                   secondfile = gene_db.get_deepest_profile_for_alignment(shortest_dist_alns2->at(0)); */
-
-                    /* Hm! It seems like the program is not actually going into this if clause, although
-                     * from my inspection of the variables, it should be. Because of this, the variable
-                     * sd_aln2_already_profiled is left as false, so at the next if clause, it follows
-                     * the wrong path. It looks for the secondfile in the original_alns_to_profile, but
-                     * the iterator can't find it and so returns the end of the vector. When it tries to
-                     * delete this, it fails.
-                     * 
-                     * So, why is it not entering the if clause immediately below here...?
-                     * */
-
-                    // new line actually walks vector
-                    secondfile = gene_db.get_deepest_profile_for_alignment(shortest_dist_alns2->at(j));
-
-                    // DEBUG
-                    cout << "Attempting to compare secondfile = " << secondfile << " == -1. Result is: ";
-
-                    if (secondfile != -1) {
-                        cout << "FALSE" << endl; // DEBUG
-                        cout << "Found a matching profile alignment with id " << secondfile;
-                        cout << " for sd_aln id " << shortest_dist_alns2->at(j) << endl;
-                        // when we find a profile alignment, break
-                        sd_aln2_already_profiled = true;
-                        break;
-
-                    // DEBUG
-                    } else {
-                        cout << "TRUE" << endl;
-                    }
                 }
-        
-//                if (sd_aln2_already_profiled == true)
-//                    break;
-//            }
-
-
-            /* stopping here 7.20.2012 */
+                // DEBUG
+//                else {
+//                    cout << "TRUE" << endl;
+//                }
+            }
 
             if (sd_aln2_already_profiled == false) {
                 int bestsn;
@@ -755,7 +716,7 @@ int SQLiteProfiler::profile(map<int, map<int,double> > numlist) {
                 }
                   
                 secondfile = bestsn;
-                cout << "secondfile: " << secondfile << endl;
+//                cout << "secondfile: " << secondfile << endl;
                 
                 int profileout_id = gene_db.add_profile_alignment(firstfile,secondfile);
 
@@ -769,26 +730,26 @@ int SQLiteProfiler::profile(map<int, map<int,double> > numlist) {
                 last_profile_file = outfile_id;
 
                 // DEBUG
-                cout << "looking for secondfile = " << secondfile << " in original_alns_to_profile" << endl;
-                cout << "original_alns_to_profile.begin = " << &(*original_alns_to_profile.begin()) << endl;
-                cout << "original_alns_to_profile.end = " <<  &(*original_alns_to_profile.end()) << endl;
+//                cout << "looking for secondfile = " << secondfile << " in original_alns_to_profile" << endl;
+//                cout << "original_alns_to_profile.begin = " << &(*original_alns_to_profile.begin()) << endl;
+//                cout << "original_alns_to_profile.end = " <<  &(*original_alns_to_profile.end()) << endl;
 
                 vector<int>::iterator it;                
                 it = find(original_alns_to_profile.begin(), original_alns_to_profile.end(), secondfile);
 
                 // DEBUG
                 // dumping data to see if we can identify what is going on with the profile delete mismatch bug
-                cout << "last_profile_id = " << last_profile_file << endl;
-                cout << "profile_alns_to_profile[profile_alns_to_profile.size() - 1] = " << profile_alns_to_profile[profile_alns_to_profile.size() - 1] << endl;
-                cout << "original_alns_to_profile: " << endl;
-                for(int i = 0; i < original_alns_to_profile.size(); i++) {
-                    cout << original_alns_to_profile[i] << endl;} 
-                cout << "profile_alns_to_profile: " << endl;
-                for(int i = 0; i < profile_alns_to_profile.size(); i++) {
-                    cout << profile_alns_to_profile[i] << endl;}
+//                cout << "last_profile_id = " << last_profile_file << endl;
+//                cout << "profile_alns_to_profile[profile_alns_to_profile.size() - 1] = " << profile_alns_to_profile[profile_alns_to_profile.size() - 1] << endl;
+//                cout << "original_alns_to_profile: " << endl;
+//                for(int i = 0; i < original_alns_to_profile.size(); i++) {
+//                    cout << original_alns_to_profile[i] << endl;} 
+//                cout << "profile_alns_to_profile: " << endl;
+//                for(int i = 0; i < profile_alns_to_profile.size(); i++) {
+//                    cout << profile_alns_to_profile[i] << endl;}
+//                cout << "Attempting to delete id " << *it << " from original_alns_to_profile" << endl;
 
-                /* this is where it fails. */
-                cout << "Attempting to delete id " << *it << " from original_alns_to_profile" << endl;
+                // remove the child alignment from from the table; it is in a profile now
                 original_alns_to_profile.erase(it);
             
             } else {
@@ -836,10 +797,10 @@ int SQLiteProfiler::make_muscle_profile(int profile1,int profile2,int outfile_id
 
     /* accepts the database ids for two preexisiting profile alignments, writes
      * these alignments to files, and calls the external program muscle to align
-     * them (profile alignment). the resulting alignment is stored in a file named
-     * TEMPOUT.PROFILE. if this file is created successfully, then the third function
-     * argument, representing the next database id (the one to be used for the new
-     * profile alignment) is returned. */
+     * them together (profile alignment). the resulting alignment is stored in a
+     * file named TEMPOUT.PROFILE. if this file is created successfully, then the
+     * third function argument, representing the next database id (the one to be
+     * used for the new profile alignment) is returned. */
     
     // delete any previous temp alignment files
     remove((profilefoldername+"TEMP1.PROFILE").c_str());

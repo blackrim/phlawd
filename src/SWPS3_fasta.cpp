@@ -88,7 +88,8 @@ readseq:
 finish:
 	if (len)
 		*len = pres - lib->data;
-	swps3_translateSequence(lib->data,pres - lib->data,NULL);
+        bool isValid;
+	isValid = swps3_translateSequence(lib->data,pres - lib->data,NULL);
 	return lib->data;
 }
 EXPORT char * swps3_getSequenceName( FastaLib * lib ){
@@ -97,12 +98,24 @@ EXPORT char * swps3_getSequenceName( FastaLib * lib ){
 EXPORT void swps3_closeLib( FastaLib * lib ){
 	free( lib );
 }
-EXPORT void swps3_translateSequence(char *sequence, int seqLen, char table[256]) {
-   int i;
-   for(i=0;i<seqLen && sequence[i]!='\n' && sequence[i]!='\0';++i) {
-      if(table) sequence[i] = table[(int)sequence[i]];
-      else sequence[i] -= 'A';
-
-      if(sequence[i] < 0 || sequence[i] >= MATRIX_DIM) error("Invalid character in input sequence at position %d\n",i);
-   }
+EXPORT bool swps3_translateSequence(char * sequence, int seqLen, char table[256]) {
+        /* edit sequence in place, replacing each char with its coding from the
+         * lookup table if such a table is supplied. if not then convert to int
+         * by subtracting 'A' from the char. Finally, validate the char. Return
+         * true if all chars in the sequence are valid, false if not. */  
+        int i;
+        int lastBadChar = -1;
+        for(i=0; i<seqLen && sequence[i]!='\n' && sequence[i]!='\0'; ++i) {
+                // translate this char to integer code
+                if(table) sequence[i] = table[(int)sequence[i]];
+                else sequence[i] -= 'A';
+                if(sequence[i] < 0 || sequence[i] >= MATRIX_DIM) {
+                        // the integer value is outside the values expected
+                        // (for capital chars this is 0-25. at the time of writing, MATRIX_DIM = 26)
+                        lastBadChar = i;
+                        printf("Invalid character in input sequence at position %d\n", lastBadChar);
+                }
+        }
+        if (lastBadChar < 0) return true;
+        else return false;
 }

@@ -621,8 +621,8 @@ int GeneDB::get_deepest_profile_for_alignment(int alignid){
      * ids increment as we progress down the tree. */
     
     // DEBUG
-    cout << "In get_deepest_profile_for_alignment" << endl;
-    cout << "Adding alignid = " << alignid << " to stack" << endl;
+//    cout << "In get_deepest_profile_for_alignment" << endl;
+//    cout << "Adding alignid = " << alignid << " to stack" << endl;
 
     // retstack will hold alignment ids to be queried against
     stack<int> retstack;
@@ -637,7 +637,7 @@ int GeneDB::get_deepest_profile_for_alignment(int alignid){
         retstack.pop();
 
         // DEBUG
-        cout << "Pulling alignid " << curid << " off stack for profile alignment search" << endl;
+//        cout << "Pulling alignid " << curid << " off stack for profile alignment search" << endl;
         
         // get all profile alignments containing the alignment id'd by retstack.top()
         string sql = "select id from profile_alignments where ";
@@ -645,7 +645,7 @@ int GeneDB::get_deepest_profile_for_alignment(int alignid){
         sql += "child2 == " + to_string(curid) + ";";
 
         // DEBUG
-        cout << "SQL query:" << endl << sql << endl;
+//        cout << "SQL query:" << endl << sql << endl;
 
         Database conn(name);
         Query query(conn);
@@ -658,19 +658,19 @@ int GeneDB::get_deepest_profile_for_alignment(int alignid){
             tid = query.getval();
             
             // DEBUG
-            cout << "Matching profile alignment db id: " << tid << endl;
+//            cout << "Matching profile alignment db id: " << tid << endl;
 
             if (tid > finalret) {
                 
                 // DEBUG
-                cout << "\tthis is the deepest yet" << endl;
+//                cout << "\tthis is the deepest yet" << endl;
 
                 // this profile is the deepest yet; save it
                 finalret = tid;
             }
 
             // DEBUG
-            cout << "finalret = " << finalret << endl;
+//            cout << "finalret = " << finalret << endl;
             
             // add this profile to the list to query against
             retstack.push(tid);
@@ -679,7 +679,7 @@ int GeneDB::get_deepest_profile_for_alignment(int alignid){
     }
     
     // DEBUG
-    cout << "returning: " << finalret << endl;
+//    cout << "returning: " << finalret << endl;
     
     // return the largest encountered profile id
     return finalret;
