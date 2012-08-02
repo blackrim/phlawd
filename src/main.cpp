@@ -117,6 +117,8 @@ int main(int argc, char* argv[]){
 	    string include_gi_listfile;
 	    bool containshigher = false;
 	    bool containswild = false;
+        bool containshigherex = false;
+	    bool containswildex = false;
 	    bool useITS = false;
 	    bool updateDB = false;
 	    bool updateFILE = false;
@@ -180,6 +182,10 @@ int main(int argc, char* argv[]){
 		    containshigher = true;
 		}else if(!strcmp(tokens[0].c_str(), "containswild")){
 		    containswild = true;
+		}else if(!strcmp(tokens[0].c_str(), "containshigherex")){
+		    containshigherex = true;
+		}else if(!strcmp(tokens[0].c_str(), "containswildex")){
+		    containswildex = true;
 		}else if(!strcmp(tokens[0].c_str(), "listfile")){
 		    listfile = tokens[1];
 		    uselistfile = true;
@@ -267,7 +273,7 @@ int main(int argc, char* argv[]){
 		}
 		if(useexcludelistfile == true){
 		    cout << "excluding names in list file: " << excludelistfile << endl;
-		    a->set_exclude_names_from_file(excludelistfile);
+		    a->set_exclude_names_from_file(excludelistfile,containshigherex,containswildex);
 		}
 		if(useexclude_gi_listfile == true){
 		    cout << "excluding gi's in list file: " << exclude_gi_listfile << endl;

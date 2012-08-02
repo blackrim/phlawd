@@ -66,6 +66,8 @@ private:
     bool excludegifromfile;
     bool containshigher;
     bool containswild;
+    bool containshigherex;
+    bool containswildex;
     bool useITS;
     int numthreads;
     bool automated;
@@ -125,7 +127,7 @@ public:
 		      bool updb, string updf);
     ~SQLiteConstructor(){}
     void set_only_names_from_file(string filename, bool containshi, bool containswild);
-    void set_exclude_names_from_file(string filename);
+    void set_exclude_names_from_file(string filename, bool, bool);
     void set_exclude_gi_from_file(string filename);
     void set_include_gi_from_file(string filename);
     void set_user_guide_tree(string filename, bool skipcheckdb);

@@ -440,7 +440,8 @@ void GeneDB::get_all_sequences(vector<Sequence> & seqs){
     query.free_result();
 }
 
-void GeneDB::get_alignment_names(vector<string> & names){
+//void GeneDB::get_alignment_names(vector<string> & names){
+void GeneDB::load_orig_alignment_names_into(vector<string> & names){
     string sql = "select alignname from alignments;";
     Database conn(name);
     Query query(conn);
@@ -453,7 +454,8 @@ void GeneDB::get_alignment_names(vector<string> & names){
     query.free_result();
 }
 
-void GeneDB::get_alignment_nums(vector<int> & nums){
+//void GeneDB::get_alignment_nums(vector<int> & nums){
+void GeneDB::load_orig_alignment_nums_into(vector<int> & nums){
     string sql = "select id from alignments;";
     Database conn(name);
     Query query(conn);
@@ -466,10 +468,13 @@ void GeneDB::get_alignment_nums(vector<int> & nums){
     query.free_result();
 }
 
-/* 
- * typically used for updating and should be called after moving over updated 
- */
-void GeneDB::get_profile_alignment_nums(vector<int> & nums){
+//void GeneDB::get_profile_alignment_nums(vector<int> & nums){
+void GeneDB::load_first_profile_ids_into(vector<int> & nums){
+
+    /* 
+     * typically used for updating and should be called after moving over updated 
+     */
+
     string sql = "select id from profile_alignments where child1 = 0 and child2 = 0;";
     Database conn(name);
     Query query(conn);
@@ -610,46 +615,102 @@ void GeneDB::copy_alignments_to_first_profiles_updated(map<int, string> & profil
 }
 
 int GeneDB::get_deepest_profile_for_alignment(int alignid){
-    //get the deepest alignment in the profile alignment table that includes the alignid
+    
+    /* get the deepest alignment in the profile alignment table that includes the alignid.
+     * the deepest alignment should always be the one with the largest db id, because these
+     * ids increment as we progress down the tree. */
+    
+    // DEBUG
+    cout << "In get_deepest_profile_for_alignment" << endl;
+    cout << "Adding alignid = " << alignid << " to stack" << endl;
+
+    // retstack will hold alignment ids to be queried against
     stack<int> retstack;
     retstack.push(alignid);
+
+    // this will hold the id of the deepest alignment, or -1 if we find none
     int finalret = -1;
-    while(!retstack.empty()){
-	int curid = retstack.top();
-	retstack.pop();
-	string sql = "select id from profile_alignments where child1 = ";
-	sql += to_string(curid) +" or child2 = ";
-	sql += to_string(curid) +";";
-	Database conn(name);
-	Query query(conn);
-	query.get_result(sql);
-	while(query.fetch_row()){
-	    int tid;
-	    string name;
-	    tid = query.getval();
-	    if (tid > finalret){
-		finalret = tid;
-	    } 
-	    retstack.push(tid);
-	}
-	query.free_result();
+    
+    // while the retstack is not empty
+    while(!retstack.empty()) {
+        int curid = retstack.top();
+        retstack.pop();
+
+        // DEBUG
+        cout << "Pulling alignid " << curid << " off stack for profile alignment search" << endl;
+        
+        // get all profile alignments containing the alignment id'd by retstack.top()
+        string sql = "select id from profile_alignments where ";
+        sql += "child1 == " + to_string(curid) + " or ";
+        sql += "child2 == " + to_string(curid) + ";";
+
+        // DEBUG
+        cout << "SQL query:" << endl << sql << endl;
+
+        Database conn(name);
+        Query query(conn);
+        query.get_result(sql);
+
+        // for every matching profile alignment
+        while(query.fetch_row()) {
+            int tid;
+            string name;
+            tid = query.getval();
+            
+            // DEBUG
+            cout << "Matching profile alignment db id: " << tid << endl;
+
+            if (tid > finalret) {
+                
+                // DEBUG
+                cout << "\tthis is the deepest yet" << endl;
+
+                // this profile is the deepest yet; save it
+                finalret = tid;
+            }
+
+            // DEBUG
+            cout << "finalret = " << finalret << endl;
+            
+            // add this profile to the list to query against
+            retstack.push(tid);
+        }
+        query.free_result();
     }
+    
+    // DEBUG
+    cout << "returning: " << finalret << endl;
+    
+    // return the largest encountered profile id
     return finalret;
 }
 
-int GeneDB::add_profile_alignment(int child_id1, int child_id2){
+int GeneDB::add_profile_alignment(int child_id1, int child_id2) {
+    
+    /* just creates a new record in the profile alignment table, and stores the ids
+     * of its constituent child alignments */
+
+    // open db connection
     sqlite3 *conn2;
     int rc = sqlite3_open(name.c_str(), &conn2);
     char *zErrMsg = 0;
     sqlite3_exec(conn2, "BEGIN TRANSACTION", NULL, NULL, NULL);
-    string sql = "insert into profile_alignments (child1,child2,name) values (";
-    sql += to_string(child_id1)+",";
-    sql += to_string(child_id2)+",'";
-    sql += to_string(0)+"');";//not an ncbi 
+
+    // build sql string
+    string sql = "insert into profile_alignments (child1, child2, name) values (";
+    sql += to_string(child_id1) + ",";
+    sql += to_string(child_id2) + ",'";
+    sql += to_string(0) + "');"; // not an ncbi (sas) - huh? (ceh)
+
+    // DEBUG: log sql query
+    //cout << sql << " " << rc << endl;
+    
+    // insert record
     rc = sqlite3_exec(conn2, sql.c_str(), 0, 0, 0);
-//    cout << sql << " " << rc << endl;
     int pid = sqlite3_last_insert_rowid(conn2);
     sqlite3_exec(conn2, "COMMIT TRANSACTION", NULL, NULL, NULL);
+
+    // return the record's db id
     return pid;
 }
 
@@ -797,7 +858,7 @@ void GeneDB::get_updated_profs_names_delete_old(vector<string> & updatedprofs,ve
 	rc = sqlite3_exec(conn2, sql.c_str(), 0, 0, 0);
 	sqlite3_exec(conn2, "COMMIT TRANSACTION", NULL, NULL, NULL);
     }
-    get_profile_alignment_nums(updatedprofsnums);
+    load_first_profile_ids_into(updatedprofsnums);
 }
 
 void GeneDB::toggle_updated_all_off(){

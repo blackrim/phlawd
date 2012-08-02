@@ -34,9 +34,16 @@ public:
     void update_profile_align_seqs(int alignid, vector<Sequence> & seqs);
     void get_all_sequences(vector<Sequence> & seqs);
     void get_first_profile_alignments(vector<string> & names);
-    void get_alignment_names(vector<string> & names);
-    void get_alignment_nums(vector<int> & nums);
-    void get_profile_alignment_nums(vector<int>&);
+
+//    void get_alignment_names(vector<string> & names);
+    void load_orig_alignment_names_into(vector<string> & names);
+
+//    void get_alignment_nums(vector<int> & nums);
+    void load_orig_alignment_nums_into(vector<int> & nums);
+
+//    void get_profile_alignment_nums(vector<int>&);
+    void load_first_profile_ids_into(vector<int>&);
+
     void remove_profile_alignments();
     void copy_alignments_to_first_profiles(map<int,string> & profile_id_name_map);
     void copy_alignments_to_first_profiles_updated(map<int, string> & profile_id_name_map,vector<int>& updatedprofsnums);
