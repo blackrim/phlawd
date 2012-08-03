@@ -102,7 +102,7 @@ void GenBankReader::parse_file(string fl, string db_name){
 		    continue;
 		}
 	    }
-	    if(tokens[0] == "ORIGIN"){
+	    if(tokens[0] == "ORIGIN" && tokens.size() == 1){
 		seq = true;
 		continue;
 	    }
@@ -142,6 +142,12 @@ void GenBankReader::parse_file(string fl, string db_name){
 		    sql += descrst +"','";
 		    std::transform(seqst.begin(), seqst.end(), seqst.begin(), upper);
 		    sql += seqst+"');";
+		    size_t found = seqst.find_first_of("(),.[]@#$%!+=^&*\"'\|-_/{}`~<>\\");
+		    if(found != string::npos){
+			cout << taxid << "," << locus << "," << gin << "," << descrst << endl;
+			cout << seqst << endl;
+			exit(0);
+		    }
 			//cout << sql << endl;
 		if(deposit == true)
 			rc = sqlite3_exec(conn, sql.c_str(), 0, 0, 0);\
