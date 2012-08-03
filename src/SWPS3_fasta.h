@@ -44,6 +44,6 @@ FastaLib * swps3_openLib( char * filename );
 char * swps3_readNextSequence( FastaLib * lib, int * len );
 char * swps3_getSequenceName( FastaLib * lib );
 void swps3_closeLib( FastaLib * lib );
-void swps3_translateSequence(char *sequence, int seqLen, char table[256]);
+bool swps3_translateSequence(char *sequence, int seqLen, char table[256]);
 
 #endif /* FASTA_H */

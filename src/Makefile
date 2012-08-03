@@ -1,5 +1,5 @@
 CC = g++
-CFLAGS = -msse3 -DSSE2 -O3 -g -w -Wall -fopenmp
+CFLAGS = -msse3 -DSSE2 -O3 -g -ggdb -w -Wall -fopenmp
 prefix = /usr/bin/
 CPP_SRCS += \
 sequence.cpp \

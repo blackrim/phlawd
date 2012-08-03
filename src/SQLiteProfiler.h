@@ -41,8 +41,8 @@ private:
     string gene_name;
     string gene_db_name;
     GeneDB gene_db;
-    vector<string> align_names;
-    vector<int> align_nums;
+    vector<string> orig_align_names;
+    vector<int> first_profiles_dbids;
     string cladename;
     string db;
     string profilefoldername;

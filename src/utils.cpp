@@ -229,7 +229,7 @@ string int_to_string(int n){
 
 //get the swps3 sequence score
 int get_swps3_score_and_rc_cstyle(SBMatrix mat,  Sequence * inseq1, Sequence * inseq2){
-    return swps3_maxscores(mat, inseq1,inseq2);
+    return swps3_maxscores(mat, inseq1, inseq2);
 }
 
 /*
