@@ -142,7 +142,7 @@ void GenBankReader::parse_file(string fl, string db_name){
 		    sql += descrst +"','";
 		    std::transform(seqst.begin(), seqst.end(), seqst.begin(), upper);
 		    sql += seqst+"');";
-		    size_t found = seqst.find_first_of("(),.[]@#$%!+=^&*\"'\|-_/{}`~<>\\");
+		    size_t found = seqst.find_first_of("(),.[]@#$%!+=^&*\"'|-_/{}`~<>\\");
 		    if(found != string::npos){
 			cout << taxid << "," << locus << "," << gin << "," << descrst << endl;
 			cout << seqst << endl;
