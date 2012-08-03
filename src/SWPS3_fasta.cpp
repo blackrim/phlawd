@@ -106,12 +106,12 @@ EXPORT bool swps3_translateSequence(char * sequence, int seqLen, char table[256]
         int i;
         int lastBadChar = -1;
         for(i=0; i<seqLen && sequence[i]!='\n' && sequence[i]!='\0'; ++i) {
-                // translate this char to integer code
+                // translate this char to an integer coding
                 if(table) sequence[i] = table[(int)sequence[i]];
                 else sequence[i] -= 'A';
                 if(sequence[i] < 0 || sequence[i] >= MATRIX_DIM) {
                         // the integer value is outside the values expected
-                        // (for capital chars this is 0-25. at the time of writing, MATRIX_DIM = 26)
+                        // (for capital chars this is [0-25]; at the time of writing, MATRIX_DIM = 26)
                         lastBadChar = i;
                         printf("Invalid character in input sequence at position %d\n", lastBadChar);
                 }

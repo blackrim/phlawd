@@ -575,13 +575,6 @@ int SQLiteProfiler::profile(map<int, map<int,double> > numlist) {
     // this array stores their row ids in that table.
     vector<int> original_alns_to_profile(first_profiles_dbids.begin(), first_profiles_dbids.end());
 
-    // DEBUG: logging output
-//    cout << "dbids for starting profiles (original alignments): " << endl;
-//    for(int i = 0; i < original_alns_to_profile.size(); i++) {
-//        cout << original_alns_to_profile[i] << endl;}
-
-//    exit(0);
-
     if (updatedb == true) {
 
         // reduce the alignments to profile to just those that have been updated
@@ -614,13 +607,6 @@ int SQLiteProfiler::profile(map<int, map<int,double> > numlist) {
                     numlist,
                     &shortest_dist_aln1,
                     shortest_dist_alns2);
-
-        // DEBUG: log closest alignment pairs
-//        cout << "first alignment to profile: " << shortest_dist_aln1 << endl;
-//        cout << "shortest_dist_alns2 = ";
-//        for (int i = 0; i < shortest_dist_alns2->size(); i++)
-//            cout << shortest_dist_alns2->at(i) << " ";
-//        cout << endl;
 
         // remove the starting alignment from the set of alignments to profile
         vector<int>::iterator it;
@@ -683,22 +669,12 @@ int SQLiteProfiler::profile(map<int, map<int,double> > numlist) {
                 // ...and check if each is a profile alignment
                 secondfile = gene_db.get_deepest_profile_for_alignment(shortest_dist_alns2->at(j));
 
-                // DEBUG
-//                cout << "Attempting to compare secondfile = " << secondfile << " == -1. Result is: ";
-
                 if (secondfile != -1) {
-//                    cout << "FALSE" << endl; // DEBUG
-//                    cout << "Found a matching profile alignment with id " << secondfile;
-//                    cout << " for sd_aln id " << shortest_dist_alns2->at(j) << endl;
                     // when we find a profile alignment, break
                     sd_aln2_already_profiled = true;
                     break;
 
                 }
-                // DEBUG
-//                else {
-//                    cout << "TRUE" << endl;
-//                }
             }
 
             if (sd_aln2_already_profiled == false) {
@@ -712,12 +688,9 @@ int SQLiteProfiler::profile(map<int, map<int,double> > numlist) {
                         bestscore = score;
                         bestsn = shortest_dist_alns2->at(i);
                     }
-            //		cout << "score: " << score << endl;
                 }
                   
                 secondfile = bestsn;
-//                cout << "secondfile: " << secondfile << endl;
-                
                 int profileout_id = gene_db.add_profile_alignment(firstfile,secondfile);
 
                 // profile
@@ -729,25 +702,8 @@ int SQLiteProfiler::profile(map<int, map<int,double> > numlist) {
                 profile_alns_to_profile.push_back(profileout_id);
                 last_profile_file = outfile_id;
 
-                // DEBUG
-//                cout << "looking for secondfile = " << secondfile << " in original_alns_to_profile" << endl;
-//                cout << "original_alns_to_profile.begin = " << &(*original_alns_to_profile.begin()) << endl;
-//                cout << "original_alns_to_profile.end = " <<  &(*original_alns_to_profile.end()) << endl;
-
                 vector<int>::iterator it;                
                 it = find(original_alns_to_profile.begin(), original_alns_to_profile.end(), secondfile);
-
-                // DEBUG
-                // dumping data to see if we can identify what is going on with the profile delete mismatch bug
-//                cout << "last_profile_id = " << last_profile_file << endl;
-//                cout << "profile_alns_to_profile[profile_alns_to_profile.size() - 1] = " << profile_alns_to_profile[profile_alns_to_profile.size() - 1] << endl;
-//                cout << "original_alns_to_profile: " << endl;
-//                for(int i = 0; i < original_alns_to_profile.size(); i++) {
-//                    cout << original_alns_to_profile[i] << endl;} 
-//                cout << "profile_alns_to_profile: " << endl;
-//                for(int i = 0; i < profile_alns_to_profile.size(); i++) {
-//                    cout << profile_alns_to_profile[i] << endl;}
-//                cout << "Attempting to delete id " << *it << " from original_alns_to_profile" << endl;
 
                 // remove the child alignment from from the table; it is in a profile now
                 original_alns_to_profile.erase(it);
@@ -765,7 +721,6 @@ int SQLiteProfiler::profile(map<int, map<int,double> > numlist) {
             }
         }
         delete shortest_dist_alns2;
-    //	exit(0);
     }
     cout << "processing profile files" << endl;
     for(int i=0; i < profile_alns_to_profile.size(); i++){

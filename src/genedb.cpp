@@ -618,12 +618,8 @@ int GeneDB::get_deepest_profile_for_alignment(int alignid){
     
     /* get the deepest alignment in the profile alignment table that includes the alignid.
      * the deepest alignment should always be the one with the largest db id, because these
-     * ids increment as we progress down the tree. */
+     * ids increment as we progress down the guide tree (i.e. taxonomy). */
     
-    // DEBUG
-//    cout << "In get_deepest_profile_for_alignment" << endl;
-//    cout << "Adding alignid = " << alignid << " to stack" << endl;
-
     // retstack will hold alignment ids to be queried against
     stack<int> retstack;
     retstack.push(alignid);
@@ -635,17 +631,11 @@ int GeneDB::get_deepest_profile_for_alignment(int alignid){
     while(!retstack.empty()) {
         int curid = retstack.top();
         retstack.pop();
-
-        // DEBUG
-//        cout << "Pulling alignid " << curid << " off stack for profile alignment search" << endl;
-        
+       
         // get all profile alignments containing the alignment id'd by retstack.top()
         string sql = "select id from profile_alignments where ";
         sql += "child1 == " + to_string(curid) + " or ";
         sql += "child2 == " + to_string(curid) + ";";
-
-        // DEBUG
-//        cout << "SQL query:" << endl << sql << endl;
 
         Database conn(name);
         Query query(conn);
@@ -656,32 +646,16 @@ int GeneDB::get_deepest_profile_for_alignment(int alignid){
             int tid;
             string name;
             tid = query.getval();
+
+            // if this profile alignment is the deepest yet; save it
+            if (tid > finalret) finalret = tid;
             
-            // DEBUG
-//            cout << "Matching profile alignment db id: " << tid << endl;
-
-            if (tid > finalret) {
-                
-                // DEBUG
-//                cout << "\tthis is the deepest yet" << endl;
-
-                // this profile is the deepest yet; save it
-                finalret = tid;
-            }
-
-            // DEBUG
-//            cout << "finalret = " << finalret << endl;
-            
-            // add this profile to the list to query against
+            // add this profile to the retstack so we can check for
+            // deeper alignments that contain it
             retstack.push(tid);
         }
         query.free_result();
     }
-    
-    // DEBUG
-//    cout << "returning: " << finalret << endl;
-    
-    // return the largest encountered profile id
     return finalret;
 }
 
@@ -702,9 +676,6 @@ int GeneDB::add_profile_alignment(int child_id1, int child_id2) {
     sql += to_string(child_id2) + ",'";
     sql += to_string(0) + "');"; // not an ncbi (sas) - huh? (ceh)
 
-    // DEBUG: log sql query
-    //cout << sql << " " << rc << endl;
-    
     // insert record
     rc = sqlite3_exec(conn2, sql.c_str(), 0, 0, 0);
     int pid = sqlite3_last_insert_rowid(conn2);
