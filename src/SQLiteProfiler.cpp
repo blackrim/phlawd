@@ -70,7 +70,7 @@ SQLiteProfiler::SQLiteProfiler(string gn, string gene_dbn,string cn, string dbs,
     gene_db= GeneDB(gene_db_name);
 }
 
-void SQLiteProfiler::prelimalign(){
+void SQLiteProfiler::prelimalign() {
     mkdir(profilefoldername.c_str(),S_IRWXU | S_IRWXG | S_IROTH | S_IWOTH);
     bool standard = true;
     updatednums = vector<int> ();
@@ -79,7 +79,7 @@ void SQLiteProfiler::prelimalign(){
 	bool newfiles=false; // if there are new files from MAD in align stage, kick out and tree as new for now 
 	vector<string> originalalnfiles;
 	vector<string> curproffiles;
-	gene_db.get_alignment_names(originalalnfiles);
+	gene_db.load_orig_alignment_names_into(originalalnfiles);
 	gene_db.get_first_profile_alignments(curproffiles);
 	if (originalalnfiles.size() != curproffiles.size() || originalalnfiles.size() == 1)
 	    newfiles = true;
@@ -116,25 +116,30 @@ void SQLiteProfiler::prelimalign(){
 	    }
 	}
     }
-    if(standard == true){//not an update run
-	align_names = vector<string>();
-	align_nums = vector<int>();
-	cout << "getting alignments" << endl;
-	gene_db.get_alignment_names(align_names);
-	profile_id_name_map = map<int,string>();
-	gene_db.copy_alignments_to_first_profiles(profile_id_name_map);
-	gene_db.get_profile_alignment_nums(align_nums);
-    }else{//updaterun
-	//only copy over the ones that are updated
-	//only align those files that are updated
-	align_names = vector<string>();
-	align_nums = vector<int>();
-	cout << "getting updated alignment files" << endl;
-	profile_id_name_map = map<int,string>();
+    if(standard == true){ //not an update run
 
-	gene_db.copy_alignments_to_first_profiles_updated(profile_id_name_map,updatednums);
-	gene_db.get_alignment_names(align_names);
-	gene_db.get_profile_alignment_nums(align_nums);
+        // these are properties of the SQLiteProfiler class, accessed by various methods throughout 
+        orig_align_names = vector<string>();
+        first_profiles_dbids = vector<int>();
+
+        cout << "getting alignments" << endl;
+        gene_db.load_orig_alignment_names_into(orig_align_names);
+        profile_id_name_map = map<int,string>();
+        gene_db.copy_alignments_to_first_profiles(profile_id_name_map);
+        gene_db.load_first_profile_ids_into(first_profiles_dbids);
+
+    } else { // updaterun
+
+        // only copy over the ones that are updated
+        // only align those files that are updated
+        orig_align_names = vector<string>();
+        first_profiles_dbids = vector<int>();
+        cout << "getting updated alignment files" << endl;
+        profile_id_name_map = map<int,string>();
+
+        gene_db.copy_alignments_to_first_profiles_updated(profile_id_name_map,updatednums);
+        gene_db.load_orig_alignment_names_into(orig_align_names);
+        gene_db.load_first_profile_ids_into(first_profiles_dbids);
     }
 }
 
@@ -146,14 +151,14 @@ void SQLiteProfiler::set_user_guide_tree(Tree * tree){
 void SQLiteProfiler::run(){
     cout << "starting run" << endl;
     int finalaln;
-    if(align_nums.size() > 1){
+    if(first_profiles_dbids.size() > 1){
 	map<string,string> numnames;
 	map<string,string> namesnum;
 	map<int, map<int,double> > numlist;
 	//TODO: make sure that this works with update , incomplete user guide tree
 	if(usertree == true){
 	    cout << "user guide tree" << endl;
-	    create_distances_user_tree(align_names,&numnames,&namesnum,&numlist);
+	    create_distances_user_tree(orig_align_names,&numnames,&namesnum,&numlist);
 	}else{//use ncbi tree
 	    cout << "ncbi guide tree" << endl;
 	    create_distances(cladename,&numlist);
@@ -423,68 +428,92 @@ void SQLiteProfiler::create_distances_user_tree(vector<string> ifile_names,map<s
     }
 }
 
-void SQLiteProfiler::get_shortest_distance_with_dicts(vector<int> & nums,
-						      map<int, map<int, double> > & numlist, int * shortestnumone, vector<int> * shortestnumtwo){
+void SQLiteProfiler::get_shortest_distance_with_dicts(
+                vector<int> & nums,
+				map<int, map<int, double> > & numlist,
+                int * sd_aln1,
+                vector<int> * sd_alns2) {
+
+    /* this function finds the alignment pairs separated by the shortest taxonomic distance  */
+    
     map<int,double> distances;
     double shortestdistance = 10000;
-    for(int i=0;i<nums.size();i++){
-	bool keepD = false;
-	for(int j=0;j<align_nums.size();j++){
-	    double distance = numlist[nums[i]][align_nums[j]];
-	    if(distance < shortestdistance && distance != SIXES){
-		shortestdistance = distance;
-		*shortestnumone = nums[i];
-		keepD = true;
-	    }
-	}
-	if (keepD == true){
-	    distances = numlist[nums[i]];
-	}
+
+    for(int i = 0; i < nums.size(); i++) {
+        bool keepD = false;
+        for(int j=0; j < first_profiles_dbids.size(); j++) {
+            double distance = numlist[nums[i]][first_profiles_dbids[j]];
+                if(distance < shortestdistance && distance != SIXES) {
+                shortestdistance = distance;
+                *sd_aln1 = nums[i];
+                keepD = true;
+            }
+        }
+        if (keepD == true) {
+            distances = numlist[nums[i]];
+        }
     }
-    shortestnumtwo->clear();
-    for(int j=0;j<align_nums.size();j++){
-	if(distances[align_nums[j]]==shortestdistance && distances[align_nums[j]]!=SIXES){
-	    shortestnumtwo->push_back(align_nums[j]);//should this be nums
-//	    cout << "f " <<align_nums[j] << " " <<distances[align_nums[j]] << endl;
-	}
+
+    sd_alns2->clear();
+    for(int j = 0; j < first_profiles_dbids.size(); j++) {
+        if(distances[first_profiles_dbids[j]] == shortestdistance && distances[first_profiles_dbids[j]] != SIXES) {
+            sd_alns2->push_back(first_profiles_dbids[j]); // should this be nums
+        //	    cout << "f " <<first_profiles_dbids[j] << " " <<distances[first_profiles_dbids[j]] << endl;
+        }
     }
 }
 
-/*
- * just cleaning the file that is there
- * 0.1 is the current limit
- * percent should be, if you are missing more than this, than remove, so 0.9 is now and 0.5 is genome removal
- */
-void SQLiteProfiler::clean_before_profile(string filename){
-    double percent = 0.9;//missing more than this, then remove
+void SQLiteProfiler::clean_before_profile(string filename) {
+
+    /* just cleaning the file that is there
+     * 0.1 is the current limit
+     * percent should be, if you are missing more than this, then remove, so 0.9 is now and 0.5 is genome removal
+     */
+
+    double threshold = 0.9;
+
+    // read the alignment into tempalseqs
     FastaUtil fu;
     vector<Sequence> tempalseqs;
-    fu.readFile(profilefoldername+filename,tempalseqs);
-    cout << "cleaning seqs" << endl;
+    fu.readFile(profilefoldername + filename, tempalseqs);
+
+    cout << "cleaning seqs for " << filename << endl;
     int seqlength = tempalseqs[0].get_sequence().size();
-    float fseql = float(tempalseqs.size());
-    vector<int> removeem;
-    for(int j=0;j<seqlength;j++){
-	int gaps = 0;
-	for(int i=0;i<tempalseqs.size();i++){
-	    if(tempalseqs[i].get_sequence()[j] == '-' || tempalseqs[i].get_sequence()[j] == 'N' || tempalseqs[i].get_sequence()[j] == 'n')
-		gaps += 1;
-	}
-	double curp = gaps/fseql;
-	if (curp > percent){
-	    removeem.push_back(j);
-	}
+    float nseqs = float(tempalseqs.size());
+    vector<int> cols_to_remove;
+
+    // for each column in the alignment
+    for(int j = 0; j < seqlength; j++) {
+        int gaps = 0;
+        char cell;
+        // get the number of sequences with missing data
+        for(int i = 0; i < tempalseqs.size(); i++) {
+            cell = tempalseqs[i].get_sequence()[j];
+            if(cell == '-' || cell == 'N' || cell == 'n')
+                gaps += 1;
+        }
+        // if we exceed the threshold, mark this column for removal
+        double prop_missing = gaps/nseqs;
+        if (prop_missing > threshold)
+            cols_to_remove.push_back(j);
     }
-    for(int i=0;i<tempalseqs.size();i++){
-	string a;
-	for (int j=0;j<seqlength;j++){
-	    if (count(removeem.begin(),removeem.end(),j)==0)
-		a += tempalseqs[i].get_sequence()[j];
-	}
-	tempalseqs[i].set_sequence(a);
+
+    // for each sequence
+    for(int i = 0; i < tempalseqs.size(); i++) {
+        string a;
+        // for each column
+        for (int j = 0; j < seqlength; j++) {
+            // record all columns not in the exclusion list
+            if (count(cols_to_remove.begin(), cols_to_remove.end(), j) == 0)
+                a += tempalseqs[i].get_sequence()[j];
+        }
+        // record cleaned sequence
+        tempalseqs[i].set_sequence(a);
     }
-    remove((profilefoldername+filename).c_str());
-    fu.writeFileFromVector(profilefoldername+filename,tempalseqs);
+
+    // remove the input (dirty) file, replace it with the clean one
+    remove((profilefoldername + filename).c_str());
+    fu.writeFileFromVector(profilefoldername + filename, tempalseqs);
 }
 
 void SQLiteProfiler::clean_dbseqs(int alignid){
@@ -520,161 +549,241 @@ void SQLiteProfiler::clean_dbseqs(int alignid){
 /*
  * TODO: fix the orphans
  */
-int SQLiteProfiler::profile(map<int, map<int,double> > numlist){
-    cout << "writing everything to record.log" << endl;
-    string recordname = profilefoldername+"/record.log";
+int SQLiteProfiler::profile(map<int, map<int,double> > numlist) {
+
+    /* this processes through numlist (a list of database alignment ids), profile-aligning them to
+     * one another until all alignments have been profiled.
+     * 
+     * we keep track of original and profile alignments in two vectors: original_alns_to_profile and
+     * profile_alns_to_profile, which store the alignments' database ids. we process through these,
+     * deleting the alignment ids (from the respective vector) as they are combined into a new profile
+     * alignment, and adding the id of the new profile alignment to the profile_alns_to_profile
+     * list. we stop when original_alns_to_profile is empty and only one profile id remains; the
+     * corresponding final alignment contains all the original alignments referenced in numlist. */
+
+    cout << "writing everything to record.log" << endl; // really? this may not actually be the case...
+    string recordname = profilefoldername + "/record.log"; 
     ofstream ofs(recordname.c_str());
+
     bool muscle = true;
-    vector<int> profile_files;
-    vector<int> newnums(align_nums.begin(),align_nums.end());
-    if (updatedb == true){
-	//need to reduce the newnums to just those that have been updated
-	newnums = updatednums;
-	for (int i=0;i<newnums.size();i++){cout << "newnums: " << newnums[i]<< endl;}
-	//add the existing profiles to profile_files
-	profile_files = updatedprofiles;
-	for (int i=0;i<profile_files.size();i++){cout << "profile_files: " << profile_files[i]<< endl;}
+
+    // initiate arrays to store alignment ids to profile.
+    // all ids are database row ids from the profile_alignments table.
+    vector<int> profile_alns_to_profile;
+
+    // the original alignments have been copied to the profile_alignments table in the database.
+    // this array stores their row ids in that table.
+    vector<int> original_alns_to_profile(first_profiles_dbids.begin(), first_profiles_dbids.end());
+
+    if (updatedb == true) {
+
+        // reduce the alignments to profile to just those that have been updated
+        original_alns_to_profile = updatednums;
+        cout << "original alignments remaining to profile: ";
+        for (int i = 0; i < original_alns_to_profile.size(); i++)
+            cout << original_alns_to_profile[i] << " ";
+        cout << endl;
+
+        // add the existing profiles to profile_alns_to_profile
+        profile_alns_to_profile = updatedprofiles;
+        cout << "intermediate profile alignments remaining to cross-align: ";
+        for (int i = 0; i < profile_alns_to_profile.size(); i++)
+            cout << profile_alns_to_profile[i] << " ";
+        cout << endl;
     }
-    int last_profile_file; //for changing to FINAL.aln
-    while (newnums.size() > 0){
-	int shortestnameone;
-	vector<int> * shortestnamestwo = new vector<int>();
-	get_shortest_distance_with_dicts(newnums,numlist, &shortestnameone, shortestnamestwo);
-	cout << "shortestnameone " << shortestnameone << endl;
-	for(int i=0;i<shortestnamestwo->size();i++)
-	    cout << shortestnamestwo->at(i) << " ";
-	cout << endl;
-	vector<int>::iterator it;
-	it = find (newnums.begin(), newnums.end(), shortestnameone);
-	newnums.erase(it);
-	//only one, simple case
-	if(shortestnamestwo->size() == 1){
-	    int firstfile = shortestnameone;
-	    int secondfile;
-	    bool already = false;
-	    secondfile = gene_db.get_deepest_profile_for_alignment(shortestnamestwo->at(0));
-	    if (secondfile != -1)//there is an alignment already
-		already = true;
-	    if(already == false)
-		secondfile = shortestnamestwo->at(0);
-	    int profileout = gene_db.add_profile_alignment(firstfile,secondfile);
-	    profile_files.push_back(profileout);
-	    int ts2 = make_muscle_profile(firstfile,secondfile,profileout);
-	    clean_before_profile("TEMPOUT.PROFILE");
-	    last_profile_file = ts2;
-	    match_and_add_profile_alignment_to_db(profileout);
-	    if(already == false){
-		vector<int>::iterator it;
-		it = find (newnums.begin(), newnums.end(), secondfile);
-		newnums.erase(it);
-	    }else{
-		vector<int>::iterator it;
-		it = find (profile_files.begin(), profile_files.end(), secondfile);
-		profile_files.erase(it);
-	    }
-	}else{
-	    int firstfile = shortestnameone;
-	    int secondfile;
-	    bool already = false;
-	    for(int i=0; i < profile_files.size(); i++){
-		for(int j=0;j<shortestnamestwo->size();j++){
-		    secondfile = gene_db.get_deepest_profile_for_alignment(shortestnamestwo->at(0));
-		    if (secondfile != -1){//there is an alignment already
-			already = true;
-			break;
-		    }
-		}
-		if (already == true)
-		    break;
-	    }
-	    if (already == false){
-		int bestsn;
-		double bestscore = 0;
-		for(int i=0;i<shortestnamestwo->size();i++){
-		    make_muscle_profile(firstfile,shortestnamestwo->at(i),0);//needs to be a fake one
-		    double score  = get_muscle_spscore("TEMPOUT.PROFILE");
-		    if(score > bestscore){
-			bestscore = score;
-			bestsn = shortestnamestwo->at(i);
-		    }
-//		    cout << "score: " << score << endl;
-		}
-		secondfile = bestsn;
-		cout << "secondfile: " << secondfile << endl;
-		for(int i=0;i<newnums.size();i++){cout << "newnums: " << newnums[i]<< endl;} 
-		for(int i=0;i<profile_files.size();i++){cout << "profile_files: " << profile_files[i]<< endl;} 
-		int profileout = gene_db.add_profile_alignment(firstfile,secondfile);
-		int s = make_muscle_profile(firstfile,secondfile,profileout);
-		clean_before_profile("TEMPOUT.PROFILE");
-		match_and_add_profile_alignment_to_db(profileout);
-		//clean
-		profile_files.push_back(profileout);
-		last_profile_file = s;
-		vector<int>::iterator it;
-		it = find (newnums.begin(), newnums.end(), secondfile);
-		newnums.erase(it);
-	    }else{
-		int profileout = gene_db.add_profile_alignment(firstfile,secondfile);
-		int s2 = make_muscle_profile(firstfile,secondfile,profileout);
-		clean_before_profile("TEMPOUT.PROFILE");
-		match_and_add_profile_alignment_to_db(profileout);
-		profile_files.push_back(profileout);
-		last_profile_file = s2;
-		vector<int>::iterator it;
-		it = find (profile_files.begin(), profile_files.end(), secondfile);
-		profile_files.erase(it);
-	    }
-	}
-	delete shortestnamestwo;
-//	exit(0);
+
+    // use this to flag when to change the output name to FINAL.aln
+    int last_profile_file;
+
+    // first, profile all the original alignments
+    while (original_alns_to_profile.size() > 0) {
+
+        // find the alignment pairs separated by the shortest taxonomic distance
+        // more than one alignment may be equally close to shortest_dist_aln1
+        int shortest_dist_aln1;
+        vector<int> * shortest_dist_alns2 = new vector<int>();
+        get_shortest_distance_with_dicts(
+                    original_alns_to_profile,
+                    numlist,
+                    &shortest_dist_aln1,
+                    shortest_dist_alns2);
+
+        // remove the starting alignment from the set of alignments to profile
+        vector<int>::iterator it;
+        it = find(original_alns_to_profile.begin(), original_alns_to_profile.end(), shortest_dist_aln1);
+        original_alns_to_profile.erase(it);
+
+        if(shortest_dist_alns2->size() == 1) {
+            // if there is only one closest match to shortest_dist_aln1
+
+            int firstfile = shortest_dist_aln1;
+            int secondfile;
+            bool sd_aln2_already_profiled = false;
+
+            // see if this match is already within a profile alignment
+            secondfile = gene_db.get_deepest_profile_for_alignment(shortest_dist_alns2->at(0));
+            if (secondfile != -1)
+                // if it is, use the containing profile alignment (secondfile)
+                sd_aln2_already_profiled = true;
+
+            // if not, use the original alignment
+            if(sd_aln2_already_profiled == false)
+                secondfile = shortest_dist_alns2->at(0);
+
+            // create a new profile alignment record, add it to the list of profile alns to cross-align
+            int profileout_id = gene_db.add_profile_alignment(firstfile, secondfile);
+            profile_alns_to_profile.push_back(profileout_id);
+
+            // do the profile alignment
+            int confirmed_profile_id = make_muscle_profile(firstfile, secondfile, profileout_id);
+            last_profile_file = confirmed_profile_id;
+
+            // store the new profile alignment in the db
+            clean_before_profile("TEMPOUT.PROFILE");
+            match_and_add_profile_alignment_to_db(profileout_id);
+
+            // now remove the second input alignment, since it has been stored in the new profile aln
+            if(sd_aln2_already_profiled == false) {
+
+                // if input2 was an original alignment, remove it from that array
+                vector<int>::iterator it;
+                it = find(original_alns_to_profile.begin(), original_alns_to_profile.end(), secondfile);
+                original_alns_to_profile.erase(it);
+
+            } else {
+
+                // otherwise remove it from the profiles to cross-profile array
+                vector<int>::iterator it;
+                it = find(profile_alns_to_profile.begin(), profile_alns_to_profile.end(), secondfile);
+                profile_alns_to_profile.erase(it);
+            }
+        
+        } else { // there is more than one equally closest alignment to the starting alignment
+
+            int firstfile = shortest_dist_aln1;
+            int secondfile;
+            bool sd_aln2_already_profiled = false;
+
+            // walk the alignments in the list of equally closest matches...
+            for(int j = 0; j < shortest_dist_alns2->size(); j++) {
+                // ...and check if each is a profile alignment
+                secondfile = gene_db.get_deepest_profile_for_alignment(shortest_dist_alns2->at(j));
+
+                if (secondfile != -1) {
+                    // when we find a profile alignment, break
+                    sd_aln2_already_profiled = true;
+                    break;
+
+                }
+            }
+
+            if (sd_aln2_already_profiled == false) {
+                int bestsn;
+                double bestscore = 0;
+                for(int i = 0; i < shortest_dist_alns2->size(); i++) {
+                    make_muscle_profile(firstfile,shortest_dist_alns2->at(i),0); // needs to be a fake one (sas) - huh? (ceh)
+                    double score  = get_muscle_spscore("TEMPOUT.PROFILE");
+
+                    if(score > bestscore) {
+                        bestscore = score;
+                        bestsn = shortest_dist_alns2->at(i);
+                    }
+                }
+                  
+                secondfile = bestsn;
+                int profileout_id = gene_db.add_profile_alignment(firstfile,secondfile);
+
+                // profile
+                int outfile_id = make_muscle_profile(firstfile,secondfile,profileout_id);
+                clean_before_profile("TEMPOUT.PROFILE");
+                match_and_add_profile_alignment_to_db(profileout_id);
+
+                //clean
+                profile_alns_to_profile.push_back(profileout_id);
+                last_profile_file = outfile_id;
+
+                vector<int>::iterator it;                
+                it = find(original_alns_to_profile.begin(), original_alns_to_profile.end(), secondfile);
+
+                // remove the child alignment from from the table; it is in a profile now
+                original_alns_to_profile.erase(it);
+            
+            } else {
+            int profileout_id = gene_db.add_profile_alignment(firstfile,secondfile);
+            int s2 = make_muscle_profile(firstfile,secondfile,profileout_id);
+            clean_before_profile("TEMPOUT.PROFILE");
+            match_and_add_profile_alignment_to_db(profileout_id);
+            profile_alns_to_profile.push_back(profileout_id);
+            last_profile_file = s2;
+            vector<int>::iterator it;
+            it = find (profile_alns_to_profile.begin(), profile_alns_to_profile.end(), secondfile);
+            profile_alns_to_profile.erase(it);
+            }
+        }
+        delete shortest_dist_alns2;
     }
     cout << "processing profile files" << endl;
-    for(int i=0; i < profile_files.size(); i++){
-	cout << profile_files[i] << endl;
-    }
+    for(int i=0; i < profile_alns_to_profile.size(); i++){
+        cout << profile_alns_to_profile[i] << endl;}
 
 
-    while(profile_files.size() > 1){
+    while(profile_alns_to_profile.size() > 1){
 //TODO: choose the best, for now just choose any two
-	int firstfile = profile_files[0];
-	int secondfile = profile_files[1];
+	int firstfile = profile_alns_to_profile[0];
+	int secondfile = profile_alns_to_profile[1];
 	vector<int>::iterator it;
-	it = find (profile_files.begin(), profile_files.end(), firstfile);
-	profile_files.erase(it);
-	it = find (profile_files.begin(), profile_files.end(), secondfile);
-	profile_files.erase(it);
+	it = find (profile_alns_to_profile.begin(), profile_alns_to_profile.end(), firstfile);
+	profile_alns_to_profile.erase(it);
+	it = find (profile_alns_to_profile.begin(), profile_alns_to_profile.end(), secondfile);
+	profile_alns_to_profile.erase(it);
 	
-	int profileout = gene_db.add_profile_alignment(firstfile,secondfile);
-	int s2 = make_muscle_profile(firstfile,secondfile,profileout);
+	int profileout_id = gene_db.add_profile_alignment(firstfile,secondfile);
+	int s2 = make_muscle_profile(firstfile,secondfile,profileout_id);
 	clean_before_profile("TEMPOUT.PROFILE");
-	match_and_add_profile_alignment_to_db(profileout);
-	profile_files.push_back(s2);
+	match_and_add_profile_alignment_to_db(profileout_id);
+	profile_alns_to_profile.push_back(s2);
 	last_profile_file = s2;
     }
 
     return last_profile_file;
 }
 
-int SQLiteProfiler::make_muscle_profile(int profile1,int profile2,int outfile){
+int SQLiteProfiler::make_muscle_profile(int profile1,int profile2,int outfile_id){
+
+    /* accepts the database ids for two preexisiting profile alignments, writes
+     * these alignments to files, and calls the external program muscle to align
+     * them together (profile alignment). the resulting alignment is stored in a
+     * file named TEMPOUT.PROFILE. if this file is created successfully, then the
+     * third function argument, representing the next database id (the one to be
+     * used for the new profile alignment) is returned. */
+    
+    // delete any previous temp alignment files
     remove((profilefoldername+"TEMP1.PROFILE").c_str());
     remove((profilefoldername+"TEMP2.PROFILE").c_str());
     remove((profilefoldername+"TEMPOUT.PROFILE").c_str());
-    gene_db.write_profile_alignment_to_file(profile1,profilefoldername+"TEMP1.profile");
-    gene_db.write_profile_alignment_to_file(profile2,profilefoldername+"TEMP2.profile");
+
+    // write the alignments to temp files
+    gene_db.write_profile_alignment_to_file(profile1, profilefoldername+"TEMP1.profile");
+    gene_db.write_profile_alignment_to_file(profile2, profilefoldername+"TEMP2.profile");
+
+    // build the muscle command call
     string cmd = "muscle -profile -maxmb 5000 -in1 ";
-    cmd += profilefoldername;
-    cmd += "TEMP1.profile -in2 ";
-    cmd += profilefoldername;
-    cmd += "TEMP2.profile -out ";
-    cmd += profilefoldername;
-    cmd += "TEMPOUT.PROFILE 2> ";
-	cmd += profilefoldername+"muscle.out";
+    cmd += profilefoldername + "TEMP1.profile -in2 ";
+    cmd += profilefoldername + "TEMP2.profile -out ";
+    cmd += profilefoldername + "TEMPOUT.PROFILE 2> ";
+	cmd += profilefoldername + "muscle.out";
+
     cout << "aligning" << endl;
     cout << cmd << endl;
 
+    // call muscle to do profile alignment
     system(cmd.c_str());
+
+    // if new profile alignment was not created, test will fail and program will exit
     test_outfile_exists(profilefoldername+"TEMPOUT.PROFILE");
-    return outfile;
+
+    // otherwise return the new profile's id, passed in when make_muscle_profile was called
+    return outfile_id;
 }
 
 

@@ -111,9 +111,13 @@ void SQLiteConstructor::set_only_names_from_file(string filename, bool containsh
     listfilename = filename;
 }
 
-void SQLiteConstructor::set_exclude_names_from_file(string filename){
+void SQLiteConstructor::set_exclude_names_from_file(string filename, bool containshi, bool containswi){
     excludenamesfromfile = true;
     excludefilename = filename;
+    containshigherex = containshi;
+    containswildex = containswi;
+    if (containswildex == true)
+	containshigherex = false;
 }
 
 void SQLiteConstructor::set_exclude_gi_from_file(string filename){
@@ -316,39 +320,40 @@ int SQLiteConstructor::run(){
     if(userskipsearchdb == false){
 	first_seq_search_for_gene_left_right(start_res);
 
-	//make connection to database
-	cout << "connected to " << db << endl;
-	vector<int> R;
-	//just some edits to use the ncbi ids instead of the names for automated runs
-	if (automated == false){
-	    Query query(conn);
-	    query.get_result("SELECT ncbi_id FROM taxonomy WHERE name = '"+clade_name+"'");
-	    while(query.fetch_row()){
-		R.push_back(query.getval());
-	    }
-	    query.free_result();
-	}else if(automated == true){
-	    Query query(conn);
-	    query.get_result("SELECT ncbi_id FROM taxonomy WHERE ncbi_id = "+clade_name);
-	    while(query.fetch_row()){
-		R.push_back(query.getval());
-	    }
-	    query.free_result();
-	}
-	//start with a name -- get the broad name clade id
-	cout << "Found " << R.size()<< " taxon ids:" << endl;
-	for(int i = 0; i < R.size(); ++i){
-	    cout << R[i] << endl;
-	}
-	int name_id;
-	//string sname_id;
-	name_id = R[0];
-	sname_id = to_string(R[0]).c_str();
-	cout << "Will be using " << name_id << endl;
+    //make connection to database
+    cout << "connected to " << db << endl;
+    vector<int> R;
 
-	//start with a set of seqs given the first clade name and the regions
-	startseqs = first_get_seqs_for_name_use_left_right(name_id, start_res);
+   //just some edits to use the ncbi ids instead of the names for automated runs
+    if (automated == false){
+        Query query(conn);
+        query.get_result("SELECT ncbi_id FROM taxonomy WHERE name = '"+clade_name+"'");
+        while(query.fetch_row()){
+        R.push_back(query.getval());
+        }
+        query.free_result();
+    }else if(automated == true){
+        Query query(conn);
+        query.get_result("SELECT ncbi_id FROM taxonomy WHERE ncbi_id = "+clade_name);
+        while(query.fetch_row()){
+        R.push_back(query.getval());
+        }
+        query.free_result();
+    }
+    //start with a name -- get the broad name clade id
+    cout << "Found " << R.size()<< " taxon ids:" << endl;
+    for(int i = 0; i < R.size(); ++i){
+        cout << R[i] << endl;
+    }
+    int name_id;
+    //string sname_id;
+    name_id = R[0];
+    sname_id = to_string(R[0]).c_str();
+    cout << "Will be using " << name_id << endl;
 
+    //start with a set of seqs given the first clade name and the regions
+    startseqs = first_get_seqs_for_name_use_left_right(name_id, start_res);
+    
 	cout << "first: " << startseqs.size() << endl;
 
 	//if excluding gi's from file
@@ -472,7 +477,7 @@ int SQLiteConstructor::run(){
 	//check files for existing taxonomic break down as it will generally be 
 	//these seperations or more fine
 	vector<string> align_names;
-	gene_db.get_alignment_names(align_names);
+	gene_db.load_orig_alignment_names_into(align_names);
 	if(usertree == false){
 	    for (unsigned int i = 0;i < align_names.size();i++){
 		string sql = "SELECT ncbi_id,left_value,right_value FROM taxonomy where ncbi_id = "+align_names[i]+";";
@@ -1070,6 +1075,7 @@ vector <Sequence> SQLiteConstructor::include_gis_from_file(vector<Sequence> & se
  * OPENMP version
  */
 void SQLiteConstructor::get_same_seqs_openmp_SWPS3_justquery(vector<Sequence> & seqs,  vector<Sequence> * keep_seqs){
+    cout << "Starting cover/ident calculations" << endl;
     vector<int> known_scores;
     SBMatrix mat = swps3_readSBMatrix( "EDNAFULL" );
     //SBMatrix mat = swps3_get_premade_SBMatrix( "EDNAFULL" );
@@ -1086,6 +1092,7 @@ void SQLiteConstructor::get_same_seqs_openmp_SWPS3_justquery(vector<Sequence> & 
 	double maxcov = 0;
 	bool rc = false;
 	for (int j=0;j<known_seqs->size();j++){
+//        cout << seqs[i].get_id() << endl;
 	    bool trc = false;
 	    int ret = get_swps3_score_and_rc_cstyle(mat,&known_seqs->at(j), &seqs[i]);
 	    double tsc = double(ret)/double(known_scores[j]);
