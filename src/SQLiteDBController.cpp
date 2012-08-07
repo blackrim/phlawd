@@ -171,6 +171,11 @@ string SQLiteDBController::create_edited_name(string & tfilen){
 	tfilen.replace(found,1,"_");
 	found = tfilen.find("/",found+1);
     }
+    found = tfilen.find(";");
+    while(found!=string::npos){
+	tfilen.replace(found,1,"_");
+	found = tfilen.find(";",found+1);
+    }
     return tfilen;
 }
 
