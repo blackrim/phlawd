@@ -101,7 +101,7 @@ clean:
 	-@echo ' '
 
 distclean:
-	-$(RM) *.o *.d PHLAWD configure config.log config.h config.status Makefile
+	-$(RM) *.o *.d PHLAWD configure config.log config.h config.status Makefile autom4te.cache
 
 install:
 	install -m 0755 PHLAWD $(prefix)
