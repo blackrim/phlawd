@@ -34,6 +34,17 @@ The mafft program is required to be in the path
 --------------------------------------------------------])
 fi
 
+#############################
+# Platform specific setup
+#############################
+
+ARCH=`uname`
+HOST="linux"
+if [[ $ARCH == "Darwin" ]]; then
+   HOST="mac"
+fi
+AC_SUBST(HOST)
+
 
 # Checks for header files.
 AC_CHECK_HEADERS([float.h malloc.h stdint.h stdlib.h string.h syslog.h unistd.h])
