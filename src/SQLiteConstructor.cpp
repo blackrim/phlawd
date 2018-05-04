@@ -732,7 +732,7 @@ vector<Sequence> SQLiteConstructor::first_get_seqs_for_name_use_left_right
 	query2.free_result();
 	if (left_value > left_value_name && right_value < right_value_name){
 	    bioentid = results[i][0];
-	    sql = "SELECT accession_id,identifier,description,seq FROM sequence WHERE id = "+bioentid;
+	    sql = "SELECT accession_id,version_id,description,seq FROM sequence WHERE id = "+bioentid;
 	    Query query3(conn);
 	    query3.get_result(sql);
 	    string descr,acc,gi,sequ;
@@ -1162,12 +1162,12 @@ void SQLiteConstructor::get_same_seqs_openmp_SWPS3(vector<Sequence> & seqs,  vec
 	    seqs[i].perm_reverse_complement();//make it back to original
 	    int setsc = get_swps3_score_and_rc_cstyle(mat,&seqs[i],&seqs[i]);
 	    double fsetsc = double(ret)/double(setsc);
-//	    cout <<i << " " << j << " " << setsc << " " << ret << " " << retrc << " " << known_scores[j] << " " <<  tsc << " " << double(ret)/double(setsc) << endl;
-//	    cout << seqs[i].get_sequence() << endl;
-//	    cout << known_seqs->at(j).get_sequence() << endl;
-//	    cout << seqs[i].get_sequence().size() << endl;
-//	    cout << known_seqs->at(j).get_sequence().size() << endl;
-//	    exit(0);
+	    //cout <<i << " " << j << " " << setsc << " " << ret << " " << retrc << " " << known_scores[j] << " " <<  tsc << " " << double(ret)/double(setsc) << endl;
+	    //cout << seqs[i].get_sequence() << endl;
+	    //cout << known_seqs->at(j).get_sequence() << endl;
+	    //cout << seqs[i].get_sequence().size() << endl;
+	    //cout << known_seqs->at(j).get_sequence().size() << endl;
+	    //exit(0);
 	    if(retrc > ret){
 		trc = true;
 		tsc = double(retrc)/double(known_scores[j]);

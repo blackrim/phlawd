@@ -9,6 +9,7 @@
 #include <algorithm>
 
 #include "genedb.h"
+#include <sqlite3.h>
 #include "libsqlitewrapped.h"
 #include "utils.h"
 #include "fasta_util.h"
