@@ -1,4 +1,6 @@
-CC = g++
+HOST := @HOST@
+
+CXX = @CXX@
 CFLAGS = -msse3 -DSSE2 -O3 -g -w -Wall -fopenmp
 prefix = /usr/bin/
 CPP_SRCS += \
@@ -76,7 +78,7 @@ utils.d
 
 # Each subdirectory must supply rules for building sources it contributes
 %.o: ./%.cpp
-	$(CC) $(CFLAGS)  -L../deps/linux/ -c -fmessage-length=0 -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -o"$@" "$<"
+	$(CXX) $(CFLAGS) -L../deps/$(HOST)/ -c -fmessage-length=0 -MMD -MP -MF"$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -o"$@" "$<"
 
 LIBS := -lm -lsqlitewrapped -lsqlite3 -fopenmp
 
@@ -90,13 +92,16 @@ all: PHLAWD
 # Tool invocations
 PHLAWD: $(OBJS)
 	@echo 'Building target: $@'
-	$(CC) -msse3 -DSSE2 -L../deps/linux -o "PHLAWD" $(OBJS) $(LIBS)
+	$(CXX) -msse3 -DSSE2 -L../deps/$(HOST) -o "PHLAWD" $(OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
 clean:
 	-$(RM) *.o *.d
 	-@echo ' '
+
+distclean:
+	-$(RM) *.o *.d PHLAWD configure config.log config.h config.status Makefile autom4te.cache
 
 install:
 	install -m 0755 PHLAWD $(prefix)

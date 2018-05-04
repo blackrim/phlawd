@@ -1,0 +1,36 @@
+## Follow these commands to install on Mac
+
+## Install homebrew for compilers and dependencies
+ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+brew tap homebrew/versions
+brew tap homebrew/science
+
+## Get gcc with support for openmp (this can take a while)
+brew install gcc --without-multilib
+
+## Set gcc as default compiler (rather than clang), and build things from source
+## To make this permanent, put in ~/.bashrc
+export HOMEBREW_CC=gcc-5
+export HOMEBREW_CXX=g++-5
+export HOMEBREW_BUILD_FROM_SOURCE=TRUE
+
+## Check
+brew --env
+
+## Some general dependencies
+brew install automake
+brew install autoconf
+brew install libtool
+
+## PHLAWD dependencies
+brew install muscle
+brew install quicktree
+brew install mafft
+
+## Compile PHLAWD
+cd phlawd/src
+autoreconf -fi
+./configure CC=gcc-5 CXX=g++-5
+make
+sudo make install
+
